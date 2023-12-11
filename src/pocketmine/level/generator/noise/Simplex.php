@@ -1,6 +1,23 @@
 <?php
 
-declare(strict_types=1);
+/*
+ *
+ *  ____            _        _   __  __ _                  __  __ ____  
+ * |  _ \ ___   ___| | _____| |_|  \/  (_)_ __   ___      |  \/  |  _ \ 
+ * | |_) / _ \ / __| |/ / _ \ __| |\/| | | '_ \ / _ \_____| |\/| | |_) |
+ * |  __/ (_) | (__|   <  __/ |_| |  | | | | | |  __/_____| |  | |  __/ 
+ * |_|   \___/ \___|_|\_\___|\__|_|  |_|_|_| |_|\___|     |_|  |_|_| 
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * @author PocketMine Team
+ * @link http://www.pocketmine.net/
+ * 
+ *
+*/
 
 namespace pocketmine\level\generator\noise;
 
@@ -13,9 +30,7 @@ use pocketmine\utils\Random;
  * Stefan Gustavson at
  * http://staffwww.itn.liu.se/~stegu/simplexnoise/simplexnoise.pdf
  */
-use function sqrt;
-
-class Simplex extends Perlin{
+class Simplex extends Perlin {
 	protected static $SQRT_3;
 	protected static $SQRT_5;
 	protected static $F2;
@@ -48,6 +63,14 @@ class Simplex extends Perlin{
 	protected $offsetW;
 
 
+	/**
+	 * Simplex constructor.
+	 *
+	 * @param Random $random
+	 * @param        $octaves
+	 * @param        $persistence
+	 * @param int    $expansion
+	 */
 	public function __construct(Random $random, $octaves, $persistence, $expansion = 1){
 		parent::__construct($random, $octaves, $persistence, $expansion);
 		$this->offsetW = $random->nextFloat() * 256;
@@ -65,18 +88,49 @@ class Simplex extends Perlin{
 		self::$G44 = self::$G4 * 4.0 - 1.0;
 	}
 
+	/**
+	 * @param $g
+	 * @param $x
+	 * @param $y
+	 *
+	 * @return mixed
+	 */
 	protected static function dot2D($g, $x, $y){
 		return $g[0] * $x + $g[1] * $y;
 	}
 
+	/**
+	 * @param $g
+	 * @param $x
+	 * @param $y
+	 * @param $z
+	 *
+	 * @return mixed
+	 */
 	protected static function dot3D($g, $x, $y, $z){
 		return $g[0] * $x + $g[1] * $y + $g[2] * $z;
 	}
 
+	/**
+	 * @param $g
+	 * @param $x
+	 * @param $y
+	 * @param $z
+	 * @param $w
+	 *
+	 * @return mixed
+	 */
 	protected static function dot4D($g, $x, $y, $z, $w){
 		return $g[0] * $x + $g[1] * $y + $g[2] * $z + $g[3] * $w;
 	}
 
+	/**
+	 * @param $x
+	 * @param $y
+	 * @param $z
+	 *
+	 * @return float
+	 */
 	public function getNoise3D($x, $y, $z){
 		$x += $this->offsetX;
 		$y += $this->offsetY;
@@ -201,6 +255,12 @@ class Simplex extends Perlin{
 		return 32.0 * $n;
 	}
 
+	/**
+	 * @param $x
+	 * @param $y
+	 *
+	 * @return float
+	 */
 	public function getNoise2D($x, $y){
 		$x += $this->offsetX;
 		$y += $this->offsetY;
