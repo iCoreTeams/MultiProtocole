@@ -1,0 +1,32 @@
+<?php
+
+declare(strict_types=1);
+
+namespace pocketmine\network\bedrock\protocol;
+
+#include <rules/DataPacket.h>
+
+
+use pocketmine\network\NetworkSession;
+
+class RequestChunkRadiusPacket extends DataPacket{
+	public const NETWORK_ID = ProtocolInfo::REQUEST_CHUNK_RADIUS_PACKET;
+
+	/** @var int */
+	public $radius;
+    public int $maxRadius;
+
+	public function decodePayload(){
+		$this->radius = $this->getVarInt();
+        $this->maxRadius = $this->getByte();
+	}
+
+	public function encodePayload(){
+		$this->putVarInt($this->radius);
+        $this->putByte($this->maxRadius);
+	}
+
+	public function handle(NetworkSession $session) : bool{
+		return $session->handleRequestChunkRadius($this);
+	}
+}
