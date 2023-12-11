@@ -13,6 +13,7 @@ abstract class Tool extends Durable{
 	public const TIER_STONE = 3;
 	public const TIER_IRON = 4;
 	public const TIER_DIAMOND = 5;
+    public const TIER_NETHERITE = 6;
 
 	public const TYPE_NONE = 0;
 	public const TYPE_SWORD = 1 << 0;

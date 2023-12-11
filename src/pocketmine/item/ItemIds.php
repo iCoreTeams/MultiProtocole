@@ -8,6 +8,14 @@ use pocketmine\block\BlockIds;
 
 interface ItemIds extends BlockIds{
 
+
+    public const NETHERITE_SWORD = 743;
+    public const NETHERITE_HELMET = 748;
+    public const NETHERITE_CHESTPLATE = 749;
+    public const NETHERITE_LEGGINS = 750;
+    public const NETHERITE_BOOTS = 751;
+
+    public const NETHERITE_SCRAP = 752;
 	public const IRON_SHOVEL = 256;
 	public const IRON_PICKAXE = 257;
 	public const IRON_AXE = 258;

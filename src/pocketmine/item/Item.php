@@ -226,6 +226,13 @@ class Item implements ItemIds, \JsonSerializable{
 
 			self::$list[self::TOTEM] = Totem::class;
 
+            self::$list[self::NETHERITE_SWORD] = NetheriteSword::class;
+            self::$list[self::NETHERITE_HELMET] = NetheriteHelmet::class;
+            self::$list[self::NETHERITE_CHESTPLATE] = NetheriteChestplate::class;
+            self::$list[self::NETHERITE_LEGGINS] = NetheriteLeggins::class;
+            self::$list[self::NETHERITE_BOOTS] = NetheriteBoots::class;
+            self::$list[self::NETHERITE_SCRAP] = NetheriteScrap::class;
+
 			self::$list[self::ENCHANTED_GOLDEN_APPLE] = GoldenAppleEnchanted::class;
 		}
 

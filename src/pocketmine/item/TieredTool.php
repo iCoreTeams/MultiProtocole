@@ -28,7 +28,8 @@ abstract class TieredTool extends Tool {
             self::TIER_WOODEN => 60,
             self::TIER_STONE => 132,
             self::TIER_IRON => 251,
-            self::TIER_DIAMOND => 1562
+            self::TIER_DIAMOND => 1562,
+            self::TIER_NETHERITE => 2562
         ];
 
         if(!isset($levels[$tier])){
@@ -44,7 +45,8 @@ abstract class TieredTool extends Tool {
             self::TIER_GOLD => 5,
             self::TIER_STONE => 6,
             self::TIER_IRON => 7,
-            self::TIER_DIAMOND => 8
+            self::TIER_DIAMOND => 8,
+            self::TIER_NETHERITE => 9
         ];
 
         if(!isset($levels[$tier])){
@@ -60,6 +62,7 @@ abstract class TieredTool extends Tool {
             self::TIER_STONE => 4,
             self::TIER_IRON => 6,
             self::TIER_DIAMOND => 8,
+            self::TIER_NETHERITE => 9,
             self::TIER_GOLD => 12
         ];
 
