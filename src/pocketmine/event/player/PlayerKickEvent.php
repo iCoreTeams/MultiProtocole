@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace pocketmine\event\player;
 
 use pocketmine\event\Cancellable;
-use pocketmine\event\TextContainer;
+use pocketmine\lang\TextContainer;
 use pocketmine\Player;
 
 /**

@@ -5,10 +5,9 @@ declare(strict_types=1);
 namespace pocketmine;
 
 use pocketmine\event\server\LowMemoryEvent;
-use pocketmine\event\Timings;
 use pocketmine\scheduler\GarbageCollectionTask;
+use pocketmine\timings\Timings;
 use pocketmine\utils\Utils;
-
 use function arsort;
 use function count;
 use function fclose;
@@ -39,7 +38,6 @@ use function sprintf;
 use function strlen;
 use function strtoupper;
 use function substr;
-
 use const JSON_PRETTY_PRINT;
 use const JSON_UNESCAPED_SLASHES;
 use const SORT_NUMERIC;

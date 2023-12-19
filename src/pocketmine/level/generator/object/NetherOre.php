@@ -1,27 +1,10 @@
 <?php
 
-/*
- *
- *  _____   _____   __   _   _   _____  __    __  _____
- * /  ___| | ____| |  \ | | | | /  ___/ \ \  / / /  ___/
- * | |     | |__   |   \| | | | | |___   \ \/ /  | |___
- * | |  _  |  __|  | |\   | | | \___  \   \  /   \___  \
- * | |_| | | |___  | | \  | | |  ___| |   / /     ___| |
- * \_____/ |_____| |_|  \_| |_| /_____/  /_/     /_____/
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * @author iTX Technologies
- * @link https://itxtech.org
- *
- */
+declare(strict_types = 1);
 
 namespace pocketmine\level\generator\object;
 
-use pocketmine\level\ChunkManager;
+use pocketmine\level\loadchunk\ChunkManager;
 use pocketmine\math\VectorMath;
 use pocketmine\utils\Random;
 
@@ -88,7 +71,6 @@ class NetherOre {
 			$endX = (int) ($seedX + $size);
 			$endY = (int) ($seedY + $size);
 			$endZ = (int) ($seedZ + $size);
-			//echo "ORE: $startX, $startY, $startZ,, $endX, $endY, $endZ\n";
 			for($x = $startX; $x <= $endX; ++$x){
 				$sizeX = ($x + 0.5 - $seedX) / $size;
 				$sizeX *= $sizeX;
@@ -107,15 +89,13 @@ class NetherOre {
 									$level->setBlockIdAt($x, $y, $z, $this->type->material->getId());
 									if($this->type->material->getDamage() !== 0){
 										$level->setBlockDataAt($x, $y, $z, $this->type->material->getDamage());
-									}
-									//echo "Placed to $x, $y, $z\n";
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-
+}
+}
+}
+}
+}
+}
+}
+}
+}
 }

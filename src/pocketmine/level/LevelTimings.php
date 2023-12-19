@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace pocketmine\event;
+namespace pocketmine\level;
 
-use pocketmine\level\Level;
+use pocketmine\timings\TimingsHandler;
 
 class LevelTimings{
 

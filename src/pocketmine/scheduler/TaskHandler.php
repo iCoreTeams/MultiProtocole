@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace pocketmine\scheduler;
 
-use pocketmine\event\Timings;
-use pocketmine\event\TimingsHandler;
+use pocketmine\timings\Timings;
+use pocketmine\timings\TimingsHandler;
 use pocketmine\utils\MainLogger;
-
 use function get_class;
 
 class TaskHandler{

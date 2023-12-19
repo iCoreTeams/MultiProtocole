@@ -6,159 +6,139 @@ namespace pocketmine\event;
 
 use pocketmine\plugin\Plugin;
 use pocketmine\plugin\RegisteredListener;
-
-use function spl_object_id;
+use pocketmine\utils\Utils;
+use function array_fill_keys;
+use function in_array;
+use function spl_object_hash;
 
 class HandlerList{
 
-	/**
-	 * @var RegisteredListener[]
-	 */
-	private $handlers = null;
+    /** @var HandlerList[] classname => HandlerList */
+    private static $allLists = [];
 
-	/**
-	 * @var RegisteredListener[][]
-	 */
-	private $handlerSlots = [];
+    /**
+     * Unregisters all the listeners
+     * If a Plugin or Listener is passed, all the listeners with that object will be removed
+     *
+     * @param Plugin|Listener|null $object
+     */
+    public static function unregisterAll($object = null) : void{
+        if($object instanceof Listener or $object instanceof Plugin){
+            foreach(self::$allLists as $h){
+                $h->unregister($object);
+            }
+        }else{
+            foreach(self::$allLists as $h){
+                foreach($h->handlerSlots as $key => $list){
+                    $h->handlerSlots[$key] = [];
+                }
+            }
+        }
+    }
 
-	/**
-	 * @var HandlerList[]
-	 */
-	private static $allLists = [];
+    /**
+     * Returns the HandlerList for listeners that explicitly handle this event.
+     *
+     * Calling this method also lazily initializes the $classMap inheritance tree of handler lists.
+     *
+     * @throws \ReflectionException
+     */
+    public static function getHandlerListFor(string $event) : ?HandlerList{
+        if(isset(self::$allLists[$event])){
+            return self::$allLists[$event];
+        }
 
-	public static function bakeAll(){
-		foreach(self::$allLists as $h){
-			$h->bake();
-		}
-	}
+        $class = new \ReflectionClass($event);
+        $tags = Utils::parseDocComment((string) $class->getDocComment());
 
-	/**
-	 * Unregisters all the listeners
-	 * If a Plugin or Listener is passed, all the listeners with that object will be removed
-	 *
-	 * @param Plugin|Listener|null $object
-	 */
-	public static function unregisterAll($object = null){
-		if($object instanceof Listener or $object instanceof Plugin){
-			foreach(self::$allLists as $h){
-				$h->unregister($object);
-			}
-		}else{
-			foreach(self::$allLists as $h){
-				foreach($h->handlerSlots as $key => $list){
-					$h->handlerSlots[$key] = [];
-				}
-				$h->handlers = null;
-			}
-		}
-	}
+        if($class->isAbstract() && !isset($tags["allowHandle"])){
+            return null;
+        }
 
-	public function __construct(){
-		$this->handlerSlots = [
-			EventPriority::LOWEST => [],
-			EventPriority::LOW => [],
-			EventPriority::NORMAL => [],
-			EventPriority::HIGH => [],
-			EventPriority::HIGHEST => [],
-			EventPriority::MONITOR => []
-		];
-		self::$allLists[] = $this;
-	}
+        $super = $class;
+        $parentList = null;
+        while($parentList === null && ($super = $super->getParentClass()) !== false){
+            // skip $noHandle events in the inheritance tree to go to the nearest ancestor
+            // while loop to allow skipping $noHandle events in the inheritance tree
+            $parentList = self::getHandlerListFor($super->getName());
+        }
 
-	/**
-	 * @param RegisteredListener $listener
-	 *
-	 * @throws \Exception
-	 */
-	public function register(RegisteredListener $listener){
-		if($listener->getPriority() < EventPriority::MONITOR or $listener->getPriority() > EventPriority::LOWEST){
-			return;
-		}
-		if(isset($this->handlerSlots[$listener->getPriority()][spl_object_id($listener)])){
-			throw new \InvalidStateException("This listener is already registered to priority " . $listener->getPriority());
-		}
-		$this->handlers = null;
-		$this->handlerSlots[$listener->getPriority()][spl_object_id($listener)] = $listener;
-	}
+        return new HandlerList($event, $parentList);
+    }
 
-	/**
-	 * @param RegisteredListener[] $listeners
-	 */
-	public function registerAll(array $listeners){
-		foreach($listeners as $listener){
-			$this->register($listener);
-		}
-	}
+    /**
+     * @return HandlerList[]
+     */
+    public static function getHandlerLists() : array{
+        return self::$allLists;
+    }
 
-	/**
-	 * @param RegisteredListener|Listener|Plugin $object
-	 */
-	public function unregister($object){
-		if($object instanceof Plugin or $object instanceof Listener){
-			$changed = false;
-			foreach($this->handlerSlots as $priority => $list){
-				foreach($list as $hash => $listener){
-					if(($object instanceof Plugin and $listener->getPlugin() === $object)
-						or ($object instanceof Listener and $listener->getListener() === $object)
-					){
-						unset($this->handlerSlots[$priority][$hash]);
-						$changed = true;
-					}
-				}
-			}
-			if($changed === true){
-				$this->handlers = null;
-			}
-		}elseif($object instanceof RegisteredListener){
-			if(isset($this->handlerSlots[$object->getPriority()][spl_object_id($object)])){
-				unset($this->handlerSlots[$object->getPriority()][spl_object_id($object)]);
-				$this->handlers = null;
-			}
-		}
-	}
+    /** @var string */
+    private $class;
+    /** @var RegisteredListener[][] */
+    private $handlerSlots = [];
+    /** @var HandlerList|null */
+    private $parentList;
 
-	public function bake(){
-		if($this->handlers !== null){
-			return;
-		}
-		$entries = [];
-		foreach($this->handlerSlots as $list){
-			foreach($list as $hash => $listener){
-				$entries[$hash] = $listener;
-			}
-		}
-		$this->handlers = $entries;
-	}
+    public function __construct(string $class, ?HandlerList $parentList){
+        $this->class = $class;
+        $this->handlerSlots = array_fill_keys(EventPriority::ALL, []);
+        $this->parentList = $parentList;
+        self::$allLists[$this->class] = $this;
+    }
 
-	/**
-	 * @param null|Plugin $plugin
-	 *
-	 * @return RegisteredListener[]
-	 */
-	public function getRegisteredListeners($plugin = null) : array{
-		if($plugin !== null){
-			$listeners = [];
-			foreach($this->getRegisteredListeners(null) as $hash => $listener){
-				if($listener->getPlugin() === $plugin){
-					$listeners[$hash] = $plugin;
-				}
-			}
+    /**
+     * @throws \Exception
+     */
+    public function register(RegisteredListener $listener) : void{
+        if(!in_array($listener->getPriority(), EventPriority::ALL, true)){
+            return;
+        }
+        if(isset($this->handlerSlots[$listener->getPriority()][spl_object_hash($listener)])){
+            throw new \InvalidStateException("This listener is already registered to priority {$listener->getPriority()} of event {$this->class}");
+        }
+        $this->handlerSlots[$listener->getPriority()][spl_object_hash($listener)] = $listener;
+    }
 
-			return $listeners;
-		}else{
-			while(($handlers = $this->handlers) === null){
-				$this->bake();
-			}
+    /**
+     * @param RegisteredListener[] $listeners
+     */
+    public function registerAll(array $listeners) : void{
+        foreach($listeners as $listener){
+            $this->register($listener);
+        }
+    }
 
-			return $handlers;
-		}
-	}
+    /**
+     * @param RegisteredListener|Listener|Plugin $object
+     */
+    public function unregister($object) : void{
+        if($object instanceof Plugin or $object instanceof Listener){
+            foreach($this->handlerSlots as $priority => $list){
+                foreach($list as $hash => $listener){
+                    if(($object instanceof Plugin and $listener->getPlugin() === $object)
+                        or ($object instanceof Listener and $listener->getListener() === $object)
+                    ){
+                        unset($this->handlerSlots[$priority][$hash]);
+                    }
+                }
+            }
+        }elseif($object instanceof RegisteredListener){
+            if(isset($this->handlerSlots[$object->getPriority()][spl_object_hash($object)])){
+                unset($this->handlerSlots[$object->getPriority()][spl_object_hash($object)]);
+            }
+        }
+    }
 
-	/**
-	 * @return HandlerList[]
-	 */
-	public static function getHandlerLists() : array{
-		return self::$allLists;
-	}
+    /**
+     * @return RegisteredListener[]
+     */
+    public function getListenersByPriority(int $priority) : array{
+        return $this->handlerSlots[$priority];
+    }
+
+    public function getParent() : ?HandlerList{
+        return $this->parentList;
+    }
 
 }

@@ -11,10 +11,10 @@ use function spl_object_id;
 
 class PluginLogger implements \AttachableLogger{
 
-	private $pluginName;
+	private string $pluginName;
 
 	/** @var \LoggerAttachment[] */
-	private $attachments = [];
+	private array $attachments = [];
 
 	public function addAttachment(\LoggerAttachment $attachment){
 		$this->attachments[spl_object_id($attachment)] = $attachment;

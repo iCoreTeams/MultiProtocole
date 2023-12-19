@@ -22,35 +22,35 @@ use function substr;
 use function version_compare;
 
 class PluginDescription{
-	private $name;
-	private $main;
-	private $api;
-	private $extensions = [];
-	private $depend = [];
-	private $softDepend = [];
-	private $loadBefore = [];
+	private string $name;
+	private string $main;
+	private array $api;
+	private array $extensions = [];
+	private array $depend = [];
+	private array $softDepend = [];
+	private array $loadBefore = [];
 	/** @var string */
-	private $version;
-	private $commands = [];
+	private string $version;
+	private array $commands = [];
 	/** @var string */
-	private $description = "";
+	private string $description = "";
 	/** @var string[] */
-	private $authors = [];
+	private array $authors = [];
 	/** @var string */
-	private $website = "";
+	private string $website = "";
 	/** @var string */
-	private $prefix = "";
-	private $order = PluginLoadOrder::POSTWORLD;
+	private string $prefix = "";
+	private int $order = PluginLoadOrder::POSTWORLD;
 
 	/**
 	 * @var Permission[]
 	 */
-	private $permissions = [];
+	private array $permissions = [];
 
 	/**
 	 * @param string|array $yamlString
 	 */
-	public function __construct($yamlString){
+	public function __construct(string|array $yamlString){
 		$this->loadMap(!is_array($yamlString) ? \yaml_parse($yamlString) : $yamlString);
 	}
 
@@ -59,7 +59,7 @@ class PluginDescription{
 	 *
 	 * @throws PluginException
 	 */
-	private function loadMap(array $plugin){
+	private function loadMap(array $plugin): void{
 		$this->name = preg_replace("[^A-Za-z0-9 _.-]", "", $plugin["name"]);
 		if($this->name === ""){
 			throw new PluginException("Invalid PluginDescription name");
@@ -176,7 +176,7 @@ class PluginDescription{
 	 *
 	 * @throws PluginException if there are required extensions missing or have incompatible version, or if the version constraint cannot be parsed
 	 */
-	public function checkRequiredExtensions(){
+	public function checkRequiredExtensions(): void{
 		foreach($this->extensions as $name => $versionConstrs){
 			if(!extension_loaded($name)){
 				throw new PluginException("Required extension $name not loaded");

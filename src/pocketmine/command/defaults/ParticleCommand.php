@@ -7,8 +7,8 @@ namespace pocketmine\command\defaults;
 use pocketmine\block\Block;
 use pocketmine\command\CommandSender;
 use pocketmine\command\utils\InvalidCommandSyntaxException;
-use pocketmine\event\TranslationContainer;
 use pocketmine\item\Item;
+use pocketmine\lang\TranslationContainer;
 use pocketmine\level\particle\AngryVillagerParticle;
 use pocketmine\level\particle\BlockForceFieldParticle;
 use pocketmine\level\particle\BubbleParticle;
@@ -41,7 +41,6 @@ use pocketmine\math\Vector3;
 use pocketmine\Player;
 use pocketmine\utils\Random;
 use pocketmine\utils\TextFormat;
-
 use function count;
 use function explode;
 use function max;

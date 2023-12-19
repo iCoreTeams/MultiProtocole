@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 namespace pocketmine\permission;
 
-use pocketmine\event\Timings;
 use pocketmine\plugin\Plugin;
 use pocketmine\plugin\PluginException;
 use pocketmine\Server;
-
+use pocketmine\timings\Timings;
 use function array_keys;
 use function spl_object_id;
 

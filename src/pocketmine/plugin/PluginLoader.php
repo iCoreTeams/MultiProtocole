@@ -16,7 +16,7 @@ interface PluginLoader{
 	 *
 	 * @return Plugin|null
 	 */
-	public function loadPlugin(string $file);
+	public function loadPlugin(string $file): ?Plugin;
 
 	/**
 	 * Gets the PluginDescription from the file
@@ -25,7 +25,7 @@ interface PluginLoader{
 	 *
 	 * @return null|PluginDescription
 	 */
-	public function getPluginDescription(string $file);
+	public function getPluginDescription(string $file): ?PluginDescription;
 
 	/**
 	 * Returns the filename regex patterns that this loader accepts
@@ -46,7 +46,7 @@ interface PluginLoader{
 	 *
 	 * @return void
 	 */
-	public function disablePlugin(Plugin $plugin);
+	public function disablePlugin(Plugin $plugin): void;
 
 
 }

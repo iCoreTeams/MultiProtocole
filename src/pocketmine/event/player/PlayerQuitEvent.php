@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace pocketmine\event\player;
 
-use pocketmine\event\TranslationContainer;
+use pocketmine\lang\TranslationContainer;
 use pocketmine\Player;
 
 /**

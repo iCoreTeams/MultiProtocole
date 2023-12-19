@@ -4,10 +4,7 @@ declare(strict_types=1);
 
 namespace pocketmine\lang;
 
-use pocketmine\event\TextContainer;
-use pocketmine\event\TranslationContainer;
 use pocketmine\utils\MainLogger;
-
 use function array_filter;
 use function file_exists;
 use function is_dir;
@@ -19,7 +16,6 @@ use function strlen;
 use function strpos;
 use function strtolower;
 use function substr;
-
 use const INI_SCANNER_RAW;
 use const SCANDIR_SORT_NONE;
 

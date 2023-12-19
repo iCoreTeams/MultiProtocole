@@ -28,6 +28,8 @@
  *
 */
 
+declare(strict_types=1);
+
 namespace pocketmine\plugin;
 
 use pocketmine\event\plugin\PluginDisableEvent;
@@ -36,27 +38,13 @@ use pocketmine\Server;
 use pocketmine\utils\MainLogger;
 use pocketmine\utils\TextFormat;
 
-
 class FolderPluginLoader implements PluginLoader{
 
-	/** @var Server */
-	private $server;
+	public function __construct(
+        private Server $server
+    ){}
 
-	/**
-	 * @param Server $server
-	 */
-	public function __construct(Server $server){
-		$this->server = $server;
-	}
-
-	/**
-	 * Loads the plugin contained in $file
-	 *
-	 * @param string $file
-	 *
-	 * @return Plugin
-	 */
-	public function loadPlugin($file){
+	public function loadPlugin(string $file): ?Plugin{
 		if(is_dir($file) and file_exists($file . "/plugin.yml") and file_exists($file . "/src/")){
 			if(($description = $this->getPluginDescription($file)) instanceof PluginDescription){
 				MainLogger::getLogger()->info(TextFormat::LIGHT_PURPLE . "Loading (Source) " . $description->getFullName());
@@ -87,14 +75,7 @@ class FolderPluginLoader implements PluginLoader{
 		return null;
 	}
 
-	/**
-	 * Gets the PluginDescription from the file
-	 *
-	 * @param string $file
-	 *
-	 * @return PluginDescription
-	 */
-	public function getPluginDescription($file){
+	public function getPluginDescription(string $file): ?PluginDescription{
 		if(is_dir($file) and file_exists($file . "/plugin.yml")){
 			$yaml = @file_get_contents($file . "/plugin.yml");
 			if($yaml != ""){
@@ -105,11 +86,6 @@ class FolderPluginLoader implements PluginLoader{
 		return null;
 	}
 
-	/**
-	 * Returns the filename patterns that this loader accepts
-	 *
-	 * @return array|string
-	 */
 	public function getPluginFilters(): string
     {
 		return "/[^\\.]/";
@@ -119,34 +95,26 @@ class FolderPluginLoader implements PluginLoader{
 		return is_dir($path) and file_exists($path . "/plugin.yml") and file_exists($path . "/src/");
 	}
 
-	/**
-	 * @param PluginBase $plugin
-	 * @param PluginDescription $description
-	 * @param string $dataFolder
-	 * @param string $file
-	 */
-	private function initPlugin(PluginBase $plugin, PluginDescription $description, $dataFolder, $file){
+	private function initPlugin(PluginBase $plugin, PluginDescription $description, string $dataFolder, string $file): void{
 		$plugin->init($this, $this->server, $description, $dataFolder, $file);
 		$plugin->onLoad();
 	}
 
-	/**
-	 * @param Plugin $plugin
-	 */
 	public function enablePlugin(Plugin $plugin){
 		if($plugin instanceof PluginBase and !$plugin->isEnabled()){
+            $this->server->getLogger()->info($this->server->getLanguage()->translateString("pocketmine.plugin.enable", [$plugin->getDescription()->getFullName()]));
+
 			$plugin->setEnabled(true);
 
-			Server::getInstance()->getPluginManager()->callEvent(new PluginEnableEvent($plugin));
+            (new PluginEnableEvent($plugin))->call();
 		}
 	}
 
-	/**
-	 * @param Plugin $plugin
-	 */
-	public function disablePlugin(Plugin $plugin){
+	public function disablePlugin(Plugin $plugin): void{
 		if($plugin instanceof PluginBase and $plugin->isEnabled()){
-			Server::getInstance()->getPluginManager()->callEvent(new PluginDisableEvent($plugin));
+            $this->server->getLogger()->info($this->server->getLanguage()->translateString("pocketmine.plugin.disable", [$plugin->getDescription()->getFullName()]));
+
+            (new PluginDisableEvent($plugin))->call();
 
 			$plugin->setEnabled(false);
 		}

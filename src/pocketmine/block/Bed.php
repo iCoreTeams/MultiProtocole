@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace pocketmine\block;
 
-use pocketmine\event\TranslationContainer;
 use pocketmine\item\Item;
+use pocketmine\lang\TranslationContainer;
 use pocketmine\level\Level;
 use pocketmine\math\AxisAlignedBB;
 use pocketmine\math\Vector3;

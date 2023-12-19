@@ -10,9 +10,7 @@ use pocketmine\event\entity\EntityDamageByChildEntityEvent;
 use pocketmine\event\entity\EntityDamageByEntityEvent;
 use pocketmine\event\entity\EntityDamageEvent;
 use pocketmine\event\entity\EntityDeathEvent;
-use pocketmine\event\Timings;
 use pocketmine\item\Item as ItemItem;
-use pocketmine\math\Vector3;
 use pocketmine\math\VoxelRayTrace;
 use pocketmine\nbt\tag\CompoundTag;
 use pocketmine\nbt\tag\FloatTag;
@@ -21,6 +19,7 @@ use pocketmine\network\bedrock\protocol\MobEffectPacket as BedrockMobEffectPacke
 use pocketmine\network\mcpe\protocol\EntityEventPacket;
 use pocketmine\network\mcpe\protocol\MobEffectPacket;
 use pocketmine\Player;
+use pocketmine\timings\Timings;
 use pocketmine\utils\Binary;
 use UnexpectedValueException;
 use function abs;

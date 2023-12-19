@@ -2,19 +2,17 @@
 
 declare(strict_types=1);
 
-namespace pocketmine\event;
+namespace pocketmine\timings;
 
 use pocketmine\command\defaults\TimingsCommand;
 use pocketmine\entity\Living;
 use pocketmine\plugin\PluginManager;
 use pocketmine\Server;
-
 use function count;
 use function fwrite;
 use function microtime;
 use function round;
 use function spl_object_id;
-
 use const PHP_EOL;
 
 class TimingsHandler{

@@ -4,15 +4,12 @@ declare(strict_types=1);
 
 namespace pocketmine\scheduler;
 
-use pocketmine\event\Timings;
 use pocketmine\Server;
+use pocketmine\timings\Timings;
 use pocketmine\utils\Utils;
-
 use function count;
-use function mt_rand;
-
-use const PTHREADS_INHERIT_INI;
 use const PTHREADS_INHERIT_CONSTANTS;
+use const PTHREADS_INHERIT_INI;
 
 class AsyncPool{
 

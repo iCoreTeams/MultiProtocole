@@ -7,13 +7,12 @@ declare(strict_types=1);
  */
 namespace pocketmine\command;
 
-use pocketmine\event\TextContainer;
-use pocketmine\event\TimingsHandler;
-use pocketmine\event\TranslationContainer;
+use pocketmine\lang\TextContainer;
+use pocketmine\lang\TranslationContainer;
 use pocketmine\Player;
 use pocketmine\Server;
+use pocketmine\timings\TimingsHandler;
 use pocketmine\utils\TextFormat;
-
 use function explode;
 use function file_get_contents;
 use function json_decode;

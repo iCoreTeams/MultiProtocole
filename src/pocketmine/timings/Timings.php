@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace pocketmine\event;
+namespace pocketmine\timings;
 
 use pocketmine\entity\Entity;
 use pocketmine\network\mcpe\protocol\DataPacket;
@@ -11,7 +11,6 @@ use pocketmine\plugin\PluginManager;
 use pocketmine\scheduler\PluginTask;
 use pocketmine\scheduler\TaskHandler;
 use pocketmine\tile\Tile;
-
 use function dechex;
 
 abstract class Timings{

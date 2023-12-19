@@ -15,5 +15,5 @@ interface EventExecutor{
 	 *
 	 * @return void
 	 */
-	public function execute(Listener $listener, Event $event);
+	public function execute(Listener $listener, Event $event): void;
 }

@@ -6,10 +6,9 @@ namespace pocketmine\command\defaults;
 
 use pocketmine\command\CommandSender;
 use pocketmine\command\utils\InvalidCommandSyntaxException;
-use pocketmine\event\TranslationContainer;
 use pocketmine\item\enchantment\Enchantment;
+use pocketmine\lang\TranslationContainer;
 use pocketmine\utils\TextFormat;
-
 use function count;
 use function is_numeric;
 

@@ -6,9 +6,8 @@ namespace pocketmine\command\defaults;
 
 use pocketmine\command\Command;
 use pocketmine\command\CommandSender;
-use pocketmine\event\TranslationContainer;
+use pocketmine\lang\TranslationContainer;
 use pocketmine\utils\TextFormat;
-
 use function array_chunk;
 use function array_pop;
 use function count;
@@ -18,7 +17,6 @@ use function is_numeric;
 use function ksort;
 use function min;
 use function strtolower;
-
 use const SORT_FLAG_CASE;
 use const SORT_NATURAL;
 

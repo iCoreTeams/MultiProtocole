@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace pocketmine\command;
 
-use pocketmine\event\TextContainer;
+use pocketmine\lang\TextContainer;
 use pocketmine\permission\PermissibleBase;
 use pocketmine\permission\Permission;
 use pocketmine\permission\PermissionAttachment;
@@ -12,10 +12,8 @@ use pocketmine\permission\PermissionAttachmentInfo;
 use pocketmine\plugin\Plugin;
 use pocketmine\Server;
 use pocketmine\utils\MainLogger;
-
 use function explode;
 use function trim;
-
 use const PHP_INT_MAX;
 
 class ConsoleCommandSender implements CommandSender{

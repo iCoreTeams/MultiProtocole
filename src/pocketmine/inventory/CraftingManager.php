@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace pocketmine\inventory;
 
-use pocketmine\event\Timings;
 use pocketmine\item\Item;
 use pocketmine\network\bedrock\BedrockPacketBatch;
 use pocketmine\network\bedrock\NetworkCompression as BedrockNetworkCompression;
@@ -14,10 +13,10 @@ use pocketmine\network\mcpe\NetworkCompression as Pw10NetworkCompression;
 use pocketmine\network\mcpe\protocol\CraftingDataPacket as Pw10CraftingData;
 use pocketmine\network\mcpe\protocol\ProtocolInfo;
 use pocketmine\Server;
+use pocketmine\timings\Timings;
 use pocketmine\utils\Config;
 use pocketmine\utils\MainLogger;
 use pocketmine\utils\UUID;
-
 use function array_chunk;
 use function array_key_exists;
 use function array_values;

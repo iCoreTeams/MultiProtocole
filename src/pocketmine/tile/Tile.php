@@ -8,13 +8,12 @@ declare(strict_types=1);
 namespace pocketmine\tile;
 
 use pocketmine\block\Block;
-use pocketmine\event\Timings;
-use pocketmine\event\TimingsHandler;
 use pocketmine\level\format\Chunk;
 use pocketmine\level\Level;
 use pocketmine\level\Position;
 use pocketmine\nbt\tag\CompoundTag;
-
+use pocketmine\timings\Timings;
+use pocketmine\timings\TimingsHandler;
 use function assert;
 use function is_a;
 use function microtime;
