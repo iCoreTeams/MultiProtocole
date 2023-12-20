@@ -52,6 +52,7 @@ use pocketmine\event\player\PlayerToggleSprintEvent;
 use pocketmine\event\player\PlayerTransferEvent;
 use pocketmine\event\server\DataPacketSendEvent;
 use pocketmine\event\server\RawPacketSendEvent;
+use pocketmine\form\Form;
 use pocketmine\inventory\AnvilInventory;
 use pocketmine\inventory\BaseTransaction;
 use pocketmine\inventory\BigShapedRecipe;
@@ -3665,6 +3666,22 @@ class Player extends Human implements CommandSender, ChunkLoader, ChunkListener,
 
     public function openSignEditor(Vector3 $position) : void{
 
+    }
+
+    public function onFormSent(int $id, mixed $data) : bool{
+        return false;
+    }
+
+    public function sendForm(mixed $data) : void{
+
+    }
+
+    public function onFormSubmit(int $formId, mixed $responseData) : bool{
+        return false;
+    }
+
+    public function getForms():array{
+        return [];
     }
 
 	/**

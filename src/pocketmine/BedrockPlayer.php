@@ -25,6 +25,8 @@ use pocketmine\event\player\PlayerToggleSneakEvent;
 use pocketmine\event\player\PlayerToggleSprintEvent;
 use pocketmine\event\player\PlayerTransferEvent;
 use pocketmine\event\server\DataPacketSendEvent;
+use pocketmine\form\Form;
+use pocketmine\form\FormValidationException;
 use pocketmine\inventory\BaseTransaction;
 use pocketmine\inventory\DropItemTransaction;
 use pocketmine\inventory\PlayerInventory;
@@ -68,6 +70,7 @@ use pocketmine\network\bedrock\protocol\ItemFrameDropItemPacket;
 use pocketmine\network\bedrock\protocol\LevelSoundEventPacket;
 use pocketmine\network\bedrock\protocol\LoginPacket;
 use pocketmine\network\bedrock\protocol\MobEquipmentPacket;
+use pocketmine\network\bedrock\protocol\ModalFormRequestPacket;
 use pocketmine\network\bedrock\protocol\NetworkChunkPublisherUpdatePacket;
 use pocketmine\network\bedrock\protocol\NetworkSettingsPacket;
 use pocketmine\network\bedrock\protocol\OpenSignPacket;
@@ -171,6 +174,11 @@ class BedrockPlayer extends Player{
 	protected $openedNewInventories = [];
 	/** @var int */
 	protected $clientClosingWindowId = -1;
+
+    protected int $formIdCounter = 0;
+
+    /** @var Form[] */
+    protected array $forms = [];
 
 	/**
 	 * @internal
@@ -2167,6 +2175,47 @@ class BedrockPlayer extends Player{
         }else{
             throw new \InvalidArgumentException("Block at this position is not a sign");
         }
+    }
+
+    public function onFormSent(int $id, mixed $data) : bool{
+        $pk = new ModalFormRequestPacket();
+        $pk->formId = $id;
+        $pk->formData = json_encode($data, JSON_THROW_ON_ERROR);
+        return $this->sendDataPacket($pk);
+    }
+
+    /**
+     * Sends a Form to the player, or queue to send it if a form is already open.
+     *
+     * @throws \InvalidArgumentException
+     */
+    public function sendForm(mixed $data) : void{
+        $id = $this->formIdCounter++;
+        if($this->onFormSent($id, $data)){
+            $this->forms[$id] = $data;
+        }
+    }
+
+    public function onFormSubmit(int $formId, mixed $responseData) : bool{
+        if(!isset($this->forms[$formId])){
+            $this->server->getLogger()->debug("Got unexpected response for form $formId from " . $this->getName());
+            return false;
+        }
+
+        try{
+            $this->forms[$formId]->handleResponse($this, $responseData);
+        }catch(FormValidationException $e){
+            $this->server->getLogger()->critical("Failed to validate form " . get_class($this->forms[$formId]) . ": " . $e->getMessage() . " from " . $this->getName());
+            $this->server->getLogger()->logException($e);
+        }finally{
+            unset($this->forms[$formId]);
+        }
+
+        return true;
+    }
+
+    public function getForms():array{
+        return $this->forms;
     }
 
 	/**

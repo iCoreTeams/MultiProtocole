@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace pocketmine\network\bedrock;
 
 use pocketmine\BedrockPlayer;
+use pocketmine\event\form\ServerSettingsRequestEvent;
 use pocketmine\event\server\DataPacketReceiveEvent;
+use pocketmine\form\ServerSettingsForm;
 use pocketmine\network\bedrock\protocol\ActorEventPacket;
 use pocketmine\network\bedrock\protocol\AnimatePacket;
 use pocketmine\network\bedrock\protocol\BlockActorDataPacket;
@@ -22,6 +24,7 @@ use pocketmine\network\bedrock\protocol\ItemFrameDropItemPacket;
 use pocketmine\network\bedrock\protocol\LevelSoundEventPacket;
 use pocketmine\network\bedrock\protocol\LoginPacket;
 use pocketmine\network\bedrock\protocol\MobEquipmentPacket;
+use pocketmine\network\bedrock\protocol\ModalFormResponsePacket;
 use pocketmine\network\bedrock\protocol\MovePlayerPacket;
 use pocketmine\network\bedrock\protocol\PacketViolationWarningPacket;
 use pocketmine\network\bedrock\protocol\PlayerActionPacket;
@@ -32,6 +35,7 @@ use pocketmine\network\bedrock\protocol\RequestNetworkSettingsPacket;
 use pocketmine\network\bedrock\protocol\ResourcePackChunkRequestPacket;
 use pocketmine\network\bedrock\protocol\ResourcePackClientResponsePacket;
 use pocketmine\network\bedrock\protocol\RespawnPacket;
+use pocketmine\network\bedrock\protocol\ServerSettingsRequestPacket;
 use pocketmine\network\bedrock\protocol\SetLocalPlayerAsInitializedPacket;
 use pocketmine\network\bedrock\protocol\SetPlayerGameTypePacket;
 use pocketmine\network\bedrock\protocol\TextPacket;
@@ -39,6 +43,7 @@ use pocketmine\network\bedrock\protocol\types\inventory\ContainerIds;
 use pocketmine\network\bedrock\protocol\types\inventory\WindowTypes;
 use pocketmine\Server;
 use pocketmine\timings\Timings;
+use pocketmine\utils\Utils;
 use function bin2hex;
 use function strlen;
 use function substr;
@@ -91,8 +96,26 @@ class PlayerNetworkSessionAdapter extends BedrockNetworkSession{
 	}
 
 	public function handleLogin(LoginPacket $packet) : bool{
-		return $this->player->handleBedrockLogin($packet);
-	}
+        return $this->player->handleBedrockLogin($packet);
+    }
+
+    public function handleModalFormResponse(ModalFormResponsePacket $packet) : bool{
+        $packet->decode();
+        $forms = $this->player->getForms();
+        if (isset($p->forms[$packet->formId])) {
+            $p->forms[$packet->formId]->handleResponse($p, Utils::stupid_json_decode($packet->formData ?? "NULL", true));
+            unset($p->forms[$packet->formId]);
+        }
+        return true;
+    }
+
+    public function handleServerSettingsRequest(ServerSettingsRequestPacket $packet) : bool{
+        ($ev = new ServerSettingsRequestEvent($this->player))->call();
+        if (($form = $ev->getForm()) instanceof ServerSettingsForm) {
+            $form->sendToPlayer($this->player);
+        }
+        return true;
+    }
 
 	public function handleClientToServerHandshake(ClientToServerHandshakePacket $packet) : bool{
 		return $this->player->onEncryptionHandshake();

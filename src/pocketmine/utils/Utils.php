@@ -660,4 +660,27 @@ class Utils{
         $result = array_combine($matches[1], $matches[2]);
         return $result;
     }
+
+    public static function stupid_json_decode(string $json, bool $assoc = false)
+    {
+        if (preg_match('/^\[(.+)\]$/s', $json, $matches) > 0) {
+            $parts = preg_split('/(?:"(?:\\"|[^"])*"|)\K(,)/', $matches[1]); //Splits on commas not inside quotes, ignoring escaped quotes
+            foreach ($parts as $k => $part) {
+                $part = trim($part);
+                if ($part === "") {
+                    $part = "\"\"";
+                }
+                $parts[$k] = $part;
+            }
+
+            $fixed = "[" . implode(",", $parts) . "]";
+            if (($ret = json_decode($fixed, $assoc)) === null) {
+                throw new \InvalidArgumentException("Failed to fix JSON: " . json_last_error_msg() . "(original: $json, modified: $fixed)");
+            }
+
+            return $ret;
+        }
+
+        return json_decode($json, $assoc);
+    }
 }
