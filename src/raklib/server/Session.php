@@ -540,7 +540,14 @@ class Session{
 			return;
 		}
 
-		$id = ord($packet->buffer[0]);
+        $id = ord($packet->buffer[0]);
+
+        if ($id == 9 && $packet->reliability == 0){
+            $this->sessionManager->getLogger()->debug($this->address->getIp() . " failed login packets validation.");
+            $this->sessionManager->blockAddress($this->address->getIp(), 15);
+            return;
+        }
+
 		if($id < MessageIdentifiers::ID_USER_PACKET_ENUM){ //internal data packet
 			if($this->state === self::STATE_CONNECTING){
 				if($id === ConnectionRequest::$ID){
