@@ -28,7 +28,7 @@ if(!extension_loaded("pocketmine_chunkutils")){
 					for($z = $x; $z < $zM; $z += 16){
 						$yM = $z + 4096;
 						for($y = $z; $y < $yM; $y += 256){
-							$result[$i] = $array{$y};
+							$result[$i] = $array[$y];
 							++$i;
 						}
 					}
@@ -57,13 +57,13 @@ if(!extension_loaded("pocketmine_chunkutils")){
 						for($y = 0; $y < 8; ++$y){
 							$j = (($y << 8) | $zx);
 							$j80 = ($j | 0x80);
-							if($array{$j} === $commonValue and $array{$j80} === $commonValue){
+							if($array[$j] === $commonValue and $array[$j80] === $commonValue){
 								//values are already filled
 							}else{
-								$i1 = ord($array{$j});
-								$i2 = ord($array{$j80});
+								$i1 = ord($array[$j]);
+								$i2 = ord($array[$j80]);
 								$result[$i]        = chr(($i2 << 4) | ($i1 & 0x0f));
-								$result{$i | 0x80} = chr(($i1 >> 4) | ($i2 & 0xf0));
+								$result[$i | 0x80] = chr(($i1 >> 4) | ($i2 & 0xf0));
 							}
 							$i++;
 						}
