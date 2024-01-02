@@ -50,7 +50,7 @@ class QueryHandler{
 		$ev = $this->server->getQueryInformation();
 		$this->longData = $ev->getLongQuery();
 		$this->shortData = $ev->getShortQuery();
-		$this->timeout = microtime(true) + $ev->getTimeout();
+		$this->timeout = hrtime(true) + $ev->getTimeout();
 	}
 
 	public function regenerateToken(){
@@ -85,7 +85,7 @@ class QueryHandler{
 				$reply = chr(self::STATISTICS);
 				$reply .= Binary::writeInt($sessionID);
 
-				if($this->timeout < microtime(true)){
+				if($this->timeout < hrtime(true)){
 					$this->regenerateInfo();
 				}
 
