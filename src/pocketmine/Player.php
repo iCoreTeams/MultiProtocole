@@ -965,7 +965,7 @@ class Player extends Human implements CommandSender, ChunkLoader, ChunkListener,
 	}
 
 	public function sendChunk(int $x, int $z, string $payload) : void{
-		if($this->connected === false){
+        if($this->connected === false || $this->doOrderChunks === false){
 			return;
 		}
 
@@ -1495,7 +1495,9 @@ class Player extends Human implements CommandSender, ChunkLoader, ChunkListener,
 			$this->flying = true;
 			$this->despawnFromAll();
 
-			// Client automatically turns off flight controls when on the ground.
+            $this->setDataFlag(self::DATA_FLAGS, self::DATA_FLAG_HAS_COLLISION, false);
+
+            // Client automatically turns off flight controls when on the ground.
 			// A combination of this hack and a new AdventureSettings flag FINALLY
 			// fixes spectator flight controls. Thank @robske110 for this hack.
 			$this->teleport($this->temporalVector->setComponents($this->x, $this->y + 0.1, $this->z));
@@ -1504,6 +1506,8 @@ class Player extends Human implements CommandSender, ChunkLoader, ChunkListener,
 				$this->flying = false;
 			}
 			$this->spawnToAll();
+
+            $this->setDataFlag(self::DATA_FLAGS, self::DATA_FLAG_HAS_COLLISION, true);
 		}
 
 		$this->resetFallDistance();
@@ -1618,20 +1622,22 @@ class Player extends Human implements CommandSender, ChunkLoader, ChunkListener,
 		return [];
 	}
 
-	protected function checkGroundState($movX, $movY, $movZ, $dx, $dy, $dz){
-		if(!$this->onGround or $movY != 0){
-			$bb = clone $this->boundingBox;
-			$bb->minY = $this->y - 0.01;
-			$bb->maxY = $this->y + 0.01;
+    protected function checkGroundState(float $wantedX, float $wantedY, float $wantedZ, float $dx, float $dy, float $dz) : void{
+        if($this->isSpectator()){
+            $this->onGround = false;
+        }else{
+            $bb = clone $this->boundingBox;
+            $bb->minY = $this->y - 0.2;
+            $bb->maxY = $this->y + 0.2;
 
-			if(count($this->level->getCollisionBlocks($bb, true)) > 0){
-				$this->onGround = true;
-			}else{
-				$this->onGround = false;
-			}
-		}
-		$this->isCollided = $this->onGround;
-	}
+            //we're already at the new position at this point; check if there are blocks we might have landed on between
+            //the old and new positions (running down stairs necessitates this)
+            $bb = $bb->addCoord(-$dx, -$dy, -$dz);
+
+            $this->onGround = $this->isCollided = count($this->level->getCollisionBlocks($bb, true)) > 0;
+        }
+
+    }
 
 	protected function checkBlockCollision(){
 		foreach($this->getBlocksAround() as $block){
@@ -1648,7 +1654,12 @@ class Player extends Human implements CommandSender, ChunkLoader, ChunkListener,
 			}
 
 			if($entity instanceof Arrow and $entity->canBePickedUp()){
-				$item = Item::get(Item::ARROW, $entity->getPotionId() + 1, 1);
+                $potionId = $entity->getPotionId();
+                if($potionId === 0){
+                    $item = Item::get(Item::ARROW, 0, 1);
+                }else{
+                    $item = Item::get(Item::ARROW, $potionId, 1);
+                }
 
 				$add = false;
 				if(!$this->server->allowInventoryCheats and !$this->isCreative()){
@@ -2255,12 +2266,6 @@ class Player extends Human implements CommandSender, ChunkLoader, ChunkListener,
 		return true;
 	}
 
-	public function sendPlayStatus(int $status, bool $immediate = false){
-		$pk = new PlayStatusPacket();
-		$pk->status = $status;
-		$this->sendDataPacket($pk, false, $immediate);
-	}
-
 	public function onVerifyCompleted($packet, ?string $error, bool $signedByMojang) : void{
 		if($this->closed){
 			return;
@@ -2355,7 +2360,7 @@ class Player extends Human implements CommandSender, ChunkLoader, ChunkListener,
 
 					$pk = new ResourcePackDataInfoPacket();
 					$pk->packId = $pack->getPackId();
-					$pk->maxChunkSize = 1048576; //1MB
+					$pk->maxChunkSize = self::PACK_CHUNK_SIZE; //1MB
 					$pk->chunkCount = (int) ceil($pack->getPackSize() / $pk->maxChunkSize);
 					$pk->compressedPackSize = $pack->getPackSize();
 					$pk->sha256 = $pack->getSha256();
@@ -2594,7 +2599,14 @@ class Player extends Human implements CommandSender, ChunkLoader, ChunkListener,
 		return true;
 	}
 
-	public function attackEntity(Entity $entity) : void{
+    public function sendPlayStatus(int $status, bool $immediate = false): void
+    {
+        $pk = new PlayStatusPacket();
+        $pk->status = $status;
+        $this->sendDataPacket($pk, false, $immediate);
+    }
+
+    public function attackEntity(Entity $entity) : void{
 		$cancelled = false;
 		if($entity instanceof Player and $this->server->getConfigBoolean("pvp", true) === false){
 			$cancelled = true;
@@ -2619,7 +2631,12 @@ class Player extends Human implements CommandSender, ChunkLoader, ChunkListener,
 				}
 			}
 
-			$ev = new EntityDamageByEntityEvent($this, $entity, EntityDamageEvent::CAUSE_ENTITY_ATTACK, $item->getAttackPoints());
+            $knockback = 1.0;
+            if($this->isSprinting()){
+                $knockback = 1.3;
+            }
+
+            $ev = new EntityDamageByEntityEvent($this, $entity, EntityDamageEvent::CAUSE_ENTITY_ATTACK, $item->getAttackPoints(), $knockback);
 			if($cancelled){
 				$ev->setCancelled();
 			}
@@ -2636,6 +2653,10 @@ class Player extends Human implements CommandSender, ChunkLoader, ChunkListener,
 				}
 				return;
 			}
+
+            if($ev->isSprintBreaking()){
+                $this->setSprinting(false);
+            }
 
 			if($ev->getDamage(EntityDamageEvent::MODIFIER_CRITICAL) > 0){
 				$pk = new AnimatePacket();
@@ -2776,6 +2797,7 @@ class Player extends Human implements CommandSender, ChunkLoader, ChunkListener,
 				$block = $target->getSide($packet->face);
 				if($block->getId() === Block::FIRE){
 					$this->level->setBlock($block, new Air());
+                    $this->level->broadcastLevelSoundEvent($block, LevelSoundEventPacket::SOUND_EXTINGUISH_FIRE);
 					break;
 				}
 

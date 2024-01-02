@@ -568,7 +568,7 @@ class BedrockPlayer extends Player{
 
 					$pk = new ResourcePackDataInfoPacket();
 					$pk->packId = $pack->getPackId();
-					$pk->maxChunkSize = 1048576; //1MB
+					$pk->maxChunkSize = self::PACK_CHUNK_SIZE; //1MB
 					$pk->chunkCount = (int) ceil($pack->getPackSize() / $pk->maxChunkSize);
 					$pk->compressedPackSize = $pack->getPackSize();
 					$pk->sha256 = $pack->getSha256();
@@ -1087,7 +1087,7 @@ class BedrockPlayer extends Player{
 	}
 
 	public function handleBedrockBlockPickRequest(BlockPickRequestPacket $packet) : bool{
-		if($this->isCreative()){
+        if($this->isCreative(true)){
 			$block = $this->level->getBlockAt($packet->blockX, $packet->blockY, $packet->blockZ);
 
 			$item = $block->getPickedItem();
@@ -1270,11 +1270,18 @@ class BedrockPlayer extends Player{
 				$block = $this->level->getBlock($pos);
 				$this->level->broadcastLevelEvent($pos, MCPELevelEventPacket::EVENT_PARTICLE_PUNCH_BLOCK, $block->getId() | ($block->getDamage() << 8) | ($packet->face << 16));
 				break;
-            case PlayerActionPacket::ACTION_INTERACT_BLOCK:
-                break;
 			case PlayerActionPacket::ACTION_CREATIVE_PLAYER_DESTROY_BLOCK:
 				//TODO: do we need to handle this?
 				break;
+            case PlayerActionPacket::ACTION_INTERACT_BLOCK:
+                if($this->lastClickBlockData !== null){ //A hack for right-click spam!
+                    $data = $this->lastClickBlockData;
+                    $this->lastClickBlockData = null;
+
+                    $item = $this->inventory->getItemInHand(); //A hack to fix issues with custom NBT! TODO: don't check that tags in Item::equals
+                    $this->useItem($data->getBlockPos(), $data->getClickPos(), $data->getFace(), $item);
+                }
+                return true;
 			default:
 				$this->server->getLogger()->debug("Unhandled/unknown player action type " . $packet->action . " from " . $this->getName());
 				return false;
@@ -1661,7 +1668,12 @@ class BedrockPlayer extends Player{
 			}
 
 			if($entity instanceof Arrow and $entity->canBePickedUp()){
-				$item = Item::get(Item::ARROW, $entity->getPotionId() + 1, 1);
+                $potionId = $entity->getPotionId();
+                if($potionId === 0){
+                    $item = Item::get(Item::ARROW, 0, 1);
+                }else{
+                    $item = Item::get(Item::ARROW, $entity->getPotionId() + 1, 1);
+                }
 
 				$ev = new InventoryPickupArrowEvent($this->inventory, $entity);
 				if(!$this->inventory->canAddItem($item) or ($entity->getBow() !== null and $entity->getBow()->hasEnchantment(Enchantment::INFINITY))){
@@ -1956,7 +1968,7 @@ class BedrockPlayer extends Player{
 		$this->sendDataPacket($pk, false, true);
 	}
 
-	public function sendPlayStatus(int $status, bool $immediate = false){
+	public function sendPlayStatus(int $status, bool $immediate = false): void{
 		$pk = new PlayStatusPacket();
 		$pk->status = $status;
 		$this->sendDataPacket($pk, false, $immediate);
