@@ -71,6 +71,7 @@ class PlayerNetworkSessionAdapter extends BedrockNetworkSession{
 		if(strlen($packet->buffer) > 1 and substr($packet->buffer, 0, 2) === "\x21\x04"){
 			return;
 		}
+
         if(
             !$this->player->loggedIn and
             !$this->player->awaitingEncryptionHandshake and

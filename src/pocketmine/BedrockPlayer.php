@@ -428,13 +428,7 @@ class BedrockPlayer extends Player{
 
 					$this->awaitingEncryptionHandshake = true;
 
-					if($packet->protocol < 429) {
-						$this->cipher = EncryptionContext::cfb8($encryptionKey);
-					} else {
-						$this->cipher = EncryptionContext::fakeGCM($encryptionKey);
-					}
-
-
+                    $this->cipher = EncryptionContext::fakeGCM($encryptionKey);
 					$this->server->getLogger()->debug("Enabled encryption for " . $this->username);
 				}
 			));
