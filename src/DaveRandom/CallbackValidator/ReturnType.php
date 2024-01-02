@@ -2,6 +2,8 @@
 
 namespace DaveRandom\CallbackValidator;
 
+use ReflectionNamedType;
+
 final class ReturnType extends Type
 {
     /**
@@ -30,7 +32,9 @@ final class ReturnType extends Type
         $typeReflection = $reflection->getReturnType();
 
         if ($typeReflection !== null) {
-            $typeName = $typeReflection->getName();
+            if($typeReflection instanceof ReflectionNamedType){
+                $typeName = $typeReflection->getName();
+            }
 
             if ($typeReflection->allowsNull()) {
                 $flags |= self::NULLABLE;

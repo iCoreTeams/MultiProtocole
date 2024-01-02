@@ -2,6 +2,8 @@
 
 namespace DaveRandom\CallbackValidator;
 
+use ReflectionNamedType;
+
 final class ParameterType extends Type
 {
     /**
@@ -73,7 +75,9 @@ final class ParameterType extends Type
         $typeReflection = $reflection->getType();
 
         if ($typeReflection !== null) {
-            $typeName = $typeReflection->getName();
+            if($typeReflection instanceof ReflectionNamedType){
+                $typeName = $typeReflection->getName();
+            }
 
             if ($typeReflection->allowsNull()) {
                 $flags |= self::NULLABLE;

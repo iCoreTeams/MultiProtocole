@@ -1137,7 +1137,8 @@ class BedrockPlayer extends Player{
 				}
 				$block = $target->getSide($packet->face);
 				if($block->getId() === Block::FIRE){
-					$this->level->setBlock($block, new Air());
+                    $this->level->setBlock($block, new Air());
+                    $this->level->broadcastLevelSoundEvent($block, MCPELevelSoundEventPacket::SOUND_EXTINGUISH_FIRE);
 					break;
 				}
 
@@ -1269,8 +1270,8 @@ class BedrockPlayer extends Player{
 				$block = $this->level->getBlock($pos);
 				$this->level->broadcastLevelEvent($pos, MCPELevelEventPacket::EVENT_PARTICLE_PUNCH_BLOCK, $block->getId() | ($block->getDamage() << 8) | ($packet->face << 16));
 				break;
-			case PlayerActionPacket::ACTION_INTERACT_BLOCK: //TODO: ignored (for now)
-				break;
+            case PlayerActionPacket::ACTION_INTERACT_BLOCK:
+                break;
 			case PlayerActionPacket::ACTION_CREATIVE_PLAYER_DESTROY_BLOCK:
 				//TODO: do we need to handle this?
 				break;
