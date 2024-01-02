@@ -23,8 +23,8 @@ class SplashPotion extends Projectile{
 	public $width = 0.25;
 	public $height = 0.25;
 
-	public $gravity = 0.1;
-	public $drag = 0.05;
+    public $gravity = 0.05;
+    public $drag = 0.01;
 
 	private $hasSplashed = false;
 

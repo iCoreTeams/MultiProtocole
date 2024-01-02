@@ -318,11 +318,6 @@ abstract class Living extends Entity implements Damageable{
 	}
 
 	public function fall(float $fallDistance){
-		if($this->level->getBlockIdAt($this->getFloorX(), $this->getFloorY() - 1, $this->getFloorZ()) === Block::SLIME_BLOCK and !$this->isSneaking()){
-			$this->motionY = $this->gravity * $fallDistance;
-			$this->resetFallDistance();
-			return;
-		}
 		$damage = floor($fallDistance - 3 - ($this->hasEffect(Effect::JUMP) ? $this->getEffect(Effect::JUMP)->getEffectLevel() : 0));
 		if($damage > 0){
 			$ev = new EntityDamageEvent($this, EntityDamageEvent::CAUSE_FALL, $damage);
@@ -372,10 +367,6 @@ abstract class Living extends Entity implements Damageable{
 			}
 
 			if($e !== null){
-				if($e->isOnFire() > 0){
-					$this->setOnFire(2 * $this->server->getDifficulty());
-				}
-
 				if($source instanceof EntityDamageByChildEntityEvent){
 					$deltaX = $e->motionX;
 					$deltaZ = $e->motionZ;

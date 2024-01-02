@@ -186,6 +186,18 @@ class Bed extends Transparent{
 		return false;
 	}
 
+    public function hasEntityCollision() : bool{
+        return true;
+    }
+
+    public function getBounceMotionMultiplier() : float{
+        return 0.66;
+    }
+
+    public function getBounceFallDistanceMultiplier() : float{
+        return 0.5;
+    }
+
 	public function getDrops(Item $item){
 		if($this->isHeadPart()){
 			$tile = $this->getLevel()->getTileAt($this->x, $this->y, $this->z);
