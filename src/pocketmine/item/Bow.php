@@ -53,11 +53,7 @@ class Bow extends Tool{
 			}
 		}
 
-		$motion = new Vector3(
-			-sin($player->yaw / 180 * M_PI) * cos($player->pitch / 180 * M_PI),
-			-sin($player->pitch / 180 * M_PI),
-			cos($player->yaw / 180 * M_PI) * cos($player->pitch / 180 * M_PI)
-		);
+        $motion = $player->getDirectionVector();
 		$yaw = ($player->yaw > 180 ? 360 : 0) - $player->yaw;
 		$pitch = -$player->pitch;
 		$nbt = EntityDataHelper::createBaseNBT($player->add(0, $player->getEyeHeight(), 0), $motion, $yaw, $pitch)
@@ -73,7 +69,7 @@ class Bow extends Tool{
 			$entity->setOnFire(intdiv($entity->getFireTicks(), 20) + 100);
 		}
 
-		$ev = new EntityShootBowEvent($player, $this, $entity, $baseForce * 3.0);
+        $ev = new EntityShootBowEvent($player, $this, $entity, $baseForce * 3.0, 1.0);
 
 		if($baseForce < 0.1 or $diff < 5){
 			$ev->setCancelled();
@@ -87,7 +83,7 @@ class Bow extends Tool{
 			$player->getInventory()->sendOffHand($player);
 		}else{
 			$ev->getProjectile()->setBow(clone $this);
-			$ev->getProjectile()->setMotion($ev->getProjectile()->getMotion()->multiply($ev->getForce()));
+            $ev->getProjectile()->entityShoot($player, 0.0, $ev->getForce(), $ev->getInaccuracy());
 			if($player->isSurvival()){
 				if(!$this->hasEnchantment(Enchantment::INFINITY)){
 					$offhand = $player->getInventory()->getOffHand();
@@ -108,7 +104,7 @@ class Bow extends Tool{
 				$projectileEv = new ProjectileLaunchEvent($ev->getProjectile());
 				$projectileEv->call();
 				if($projectileEv->isCancelled()){
-					$ev->getProjectile()->kill();
+                    $ev->getProjectile()->flagForDespawn();
 				}else{
 					$ev->getProjectile()->spawnToAll();
 					$player->level->broadcastLevelSoundEvent($player, LevelSoundEventPacket::SOUND_BOW);

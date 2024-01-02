@@ -427,7 +427,11 @@ abstract class PacketTranslator{
 					$pk->sound = $soundIds[$packet->sound];
 					$pk->position = new Vector3($packet->x, $packet->y, $packet->z);
 					$pk->extraData = $packet->extraData;
-					if($packet->sound === MCPELevelSoundEventPacket::SOUND_HIT){
+                    if(in_array($packet->sound, [
+                        MCPELevelSoundEventPacket::SOUND_HIT,
+                        MCPELevelSoundEventPacket::SOUND_POWER_ON,
+                        MCPELevelSoundEventPacket::SOUND_POWER_OFF
+                    ], true)){
 						$pk->extraData = BlockPalette::getRuntimeFromLegacyId($packet->extraData);
 					}elseif($packet->sound === MCPELevelSoundEventPacket::SOUND_PLACE){
 						$pk->extraData = BlockPalette::getRuntimeFromLegacyId($packet->extraData);
@@ -457,6 +461,7 @@ abstract class PacketTranslator{
 				/** @var MCPELevelEventPacket $packet */
 				if(($packet->evid & MCPELevelEventPacket::EVENT_ADD_PARTICLE_MASK) > 0){ //Particle
 					static $legacyMaskIds = [
+                        MCPELevelEventParticleIds::FALLING_DUST => LevelEventParticleIds::FALLING_DUST,
 						MCPELevelEventParticleIds::MOB_SPELL => LevelEventParticleIds::MOB_SPELL,
 						MCPELevelEventParticleIds::MOB_SPELL_INSTANTANEOUS => LevelEventParticleIds::MOB_SPELL_INSTANTANEOUS,
 						MCPELevelEventParticleIds::ITEM_BREAK => LevelEventParticleIds::ITEM_BREAK,
@@ -493,7 +498,7 @@ abstract class PacketTranslator{
 						MCPELevelEventParticleIds::HUGE_EXPLODE_SEED => ParticleEffectIds::HUGE_EXPLOSION_LAB_MISC,
 						MCPELevelEventParticleIds::MOB_FLAME => ParticleEffectIds::MOBFLAME,
 						MCPELevelEventParticleIds::WATER_SPLASH => ParticleEffectIds::WATER_SPLASH,
-						MCPELevelEventParticleIds::FALLING_DUST => ParticleEffectIds::FALLING_DUST_SCAFFOLDING,
+
 						MCPELevelEventParticleIds::INK => ParticleEffectIds::INK,
 						MCPELevelEventParticleIds::NOTE => ParticleEffectIds::NOTE
 					];
@@ -794,16 +799,16 @@ abstract class PacketTranslator{
 				Entity::DATA_FLAG_EVOKER_SPELL => ActorMetadataFlags::EVOKER_SPELL,
 				Entity::DATA_FLAG_CHARGE_ATTACK => ActorMetadataFlags::CHARGE_ATTACK,
 				Entity::DATA_FLAG_LINGER => ActorMetadataFlags::LINGER,
+                Entity::DATA_FLAG_HAS_COLLISION => ActorMetadataFlags::HAS_COLLISION,
+                Entity::DATA_FLAG_AFFECTED_BY_GRAVITY => ActorMetadataFlags::AFFECTED_BY_GRAVITY
 			];
 			foreach($flagsId as $old => $new){
 				if($old === Entity::DATA_FLAG_ALWAYS_SHOW_NAMETAG){
 					$result[ActorMetadataProperties::ALWAYS_SHOW_NAMETAG] = [ActorMetadataTypes::BYTE, ($old_flags & (1 << $old)) > 0 ? 1 : 0];
 				}elseif(($old_flags & (1 << $old)) > 0){
-					$flags ^= 1 << $new;
+                    $flags ^= (1 << $new);
 				}
 			}
-			$flags ^= 1 << ActorMetadataFlags::AFFECTED_BY_GRAVITY;
-			$flags ^= 1 << ActorMetadataFlags::HAS_COLLISION;
 			$result[ActorMetadataProperties::FLAGS][1] = $flags;
 		}
 		return $result;

@@ -19,6 +19,10 @@ abstract class ProjectileItem extends Item{
 
 	abstract public function getThrowForce() : float;
 
+    public function getPitchOffset() : float{
+        return 0.0;
+    }
+
 	/**
 	 * Helper function to apply extra NBT tags to pass to the created projectile.
 	 *
@@ -37,7 +41,6 @@ abstract class ProjectileItem extends Item{
 		$this->addExtraTags($nbt);
 
 		$projectile = Entity::createEntity($this->getProjectileEntityType(), $player->level, $nbt, $player);
-		$projectile->setMotion($projectile->getMotion()->multiply($this->getThrowForce()));
 		if($player->isSurvival()){
 			$player->getInventory()->setItemInHand(--$this->count > 0 ? $this : Item::get(Item::AIR));
 		}
@@ -48,10 +51,12 @@ abstract class ProjectileItem extends Item{
 			if($projectileEv->isCancelled()){
 				$projectile->flagForDespawn();
 			}else{
+                $projectile->entityShoot($player, $this->getPitchOffset(), $this->getThrowForce(), 1.0);
 				$projectile->spawnToAll();
 				$player->level->broadcastLevelSoundEvent($player, LevelSoundEventPacket::SOUND_THROW, 0, 0x13f); //Yay! Magic numbers
 			}
 		}else{
+            $projectile->setMotion($projectile->getMotion()->multiply($this->getThrowForce()));
 			$projectile->spawnToAll();
 		}
 

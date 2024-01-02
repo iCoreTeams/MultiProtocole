@@ -14,6 +14,9 @@ class ChainChestplate extends Armor{
         return 5;
     }
 
+    public function getArmorHash() : int{
+        return $this->getChainArmorPoints();
+    }
 	public function getMaxDurability() : int{
 		return 241;
 	}

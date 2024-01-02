@@ -31,11 +31,6 @@ interface Transaction{
 	public function getTargetItem() : Item;
 
 	/**
-	 * @return float
-	 */
-	public function getCreationTime() : float;
-
-	/**
 	 * @param Player $source
 	 * @return bool
 	 */

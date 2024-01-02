@@ -14,6 +14,10 @@ class ChainBoots extends Armor{
         return 1;
     }
 
+    public function getArmorHash() : int{
+        return $this->getChainArmorPoints();
+    }
+
 	public function getMaxDurability() : int{
 		return 196;
 	}

@@ -21,7 +21,7 @@ abstract class Durable extends Item{
 	 * @return $this
 	 */
 	public function setUnbreakable(bool $unbreakable){
-		$this->getNamedTag()->setInt("Unbreakable", $unbreakable ? 1 : 0);
+        $this->getNamedTag()->setByte("Unbreakable", $unbreakable ? 1 : 0);
 		return $this;
 	}
 

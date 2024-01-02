@@ -318,11 +318,7 @@ class Item implements ItemIds, \JsonSerializable{
 			if($id < 256){
 				return (new ItemBlock(Block::get($id, $meta), $meta, $count))->setCompoundTag($tags);
 			}else{
-				if(isset(self::$list[$id])) {
-					$class = self::$list[$id];
-				} else {
-					$class = null;
-				}
+                $class = self::$list[$id];
 				if($class === null){
 					return (new Item($id, $meta, $count))->setCompoundTag($tags);
 				}else{
@@ -913,6 +909,10 @@ class Item implements ItemIds, \JsonSerializable{
      * Returns how many armor points can be gained by wearing this item.
      */
     public function getArmorPoints() : int{
+        return 0;
+    }
+
+    public function getArmorHash() : int{
         return 0;
     }
 

@@ -30,6 +30,7 @@ use pocketmine\network\bedrock\protocol\PacketViolationWarningPacket;
 use pocketmine\network\bedrock\protocol\PlayerActionPacket;
 use pocketmine\network\bedrock\protocol\PlayerSkinPacket;
 use pocketmine\network\bedrock\protocol\ProtocolInfo;
+use pocketmine\network\bedrock\protocol\RequestAbilityPacket;
 use pocketmine\network\bedrock\protocol\RequestChunkRadiusPacket;
 use pocketmine\network\bedrock\protocol\RequestNetworkSettingsPacket;
 use pocketmine\network\bedrock\protocol\ResourcePackChunkRequestPacket;
@@ -44,6 +45,7 @@ use pocketmine\network\bedrock\protocol\types\inventory\WindowTypes;
 use pocketmine\Server;
 use pocketmine\timings\Timings;
 use pocketmine\utils\Utils;
+use UnexpectedValueException;
 use function bin2hex;
 use function strlen;
 use function substr;
@@ -69,9 +71,13 @@ class PlayerNetworkSessionAdapter extends BedrockNetworkSession{
 		if(strlen($packet->buffer) > 1 and substr($packet->buffer, 0, 2) === "\x21\x04"){
 			return;
 		}
-		if((!$this->player->loggedIn and !$this->player->awaitingEncryptionHandshake) and !in_array($packet->pid(), [ProtocolInfo::LOGIN_PACKET, ProtocolInfo::REQUEST_NETWORK_SETTINGS_PACKET])){ //Ignore any packets before login
- 			return;
-		}
+        if(
+            !$this->player->loggedIn and
+            !$this->player->awaitingEncryptionHandshake and
+            !($packet instanceof LoginPacket or $packet instanceof RequestNetworkSettingsPacket)
+        ){ //Ignore any packets before login and network settings
+            return;
+        }
 
 		$timings = Timings::getReceiveDataPacketTimings($packet);
 		$timings->startTiming();
@@ -294,5 +300,25 @@ class PlayerNetworkSessionAdapter extends BedrockNetworkSession{
 
     public function handleRequestNetworkSettings(RequestNetworkSettingsPacket $packet):bool{
         return $this->player->handleRequestNetworkSettings($packet);
+    }
+
+    public function handleRequestAbility(RequestAbilityPacket $packet) : bool{
+        if($packet->abilityId === RequestAbilityPacket::ABILITY_FLYING){
+            if(!is_bool($packet->abilityValue)){
+                throw new UnexpectedValueException("Flying ability value should always be bool");
+            }
+            $this->player->toggleFlight($packet->abilityValue);
+            return true;
+        }
+
+        if($packet->abilityId === RequestAbilityPacket::ABILITY_NOCLIP){
+            if(!is_bool($packet->abilityValue)){
+                throw new UnexpectedValueException("No-clip ability value should always be bool");
+            }
+            $this->player->toggleNoClip($packet->abilityValue);
+            return true;
+        }
+
+        return false;
     }
 }

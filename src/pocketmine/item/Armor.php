@@ -40,10 +40,10 @@ abstract class Armor extends Durable{
 
 	public function onClickAir(Player $player, Vector3 $directionVector) : bool{
 		$slot = ($this->id - 298) % 4;
-		if($player->getInventory()->getArmorItem($slot)->getId() === Item::AIR){
-			$player->getInventory()->setArmorItem($slot, $this);
-			$player->getInventory()->setItemInHand(Item::get(Item::AIR));
-		}
+
+        $old = $player->getInventory()->getArmorItem($slot);
+        $player->getInventory()->setArmorItem($slot, $this);
+        $player->getInventory()->setItemInHand($old);
 
 		return true;
 	}

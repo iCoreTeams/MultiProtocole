@@ -19,8 +19,6 @@ class SwapTransaction implements Transaction{
 	protected $firstSlot;
 	/** @var int */
 	protected $secondSlot;
-	/** @var float */
-	protected $creationTime;
 	/** @var int */
  	protected $transactionType = Transaction::TYPE_SWAP;
  	/** @var int */
@@ -40,12 +38,7 @@ class SwapTransaction implements Transaction{
 		$this->secondInventory = $secondInventory;
 		$this->firstSlot = $firstSlot;
 		$this->secondSlot = $secondSlot;
-		$this->creationTime = microtime(true);
 		$this->transactionType = $transactionType;
-	}
-
-	public function getCreationTime() : float{
-		return $this->creationTime;
 	}
 
 	public function getFirstInventory(){

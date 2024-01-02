@@ -17,9 +17,6 @@ class SimpleTransactionQueue implements TransactionQueue{
 	/** @var \SplQueue */
 	protected $transactionsToRetry;
 
-	/** @var float */
-	protected $lastUpdate = -1;
-
 	/** @var int */
 	protected $transactionCount = 0;
 
@@ -57,7 +54,6 @@ class SimpleTransactionQueue implements TransactionQueue{
 	 */
 	public function addTransaction(Transaction $transaction){
 		$this->transactionQueue->enqueue($transaction);
-		$this->lastUpdate = microtime(true);
 		$this->transactionCount += 1;
 	}
 

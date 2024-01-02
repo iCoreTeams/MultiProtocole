@@ -14,6 +14,10 @@ class ChainLeggings extends Armor{
         return 4;
     }
 
+    public function getArmorHash() : int{
+        return $this->getChainArmorPoints();
+    }
+
 	public function getMaxDurability() : int{
 		return 226;
 	}

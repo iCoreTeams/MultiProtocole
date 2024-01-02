@@ -24,9 +24,13 @@ class SplashPotion extends ProjectileItem{
 		return "SplashPotion";
 	}
 
-	public function getThrowForce() : float{
-		return 1.1;
-	}
+    public function getThrowForce() : float{
+        return 0.5;
+    }
+
+    public function getPitchOffset() : float{
+        return -20;
+    }
 
 	protected function addExtraTags(CompoundTag $tag) : void{
 		$tag->setShort("PotionId", $this->meta);

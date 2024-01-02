@@ -14,6 +14,10 @@ class ChainHelmet extends Armor{
         return 2;
     }
 
+    public function getArmorHash() : int{
+        return $this->getChainArmorPoints();
+    }
+
 	public function getMaxDurability() : int{
 		return 166;
 	}

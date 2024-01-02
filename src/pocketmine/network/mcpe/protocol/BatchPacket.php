@@ -87,7 +87,7 @@ class BatchPacket extends DataPacket{
 
 		$count = 0;
 		foreach($this->getPackets() as $buf){
-			if(++$count > 1024){
+            if(++$count > 4096){
 				throw new \UnexpectedValueException("Too many packets in a single batch!");
 			}
 			$pk = PacketPool::getPacketById(ord($buf[0]));

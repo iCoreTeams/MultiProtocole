@@ -228,11 +228,11 @@ class PlayerNetworkSessionAdapter extends MCPENetworkSession{
 		}
 
 		if($packet->face === -1){
-			if(microtime(true) - $this->lastRightClickBlock > 0.005){
+            if(hrtime(true) - $this->lastRightClickBlock > 5000000){
 				$this->player->useItem($blockVector, $fVector, $packet->face, $packet->item);
 			}
 		}else{
-			$this->lastRightClickBlock = microtime(true);
+            $this->lastRightClickBlock = hrtime(true);
 			$this->player->useItem($blockVector, $fVector, $packet->face, $packet->item);
 			
 			if($this->player->getCurrentInputMode() !== InputModeIds::TOUCHSCREEN){ //this is a very nasty hack
