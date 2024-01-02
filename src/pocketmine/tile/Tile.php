@@ -11,6 +11,7 @@ use pocketmine\block\Block;
 use pocketmine\level\format\Chunk;
 use pocketmine\level\Level;
 use pocketmine\level\Position;
+use pocketmine\math\Vector3;
 use pocketmine\nbt\tag\CompoundTag;
 use pocketmine\timings\Timings;
 use pocketmine\timings\TimingsHandler;
@@ -43,11 +44,9 @@ abstract class Tile extends Position{
 	public $chunk;
 	public $name;
 	public $id;
-	public $attach;
 	public $metadata;
 	public $closed = false;
 	public $namedtag;
-	protected $lastUpdate;
 	protected $server;
 	protected $timings;
 
@@ -107,7 +106,15 @@ abstract class Tile extends Position{
 		return self::$shortNames[static::class];
 	}
 
-	public function __construct(Level $level, CompoundTag $nbt){
+    public static function createBaseNBT(string $saveId, Vector3 $pos) : CompoundTag{
+        return CompoundTag::create()
+            ->setString("id", $saveId)
+            ->setInt("x", (int) $pos->x)
+            ->setInt("y", (int) $pos->y)
+            ->setInt("z", (int) $pos->z);
+    }
+
+    public function __construct(Level $level, CompoundTag $nbt){
 		$this->timings = Timings::getTileEntityTimings($this);
 
 		$this->namedtag = $nbt;
@@ -122,7 +129,6 @@ abstract class Tile extends Position{
 		assert($this->chunk !== null);
 
 		$this->name = "";
-		$this->lastUpdate = microtime(true);
 		$this->id = Tile::$tileCount++;
 
 		$this->getLevel()->addTile($this);

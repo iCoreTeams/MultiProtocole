@@ -194,8 +194,6 @@ class Furnace extends Spawnable implements InventoryHolder, Container, Nameable{
 
 		}
 
-		$this->lastUpdate = microtime(true);
-
 		$this->timings->stopTiming();
 
 		return $ret;
