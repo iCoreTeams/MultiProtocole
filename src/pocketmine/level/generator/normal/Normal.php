@@ -1,32 +1,54 @@
 <?php
 
-declare(strict_types = 1);
+/*
+ *
+ *  _                       _           _ __  __ _
+ * (_)                     (_)         | |  \/  (_)
+ *  _ _ __ ___   __ _  __ _ _  ___ __ _| | \  / |_ _ __   ___
+ * | | '_ ` _ \ / _` |/ _` | |/ __/ _` | | |\/| | | '_ \ / _ \
+ * | | | | | | | (_| | (_| | | (_| (_| | | |  | | | | | |  __/
+ * |_|_| |_| |_|\__,_|\__, |_|\___\__,_|_|_|  |_|_|_| |_|\___|
+ *                     __/ |
+ *                    |___/
+ *
+ * This program is a third party build by ImagicalMine.
+ *
+ * PocketMine is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * @author ImagicalMine Team
+ * @link http://forums.imagicalcorp.ml/
+ *
+ *
+*/
 
 namespace pocketmine\level\generator\normal;
 
-use pocketmine\block\{Block, CoalOre, DiamondOre, Dirt, GoldOre, Gravel, IronOre, LapisOre, RedstoneOre, Stone};
-use pocketmine\level\loadchunk\ChunkManager;
+use pocketmine\block\Block;
+use pocketmine\block\Stone;
+use pocketmine\level\ChunkManager;
 use pocketmine\level\generator\biome\Biome;
 use pocketmine\level\generator\biome\BiomeSelector;
 use pocketmine\level\generator\Generator;
+use pocketmine\level\generator\InvalidGeneratorOptionsException;
 use pocketmine\level\generator\noise\Simplex;
 use pocketmine\level\generator\object\OreType;
-use pocketmine\level\generator\populator\{Cave, GroundCover, Ore, Populator};
+use pocketmine\level\generator\populator\Cave;
+use pocketmine\level\generator\populator\GroundCover;
+use pocketmine\level\generator\populator\Ore;
+use pocketmine\level\generator\populator\Populator;
 use pocketmine\level\Level;
 use pocketmine\math\Vector3;
 use pocketmine\utils\Random;
 
-class Normal extends Generator {
+class Normal extends Generator{
 	const NAME = "Normal";
 
 	/** @var Populator[] */
 	protected $populators = [];
-	/** @var ChunkManager */
-	protected $level;
-	/** @var Random */
-	protected $random;
 	protected $waterHeight = 62;
-	protected $bedrockDepth = 5;
 
 	/** @var Populator[] */
 	protected $generationPopulators = [];
@@ -39,6 +61,11 @@ class Normal extends Generator {
 	private static $GAUSSIAN_KERNEL = null;
 	private static $SMOOTH_SIZE = 2;
 
+	/**
+	 * @param array $options
+	 *
+	 * @throws InvalidGeneratorOptionsException
+	 */
 	public function __construct(array $options = []){
 		if(self::$GAUSSIAN_KERNEL === null){
 			self::generateKernel();
@@ -70,13 +97,14 @@ class Normal extends Generator {
 		return $this->waterHeight;
 	}
 
-	public function getSettings() : array{
+	public function getSettings(){
 		return [];
 	}
 
-	public function pickBiome($x, $z){
+	private function pickBiome($x, $z){
 		$hash = $x * 2345803 ^ $z * 9236449 ^ $this->level->getSeed();
 		$hash *= $hash + 223;
+		$hash = (int) $hash;
 		$xNoise = $hash >> 20 & 3;
 		$zNoise = $hash >> 22 & 3;
 		if($xNoise == 3){
@@ -90,59 +118,43 @@ class Normal extends Generator {
 	}
 
 	public function init(ChunkManager $level, Random $random){
-		$this->level = $level;
-		$this->random = $random;
+		parent::init($level, $random);
 		$this->random->setSeed($this->level->getSeed());
 		$this->noiseBase = new Simplex($this->random, 4, 1 / 4, 1 / 32);
 		$this->random->setSeed($this->level->getSeed());
-		$this->selector = new BiomeSelector($this->random, function($temperature, $rainfall){
-			if($rainfall < 0.25){
-				if($temperature < 0.7){
-					return Biome::OCEAN;
-				}elseif($temperature < 0.85){
-					return Biome::RIVER;
-				}else{
-					return Biome::SWAMP;
-				}
-			}elseif($rainfall < 0.60){
-				if($temperature < 0.25){
-					return Biome::ICE_PLAINS;
-				}elseif($temperature < 0.75){
-					return Biome::PLAINS;
+		$this->selector = new class($this->random) extends BiomeSelector{
+			protected function lookup(float $temperature, float $rainfall) : int{
+				if($temperature < 0.4){
+					if($rainfall < 0.3){
+						return Biome::MOUNTAINS;
+					}elseif($rainfall < 0.5){
+						return Biome::SMALL_MOUNTAINS;
+					}elseif($rainfall < 0.8){
+						return Biome::ICE_PLAINS;
+					}else{
+						return Biome::TAIGA;
+					}
+				}elseif($temperature < 0.8){
+					if($rainfall < 0.4){
+						return Biome::PLAINS;
+					}elseif($rainfall < 0.5){
+						if($temperature < 0.5){
+							return Biome::OCEAN;
+						}else{
+							return Biome::BIRCH_FOREST;
+						}
+					}elseif($rainfall < 0.7){
+						return Biome::RIVER;
+					}elseif($rainfall < 0.8){
+						return Biome::FOREST;
+					}else{
+						return Biome::SWAMP;
+					}
 				}else{
 					return Biome::DESERT;
 				}
-			}elseif($rainfall < 0.80){
-				if($temperature < 0.25){
-					return Biome::TAIGA;
-				}elseif($temperature < 0.75){
-					return Biome::FOREST;
-				}else{
-					return Biome::BIRCH_FOREST;
-				}
-			}else{
-				if($temperature < 0.20){
-					return Biome::MOUNTAINS;
-				}elseif($temperature < 0.40){
-					return Biome::SMALL_MOUNTAINS;
-				}else{
-					return Biome::RIVER;
-				}
 			}
-		}, Biome::getBiome(Biome::OCEAN));
-
-		$this->selector->addBiome(Biome::getBiome(Biome::OCEAN));
-		$this->selector->addBiome(Biome::getBiome(Biome::PLAINS));
-		$this->selector->addBiome(Biome::getBiome(Biome::DESERT));
-		$this->selector->addBiome(Biome::getBiome(Biome::MOUNTAINS));
-		$this->selector->addBiome(Biome::getBiome(Biome::FOREST));
-		$this->selector->addBiome(Biome::getBiome(Biome::TAIGA));
-		$this->selector->addBiome(Biome::getBiome(Biome::SWAMP));
-		$this->selector->addBiome(Biome::getBiome(Biome::RIVER));
-		$this->selector->addBiome(Biome::getBiome(Biome::SMALL_MOUNTAINS));
-		$this->selector->addBiome(Biome::getBiome(Biome::BIRCH_FOREST));
-		$this->selector->addBiome(Biome::getBiome(Biome::BEACH));
-		$this->selector->addBiome(Biome::getBiome(Biome::MESA));
+		};
 
 		$this->selector->recalculate();
 
@@ -154,17 +166,17 @@ class Normal extends Generator {
 
 		$ores = new Ore();
 		$ores->setOreTypes([
-			new OreType(new CoalOre(), 20, 16, 0, 128),
-			new OreType(new IronOre(), 20, 8, 0, 64),
-			new OreType(new RedstoneOre(), 8, 7, 0, 16),
-			new OreType(new LapisOre(), 1, 6, 0, 32),
-			new OreType(new GoldOre(), 2, 8, 0, 32),
-			new OreType(new DiamondOre(), 1, 7, 0, 16),
-			new OreType(new Dirt(), 20, 32, 0, 128),
+			new OreType(Block::get(Block::COAL_ORE), 20, 16, 0, 128),
+			new OreType(Block::get(Block::IRON_ORE), 20, 8, 0, 64),
+			new OreType(Block::get(Block::REDSTONE_ORE), 8, 7, 0, 16),
+			new OreType(Block::get(Block::LAPIS_ORE), 1, 6, 0, 32),
+			new OreType(Block::get(Block::GOLD_ORE), 2, 8, 0, 32),
+			new OreType(Block::get(Block::DIAMOND_ORE), 1, 7, 0, 16),
+			new OreType(Block::get(Block::DIRT), 20, 32, 0, 128),
 			new OreType(new Stone(Stone::GRANITE), 20, 32, 0, 128),
 			new OreType(new Stone(Stone::DIORITE), 20, 32, 0, 128),
 			new OreType(new Stone(Stone::ANDESITE), 20, 32, 0, 128),
-			new OreType(new Gravel(), 10, 16, 0, 128)
+			new OreType(Block::get(Block::GRAVEL), 10, 16, 0, 128)
 		]);
 		$this->populators[] = $ores;
 	}
@@ -172,7 +184,7 @@ class Normal extends Generator {
 	public function generateChunk($chunkX, $chunkZ){
 		$this->random->setSeed(0xdeadbeef ^ ($chunkX << 8) ^ $chunkZ ^ $this->level->getSeed());
 
-		$noise = Generator::getFastNoise3D($this->noiseBase, 16, 128, 16, 4, 8, 4, $chunkX * 16, 0, $chunkZ * 16);
+		$noise = $this->noiseBase->getFastNoise3D(16, 128, 16, 4, 8, 4, $chunkX * 16, 0, $chunkZ * 16);
 
 		$chunk = $this->level->getChunk($chunkX, $chunkZ);
 
@@ -215,21 +227,19 @@ class Normal extends Generator {
 
 				$solidLand = false;
 				for($y = 127; $y >= 0; --$y){
-					if($y <= 5 and $y !== 0){
-						if(mt_rand(1, 2) == 2) $chunk->setBlockId($x, $y, $z, Block::BEDROCK);
-						else $chunk->setBlockId($x, $y, $z, Block::STONE);
-						continue;
-					}
-					if($y <= 0){
+					if($y === 0){
 						$chunk->setBlockId($x, $y, $z, Block::BEDROCK);
 						continue;
 					}
 
+					// A noiseAdjustment of 1 will guarantee ground, a noiseAdjustment of -1 will guarantee air.
+					//$effHeight = min($y - $smoothHeight - $minSum,
 					$noiseAdjustment = 2 * (($maxSum - $y) / ($maxSum - $minSum)) - 1;
 
 
+					// To generate caves, we bring the noiseAdjustment down away from 1.
 					$caveLevel = $minSum - 10;
-					$distAboveCaveLevel = max(0, $y - $caveLevel);
+					$distAboveCaveLevel = max(0, $y - $caveLevel); // must be positive
 
 					$noiseAdjustment = min($noiseAdjustment, 0.4 + ($distAboveCaveLevel / 10));
 					$noiseValue = $noise[$x][$z][$y] + $noiseAdjustment;
@@ -237,7 +247,7 @@ class Normal extends Generator {
 					if($noiseValue > 0){
 						$chunk->setBlockId($x, $y, $z, Block::STONE);
 						$solidLand = true;
-					}elseif($y <= $this->waterHeight && $solidLand == false){
+					}elseif($y <= $this->waterHeight && !$solidLand){
 						$chunk->setBlockId($x, $y, $z, Block::STILL_WATER);
 					}
 				}
@@ -260,7 +270,7 @@ class Normal extends Generator {
 		$biome->populateChunk($this->level, $chunkX, $chunkZ, $this->random);
 	}
 
-	public function getSpawn() : Vector3{
+	public function getSpawn(){
 		return new Vector3(127.5, 128, 127.5);
 	}
 

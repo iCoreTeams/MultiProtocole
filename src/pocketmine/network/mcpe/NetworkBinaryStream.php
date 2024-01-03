@@ -113,11 +113,12 @@ class NetworkBinaryStream extends BinaryStream{
 			return;
 		}
 
-		$this->putVarInt($item->getId());
-		$auxValue = (($item->getDamage() & 0x7fff) << 8) | $item->getCount();
+        $convert = $item->getItemPocket();
+		$this->putVarInt($convert->getId());
+		$auxValue = (($convert->getDamage() & 0x7fff) << 8) | $convert->getCount();
 		$this->putVarInt($auxValue);
 
-		$nbt = $item->getCompoundTag();
+		$nbt = $convert->getCompoundTag();
 		$this->putLShort(strlen($nbt));
 		$this->put($nbt);
 

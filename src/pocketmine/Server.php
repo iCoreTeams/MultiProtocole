@@ -40,6 +40,7 @@ use pocketmine\level\format\io\region\PMAnvil;
 use pocketmine\level\generator\biome\Biome;
 use pocketmine\level\generator\Flat;
 use pocketmine\level\generator\Generator;
+use pocketmine\level\generator\GeneratorManager;
 use pocketmine\level\generator\hell\Nether;
 use pocketmine\level\generator\normal\Normal;
 use pocketmine\level\generator\VoidGenerator;
@@ -1121,7 +1122,7 @@ class Server{
 		}
 
 		if(!($generator !== null and class_exists($generator, true) and is_subclass_of($generator, Generator::class))){
-			$generator = Generator::getGenerator($this->getLevelType());
+			$generator = GeneratorManager::getGenerator($this->getLevelType());
 		}
 
 		if(($provider = LevelProviderManager::getProviderByName($providerName = $this->getProperty("level-settings.default-format", "pmanvil"))) === null){
@@ -1756,18 +1757,13 @@ class Server{
 			}
 
 
-			Generator::addGenerator(Flat::class, "flat");
-			Generator::addGenerator(VoidGenerator::class, "void");
-			Generator::addGenerator(Normal::class, "normal");
-			Generator::addGenerator(Normal::class, "default");
-			Generator::addGenerator(Nether::class, "hell");
-			Generator::addGenerator(Nether::class, "nether");
+            GeneratorManager::registerDefaultGenerators();
 
 			foreach((array) $this->getProperty("worlds", []) as $name => $worldSetting){
 				if($this->loadLevel($name) === false){
 					$seed = $this->getProperty("worlds.$name.seed", time());
-					$options = explode(":", $this->getProperty("worlds.$name.generator", Generator::getGenerator("default")));
-					$generator = Generator::getGenerator(array_shift($options));
+                    $options = explode(":", $this->getProperty("worlds.$name.generator", GeneratorManager::getGenerator("default")));
+                    $generator = GeneratorManager::getGenerator(array_shift($options));
 					if(count($options) > 0){
 						$options = [
 							"preset" => implode(":", $options)

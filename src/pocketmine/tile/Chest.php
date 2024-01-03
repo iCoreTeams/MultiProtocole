@@ -7,6 +7,7 @@ namespace pocketmine\tile;
 use pocketmine\inventory\ChestInventory;
 use pocketmine\inventory\DoubleChestInventory;
 use pocketmine\inventory\InventoryHolder;
+use pocketmine\item\Item;
 use pocketmine\level\Level;
 use pocketmine\nbt\tag\CompoundTag;
 use pocketmine\nbt\tag\IntTag;
@@ -27,7 +28,11 @@ class Chest extends Spawnable implements InventoryHolder, Container, Nameable{
 		$this->initItems($nbt);
 	}
 
-	public function close(){
+    public function setItem(int $index, Item $item)
+    {
+    }
+
+    public function close(){
 		if($this->closed === false){
 			foreach($this->getInventory()->getViewers() as $player){
 				$player->removeWindow($this->getInventory());

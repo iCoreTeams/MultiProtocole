@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace pocketmine\inventory;
 
+use pocketmine\item\Item;
 use pocketmine\level\Level;
 use pocketmine\network\mcpe\protocol\BlockEventPacket;
 use pocketmine\network\mcpe\protocol\LevelSoundEventPacket;
@@ -21,7 +22,7 @@ class ChestInventory extends ContainerInventory{
 		parent::__construct($tile, InventoryType::get(InventoryType::CHEST));
 	}
 
-	/**
+    /**
 	 * @return Chest
 	 */
 	public function getHolder(){

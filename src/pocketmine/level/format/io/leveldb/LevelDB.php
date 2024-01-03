@@ -12,6 +12,7 @@ use pocketmine\level\format\io\exception\UnsupportedChunkFormatException;
 use pocketmine\level\format\SubChunk;
 use pocketmine\level\generator\Flat;
 use pocketmine\level\generator\Generator;
+use pocketmine\level\generator\GeneratorManager;
 use pocketmine\level\Level;
 use pocketmine\level\LevelException;
 use pocketmine\nbt\LittleEndianNbtSerializer;
@@ -116,7 +117,7 @@ class LevelDB extends BaseLevelProvider{
 			if($this->levelData->hasTag("Generator", IntTag::class)){
 				switch($this->levelData->getInt("Generator")){ //Detect correct generator from MCPE data
 					case self::GENERATOR_FLAT:
-						$this->levelData->setString("generatorName", (string) Generator::getGenerator("FLAT"));
+						$this->levelData->setString("generatorName", (string) GeneratorManager::getGenerator("FLAT"));
 						if(($layers = $this->db->get(self::ENTRY_FLAT_WORLD_LAYERS)) !== false){ //Detect existing custom flat layers
 							$layers = trim($layers, "[]");
 						}else{
@@ -126,7 +127,7 @@ class LevelDB extends BaseLevelProvider{
 						break;
 					case self::GENERATOR_INFINITE:
 						//TODO: add a null generator which does not generate missing chunks (to allow importing back to MCPE and generating more normal terrain without PocketMine messing things up)
-						$this->levelData->setString("generatorName", (string) Generator::getGenerator("DEFAULT"));
+						$this->levelData->setString("generatorName", (string) GeneratorManager::getGenerator("DEFAULT"));
 						$this->levelData->setString("generatorOptions", "");
 						break;
 					case self::GENERATOR_LIMITED:
@@ -135,7 +136,7 @@ class LevelDB extends BaseLevelProvider{
 						throw new LevelException("Unknown LevelDB world format type, this level cannot be loaded");
 				}
 			}else{
-				$this->levelData->setString("generatorName", (string) Generator::getGenerator("DEFAULT"));
+				$this->levelData->setString("generatorName", (string) GeneratorManager::getGenerator("DEFAULT"));
 			}
 		}
 
@@ -207,7 +208,7 @@ class LevelDB extends BaseLevelProvider{
 			//Additional PocketMine-MP fields
 			->setTag("GameRules", new CompoundTag())
 			->setByte("hardcore", 0)
-			->setString("generatorName", Generator::getGeneratorName($generator))
+			->setString("generatorName", GeneratorManager::getGeneratorName($generator))
 			->setString("generatorOptions", $options["preset"] ?? "");
 
 		$buffer = (new LittleEndianNbtSerializer())->write(new TreeRoot($levelData));

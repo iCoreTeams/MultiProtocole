@@ -17,33 +17,48 @@ use function igbinary_unserialize;
 
 class GeneratorRegisterTask extends AsyncTask{
 
-	public $generator;
-	public $settings;
-	public $seed;
-	public $levelId;
-	public $worldHeight = Level::Y_MAX;
+    /**
+     * @var string
+     * @phpstan-var class-string<Generator>
+     */
+    public $generatorClass;
+    /** @var string */
+    public $settings;
+    /** @var int */
+    public $seed;
+    /** @var int */
+    public $levelId;
+    /** @var int */
+    public $waterHeight;
+    /** @var int */
+    public $worldHeight = Level::Y_MAX;
 
-	public function __construct(Level $level, string $generatorClass, array $generatorSettings = []){
-		$this->generator = $generatorClass;
-		$this->settings = igbinary_serialize($generatorSettings);
-		$this->seed = $level->getSeed();
-		$this->levelId = $level->getId();
-		$this->worldHeight = $level->getWorldHeight();
-	}
+    /**
+     * @param mixed[] $generatorSettings
+     * @phpstan-param class-string<Generator> $generatorClass
+     * @phpstan-param array<string, mixed> $generatorSettings
+     */
+    public function __construct(Level $level, string $generatorClass, array $generatorSettings = []){
+        $this->generatorClass = $generatorClass;
+        $this->waterHeight = $level->getWaterHeight();
+        $this->settings = serialize($generatorSettings);
+        $this->seed = $level->getSeed();
+        $this->levelId = $level->getId();
+        $this->worldHeight = $level->getWorldHeight();
+    }
 
 	public function onRun(){
-		/** @var Generator $generator */
-		$generator = $this->generator;
+        Block::init();
+        Biome::init();
+        $manager = new SimpleChunkManager($this->seed, $this->waterHeight, $this->worldHeight);
+        $this->worker->saveToThreadStore("generation.level{$this->levelId}.manager", $manager);
 
-		if($generator !== VoidGenerator::class){
-			Block::init();
-			Biome::init();
-		}
-		$manager = new SimpleChunkManager($this->seed, $this->worldHeight);
-		$this->saveToThreadStore("generation.level{$this->levelId}.manager", $manager);
-
-		$generator = new $generator(igbinary_unserialize($this->settings));
-		$generator->init($manager, new Random($manager->getSeed()));
-		$this->saveToThreadStore("generation.level{$this->levelId}.generator", $generator);
+        /**
+         * @var Generator $generator
+         * @see Generator::__construct()
+         */
+        $generator = new $this->generatorClass(unserialize($this->settings));
+        $generator->init($manager, new Random($manager->getSeed()));
+        $this->worker->saveToThreadStore("generation.level{$this->levelId}.generator", $generator);
 	}
 }

@@ -51,6 +51,7 @@ use pocketmine\level\format\Chunk;
 use pocketmine\level\format\io\BaseLevelProvider;
 use pocketmine\level\format\io\LevelProvider;
 use pocketmine\level\generator\Generator;
+use pocketmine\level\generator\GeneratorManager;
 use pocketmine\level\generator\GeneratorRegisterTask;
 use pocketmine\level\generator\GeneratorUnregisterTask;
 use pocketmine\level\generator\LightPopulationTask;
@@ -294,7 +295,7 @@ class Level extends VectorHashUtils implements ChunkManager, Metadatable{
 			throw new LevelException("Provider is not a subclass of LevelProvider");
 		}
 		$this->server->getLogger()->info($this->server->getLanguage()->translateString("pocketmine.level.preparing", [$this->provider->getName()]));
-		$this->generator = $server->getAdvancedProperty("level-settings.force-void", false) ? Generator::getGenerator("void") : Generator::getGenerator($this->provider->getGenerator());
+		$this->generator = $server->getAdvancedProperty("level-settings.force-void", false) ? GeneratorManager::getGenerator("void") : GeneratorManager::getGenerator($this->provider->getGenerator());
 
 		$this->folderName = $name;
 		$this->scheduledBlockUpdateQueue = new ReversePriorityQueue();
@@ -1268,7 +1269,7 @@ class Level extends VectorHashUtils implements ChunkManager, Metadatable{
 		return $this->getChunk($x >> 4, $z >> 4, false)->getFullBlock($x & 0x0f, $y, $z & 0x0f);
 	}
 
-	public function isInWorld(float $x, float $y, float $z) : bool{
+	public function isInWorld(int $x, int $y, int $z) : bool{
 		return (
 			$x <= INT32_MAX and $x >= INT32_MIN and
 			$y < $this->getWorldHeight() and $y >= 0 and
@@ -2752,6 +2753,13 @@ class Level extends VectorHashUtils implements ChunkManager, Metadatable{
 	public function getWorldHeight() : int{
 		return $this->provider->getWorldHeight();
 	}
+
+    public function getWaterHeight() : int{
+        if($this->generator instanceof Generator){
+            return $this->generator->getWaterHeight();
+        }
+        return 0;
+    }
 
 	public function populateChunk(int $x, int $z, bool $force = false) : bool{
 		if(isset($this->chunkPopulationQueue[$index = Level::chunkHash($x, $z)]) or (count($this->chunkPopulationQueue) >= $this->chunkPopulationQueueSize and !$force)){

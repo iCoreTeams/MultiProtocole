@@ -472,6 +472,10 @@ class Item implements ItemIds, \JsonSerializable{
 		return $this->getNamedTag()->hasTag("ench", ListTag::class);
 	}
 
+    public function getItemPocket():Item{
+        return $this;
+    }
+
 	/**
 	 * @param int $id
 	 * @param int $level

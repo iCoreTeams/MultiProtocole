@@ -10,6 +10,7 @@ use pocketmine\level\format\io\BaseLevelProvider;
 use pocketmine\level\format\io\ChunkUtils;
 use pocketmine\level\format\SubChunk;
 use pocketmine\level\generator\Generator;
+use pocketmine\level\generator\GeneratorManager;
 use pocketmine\level\Level;
 use pocketmine\level\LevelException;
 use pocketmine\nbt\BigEndianNbtSerializer;
@@ -270,7 +271,7 @@ class McRegion extends BaseLevelProvider{
 			->setLong("RandomSeed", $seed)
 			->setLong("SizeOnDisk", 0)
 			->setLong("Time", 0)
-			->setString("generatorName", Generator::getGeneratorName($generator))
+			->setString("generatorName", GeneratorManager::getGeneratorName($generator))
 			->setString("generatorOptions", $options["preset"] ?? "")
 			->setString("LevelName", $name)
 			->setTag("GameRules", new CompoundTag());

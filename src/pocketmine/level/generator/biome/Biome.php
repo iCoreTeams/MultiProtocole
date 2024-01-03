@@ -1,15 +1,34 @@
 <?php
 
+/*
+ *
+ *  ____            _        _   __  __ _                  __  __ ____
+ * |  _ \ ___   ___| | _____| |_|  \/  (_)_ __   ___      |  \/  |  _ \
+ * | |_) / _ \ / __| |/ / _ \ __| |\/| | | '_ \ / _ \_____| |\/| | |_) |
+ * |  __/ (_) | (__|   <  __/ |_| |  | | | | | |  __/_____| |  | |  __/
+ * |_|   \___/ \___|_|\_\___|\__|_|  |_|_|_| |_|\___|     |_|  |_|_|
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * @author PocketMine Team
+ * @link http://www.pocketmine.net/
+ *
+ *
+*/
+
 namespace pocketmine\level\generator\biome;
 
 use pocketmine\block\Block;
-use pocketmine\level\loadchunk\ChunkManager;
+use pocketmine\level\ChunkManager;
 use pocketmine\level\generator\hell\HellBiome;
-use pocketmine\level\generator\normal\biome\MesaBiome;
 use pocketmine\level\generator\normal\biome\BeachBiome;
 use pocketmine\level\generator\normal\biome\DesertBiome;
 use pocketmine\level\generator\normal\biome\ForestBiome;
 use pocketmine\level\generator\normal\biome\IcePlainsBiome;
+use pocketmine\level\generator\normal\biome\MesaBiome;
 use pocketmine\level\generator\normal\biome\MountainsBiome;
 use pocketmine\level\generator\normal\biome\OceanBiome;
 use pocketmine\level\generator\normal\biome\PlainBiome;
@@ -17,11 +36,12 @@ use pocketmine\level\generator\normal\biome\RiverBiome;
 use pocketmine\level\generator\normal\biome\SmallMountainsBiome;
 use pocketmine\level\generator\normal\biome\SwampBiome;
 use pocketmine\level\generator\normal\biome\TaigaBiome;
+use pocketmine\level\generator\normal\biome\UnknownBiome;
 use pocketmine\level\generator\populator\Flower;
 use pocketmine\level\generator\populator\Populator;
 use pocketmine\utils\Random;
 
-abstract class Biome {
+abstract class Biome{
 
 	const OCEAN = 0;
 	const PLAINS = 1;
@@ -60,22 +80,28 @@ abstract class Biome {
 
 	const VOID = 127;
 
-	const MAX_BIOMES = 256;
+	public const MAX_BIOMES = 256;
 
-	/** @var Biome[] */
-	private static $biomes = [];
+	/** @var Biome[]|\SplFixedArray */
+	private static $biomes;
 
+	/** @var int */
 	private $id;
+	/** @var bool */
 	private $registered = false;
 	/** @var Populator[] */
 	private $populators = [];
 
+	/** @var int */
 	private $minElevation;
+	/** @var int */
 	private $maxElevation;
-
+	/** @var Block[] */
 	private $groundCover = [];
 
+	/** @var float */
 	protected $rainfall = 0.5;
+	/** @var float */
 	protected $temperature = 0.5;
 
 	/**
@@ -102,6 +128,8 @@ abstract class Biome {
 	}
 
 	public static function init(){
+		self::$biomes = new \SplFixedArray(self::MAX_BIOMES);
+
 		self::register(self::OCEAN, new OceanBiome());
 		self::register(self::PLAINS, new PlainBiome());
 		self::register(self::DESERT, new DesertBiome());
@@ -129,7 +157,10 @@ abstract class Biome {
 	 * @return Biome
 	 */
 	public static function getBiome($id){
-		return isset(self::$biomes[$id]) ? self::$biomes[$id] : self::$biomes[self::OCEAN];
+		if(self::$biomes[$id] === null){
+			self::register($id, new UnknownBiome());
+		}
+		return self::$biomes[$id];
 	}
 
 	public function clearPopulators(){
@@ -156,7 +187,7 @@ abstract class Biome {
 	 * @param ChunkManager $level
 	 * @param              $chunkX
 	 * @param              $chunkZ
-	 * @param Random       $random
+	 * @param Random $random
 	 */
 	public function populateChunk(ChunkManager $level, $chunkX, $chunkZ, Random $random){
 		foreach($this->populators as $populator){

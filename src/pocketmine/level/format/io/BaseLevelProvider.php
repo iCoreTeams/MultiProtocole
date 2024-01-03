@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace pocketmine\level\format\io;
 
 use pocketmine\level\generator\Generator;
+use pocketmine\level\generator\GeneratorManager;
 use pocketmine\level\Level;
 use pocketmine\level\LevelException;
 use pocketmine\math\Vector3;
@@ -58,7 +59,7 @@ abstract class BaseLevelProvider implements LevelProvider{
 		}
 
 		if(!$this->levelData->hasTag("generatorName", StringTag::class)){
-			$this->levelData->setString("generatorName", (string) Generator::getGenerator("DEFAULT"));
+			$this->levelData->setString("generatorName", (string) GeneratorManager::getGenerator("DEFAULT"));
 		}
 
 		if(!$this->levelData->hasTag("generatorOptions", StringTag::class)){

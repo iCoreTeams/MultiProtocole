@@ -1,20 +1,39 @@
 <?php
 
+/*
+ *
+ *  _____   _____   __   _   _   _____  __    __  _____
+ * /  ___| | ____| |  \ | | | | /  ___/ \ \  / / /  ___/
+ * | |     | |__   |   \| | | | | |___   \ \/ /  | |___
+ * | |  _  |  __|  | |\   | | | \___  \   \  /   \___  \
+ * | |_| | | |___  | | \  | | |  ___| |   / /     ___| |
+ * \_____/ |_____| |_|  \_| |_| /_____/  /_/     /_____/
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * @author iTX Technologies
+ * @link https://itxtech.org
+ *
+ */
+
 namespace pocketmine\level\generator\populator;
 
 use pocketmine\block\Block;
-use pocketmine\level\loadchunk\ChunkManager;
+use pocketmine\level\ChunkManager;
 use pocketmine\math\Math;
 use pocketmine\math\Vector3;
 use pocketmine\math\VectorMath;
 use pocketmine\utils\Random;
 
-class Cave extends Populator {
+class Cave extends Populator{
 	/**
 	 * @param ChunkManager $level
 	 * @param              $chunkX
 	 * @param              $chunkZ
-	 * @param Random       $random
+	 * @param Random $random
 	 *
 	 * @return mixed|void
 	 */
@@ -43,7 +62,7 @@ class Cave extends Populator {
 	 * @param              $z
 	 * @param              $chunkX
 	 * @param              $chunkZ
-	 * @param Random       $random
+	 * @param Random $random
 	 */
 	private function pop(ChunkManager $level, $x, $z, $chunkX, $chunkZ, Random $random){
 		$c = $level->getChunk($x, $z);
@@ -84,15 +103,15 @@ class Cave extends Populator {
 
 	/**
 	 * @param ChunkManager $level
-	 * @param Vector3      $chunk
-	 * @param Vector3      $target
+	 * @param Vector3 $chunk
+	 * @param Vector3 $target
 	 * @param              $horizontalScale
 	 * @param              $verticalScale
 	 * @param              $horizontalAngle
 	 * @param              $verticalAngle
-	 * @param int          $startingNode
-	 * @param int          $nodeAmount
-	 * @param Random       $random
+	 * @param int $startingNode
+	 * @param int $nodeAmount
+	 * @param Random $random
 	 */
 	private function generateCaveBranch(ChunkManager $level, Vector3 $chunk, Vector3 $target, $horizontalScale, $verticalScale, $horizontalAngle, $verticalAngle, int $startingNode, int $nodeAmount, Random $random){
 		$middle = new Vector3($chunk->getX() + 8, 0, $chunk->getZ() + 8);
@@ -117,7 +136,8 @@ class Cave extends Populator {
 		for(; $startingNode < $nodeAmount; $startingNode++){
 			$horizontalSize = 1.5 + sin($startingNode * pi() / $nodeAmount) * $horizontalScale;
 			$verticalSize = $horizontalSize * $verticalScale;
-			$target = $target->add(VectorMath::getDirection3D($horizontalAngle, $verticalAngle));
+			$math = VectorMath::getDirection3D($horizontalAngle, $verticalAngle);
+			$target = $target->add($math->getX(), $math->getY(), $math->getZ());
 			if($extraVerticalScale){
 				$verticalAngle *= 0.92;
 			}else{
@@ -176,16 +196,16 @@ class Cave extends Populator {
 
 	/**
 	 * @param ChunkManager $level
-	 * @param Vector3      $chunk
-	 * @param Vector3      $target
-	 * @param Random       $random
+	 * @param Vector3 $chunk
+	 * @param Vector3 $target
+	 * @param Random $random
 	 */
 	private function generateLargeCaveBranch(ChunkManager $level, Vector3 $chunk, Vector3 $target, Random $random){
 		$this->generateCaveBranch($level, $chunk, $target, $random->nextFloat() * 6 + 1, 0.5, 0, 0, -1, -1, $random);
 	}
 }
 
-class CaveNode {
+class CaveNode{
 	/** @var ChunkManager */
 	private $level;
 	/** @var Vector3 */
@@ -203,10 +223,10 @@ class CaveNode {
 	 * CaveNode constructor.
 	 *
 	 * @param ChunkManager $level
-	 * @param Vector3      $chunk
-	 * @param Vector3      $start
-	 * @param Vector3      $end
-	 * @param Vector3      $target
+	 * @param Vector3 $chunk
+	 * @param Vector3 $start
+	 * @param Vector3 $end
+	 * @param Vector3 $target
 	 * @param              $verticalSize
 	 * @param              $horizontalSize
 	 */
