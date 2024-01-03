@@ -304,6 +304,11 @@ abstract class PluginBase implements Plugin{
 		return $this->loader;
 	}
 
+       public function getScheduler(): ?\pocketmine\scheduler\ServerScheduler
+       {
+        return $this->getServer()->getScheduler();
+       }
+
 	public function registerEvents(Listener $listener) : void{
 		$this->pluginManager->registerEvents($listener, $this);
 	}
