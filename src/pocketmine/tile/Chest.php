@@ -28,10 +28,6 @@ class Chest extends Spawnable implements InventoryHolder, Container, Nameable{
 		$this->initItems($nbt);
 	}
 
-    public function setItem(int $index, Item $item)
-    {
-    }
-
     public function close(){
 		if($this->closed === false){
 			foreach($this->getInventory()->getViewers() as $player){
