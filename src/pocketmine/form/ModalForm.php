@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace pocketmine\form;
 
-class ModalForm extends Form{
+class ModalForm extends FormData{
 
 	/** @var string */
 	private string $content = "";

@@ -10,7 +10,7 @@ use pocketmine\network\bedrock\protocol\UpdateAttributesPacket as BedrockUpdateA
 use pocketmine\Player;
 use function repeat;
 
-class SimpleForm extends Form{
+class SimpleForm extends FormData{
 
 	public const IMAGE_TYPE_PATH = 0;
 	public const IMAGE_TYPE_URL = 1;

@@ -3690,11 +3690,11 @@ class Player extends Human implements CommandSender, ChunkLoader, ChunkListener,
 
     }
 
-    public function onFormSent(int $id, mixed $data) : bool{
+    public function onFormSent(int $id, Form $form) : bool{
         return false;
     }
 
-    public function sendForm(mixed $data) : void{
+    public function sendForm(Form $form) : void{
 
     }
 

@@ -23,55 +23,21 @@ declare(strict_types=1);
 
 namespace pocketmine\form;
 
-use pocketmine\event\form\FormSubmitEvent;
 use pocketmine\Player;
 
 /**
  * Form implementations must implement this interface to be able to utilize the Player form-sending mechanism.
  * There is no restriction on custom implementations other than that they must implement this.
  */
-abstract class Form{
-
-    /** @var array */
-    protected array $data = [];
+interface Form{
 
     /**
-     * @param string   $title = ""
+     * Handles a form response from a player.
+     *
+     * @param mixed $data
+     *
+     * @throws FormValidationException if the data could not be processed
      */
-    public function __construct(string $title = ""){
-        $this->data["title"] = $title;
-    }
-
-    /**
-     * @param string $title
-     */
-    public function setTitle(string $title) : void{
-        $this->data["title"] = $title;
-    }
-
-    /**
-     * @return string
-     */
-    public function getTitle() : string{
-        return $this->data["title"];
-    }
-
-    /**
-     * @param Player $player
-     */
-    public function sendToPlayer(Player $player) : void{
-        if(!$player->isBedrock()){
-            return;
-        }
-        $player->sendForm($this->data);
-    }
-
-    public function handleResponse(Player $player, $data) : void{
-        $this->processData($data);
-        (new FormSubmitEvent($player, $this, $data))->call();
-    }
-
-    public function processData(&$data) : void{
-    }
+    public function handleResponse(Player $player, $data) : void;
 
 }

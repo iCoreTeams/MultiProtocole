@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace pocketmine\form;
 
-use pocketmine\Player;
-
 class ServerSettingsForm extends CustomForm{
 
 	/**
@@ -19,15 +17,5 @@ class ServerSettingsForm extends CustomForm{
 			$this->data["icon"]["data"] = $iconPath;
 		}
 		parent::__construct($title);
-	}
-
-	/**
-	 * @param Player $player
-	 */
-	public function sendToPlayer(Player $player) : void{
-		if(!$player->isBedrock()){
-			return;
-		}
-        $player->sendForm($this->data);
 	}
 }

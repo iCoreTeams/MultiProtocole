@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace pocketmine\form;
 
-class CustomForm extends Form{
+class CustomForm extends FormData {
 
 	private array $labelMap = [];
 

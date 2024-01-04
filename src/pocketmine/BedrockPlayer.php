@@ -2184,10 +2184,10 @@ class BedrockPlayer extends Player{
         }
     }
 
-    public function onFormSent(int $id, mixed $data) : bool{
+    public function onFormSent(int $id, Form $form) : bool{
         $pk = new ModalFormRequestPacket();
         $pk->formId = $id;
-        $pk->formData = json_encode($data, JSON_THROW_ON_ERROR);
+        $pk->formData = json_encode($form->getData(), JSON_THROW_ON_ERROR);
         return $this->sendDataPacket($pk);
     }
 
@@ -2196,10 +2196,10 @@ class BedrockPlayer extends Player{
      *
      * @throws \InvalidArgumentException
      */
-    public function sendForm(mixed $data) : void{
+    public function sendForm(Form $form) : void{
         $id = $this->formIdCounter++;
-        if($this->onFormSent($id, $data)){
-            $this->forms[$id] = $data;
+        if($this->onFormSent($id, $form)){
+            $this->forms[$id] = $form;
         }
     }
 
@@ -2221,6 +2221,9 @@ class BedrockPlayer extends Player{
         return true;
     }
 
+    /**
+     * @return Form[]
+     */
     public function getForms():array{
         return $this->forms;
     }
