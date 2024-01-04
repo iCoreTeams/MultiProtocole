@@ -8,6 +8,7 @@ use BadMethodCallException;
 use pocketmine\block\Air;
 use pocketmine\block\Bed;
 use pocketmine\block\Block;
+use pocketmine\bossbar\BossBarInstance;
 use pocketmine\command\Command;
 use pocketmine\command\CommandSender;
 use pocketmine\entity\Arrow;
@@ -3364,6 +3365,33 @@ class Player extends Human implements CommandSender, ChunkLoader, ChunkListener,
 			$this->sendSettings();
 		}
 	}
+
+    /**
+     * @return BossBarInstance
+     */
+    public function getBossBar(): BossBarInstance
+    {
+        return new BossBarInstance();
+    }
+
+    /**
+     * @param Player $player
+     * @param string $title
+     * @param int $percentage
+     * @return null
+     */
+    public function sendBossBar(Player $player, string $title, int $percentage = 100)
+    {
+        return $this->getBossBar()->addBossBar($player, $title, $percentage);
+    }
+
+    /**
+     * @param Player $p
+     * @return null
+     */
+    public function despawnBossBar(Player $p){
+        return $this->getBossBar()->removeBossBar($p);
+    }
 
 	public function handleBlockEntityData(BlockEntityDataPacket $packet) : bool{
 		if($this->spawned === false or !$this->isAlive()){
