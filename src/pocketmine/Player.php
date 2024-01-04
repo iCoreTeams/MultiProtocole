@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace pocketmine;
 
+use BadMethodCallException;
 use pocketmine\block\Air;
 use pocketmine\block\Bed;
 use pocketmine\block\Block;
@@ -83,6 +84,10 @@ use pocketmine\nbt\tag\CompoundTag;
 use pocketmine\nbt\tag\DoubleTag;
 use pocketmine\nbt\tag\ListTag;
 use pocketmine\nbt\tag\StringTag;
+use pocketmine\network\bedrock\protocol\RemoveObjectivePacket;
+use pocketmine\network\bedrock\protocol\SetDisplayObjectivePacket;
+use pocketmine\network\bedrock\protocol\SetScorePacket;
+use pocketmine\network\bedrock\protocol\types\ScorePacketEntry;
 use pocketmine\network\CompressBatchPromise;
 use pocketmine\network\mcpe\chunk\MCPEChunkCache;
 use pocketmine\network\mcpe\CompressBatchTask;
@@ -2681,6 +2686,85 @@ class Player extends Human implements CommandSender, ChunkLoader, ChunkListener,
 			}
 		}
 	}
+
+    private array $scoreboards = [];
+
+    /**
+     * @param Player $player
+     * @param string $objectiveName
+     * @param string $displayName
+     * @return void
+     */
+    public function sendScoreBoard(Player $player, string $objectiveName, string $displayName): void
+    {
+        if (!$player instanceof BedrockPlayer) {
+            throw new BadMethodCallException("Can't send scoreboard for a non-bedrock player");
+        }
+
+        if (isset($this->scoreboards[$player->getName()])) {
+            $this->remove($player);
+        }
+
+        $pk = new SetDisplayObjectivePacket();
+        $pk->displaySlot = "sidebar";
+        $pk->objectiveName = $objectiveName;
+        $pk->displayName = $displayName;
+        $pk->criteriaName = "dummy";
+        $pk->sortOrder = 0;
+        $player->sendDataPacket($pk);
+        $this->scoreboards[$player->getName()] = $objectiveName;
+    }
+
+    /**
+     * @param Player $player
+     * @return void
+     */
+    public function remove(Player $player): void {
+        $objectiveName = $this->getObjectiveName($player);
+        $pk = new RemoveObjectivePacket();
+        $pk->objectiveName = $objectiveName;
+        $player->sendDataPacket($pk);
+        unset($this->scoreboards[$player->getName()]);
+    }
+
+    /**
+     * @param Player $player
+     * @param int $score
+     * @param string $message
+     * @return void
+     */
+    public function setLine(Player $player, int $score, string $message): void {
+        if (!$player instanceof BedrockPlayer) {
+            throw new BadMethodCallException("Can't send scoreboard for a non-bedrock player");
+        }
+
+        if(!isset($this->scoreboards[$player->getName()])){
+            return;
+        }
+        if($score > 15 || $score < 1){
+            $this->getServer()->getLogger()->error("Выставьте значение от 1 до 15");
+            return;
+        }
+        $objectiveName = $this->getObjectiveName($player);
+        $entry = new ScorePacketEntry();
+        $entry->objectiveName = $objectiveName;
+        $entry->type = $entry::TYPE_FAKE_PLAYER;
+        $entry->customName = $message;
+        $entry->score = $score;
+        $entry->scoreboardId = $score;
+        $pk = new SetScorePacket();
+        $pk->type = $pk::TYPE_CHANGE;
+        $pk->entries[] = $entry;
+        $player->sendDataPacket($pk);
+    }
+
+    /**
+     * @param Player $player
+     * @return string|null
+     */
+    public function getObjectiveName(Player $player): ?string {
+        return isset($this->scoreboards[$player->getName()]) ? $this->scoreboards[$player->getName()] : null;
+    }
 
 	public function interactEntity(Entity $entity) : void{
 		$entity->onInteract($this, $this->inventory->getItemInHand());
