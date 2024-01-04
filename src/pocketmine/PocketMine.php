@@ -17,7 +17,7 @@ namespace pocketmine {
 	use raklib\RakLib;
 
 	const NAME = "iCore";
-	const VERSION = "2.1.0";
+	const VERSION = "2.0.2";
 	const API_VERSION = "3.3.0";
 	const CODENAME = "Blame Mojang";
 
