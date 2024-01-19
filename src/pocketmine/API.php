@@ -16,6 +16,8 @@ use pocketmine\level\Level;
 use pocketmine\scheduler\CancellableClosureTask;
 use pocketmine\scheduler\ClosureTask;
 use pocketmine\scheduler\ServerScheduler;
+use pocketmine\scheduler\AsyncTask;
+use pocketmine\scheduler\AsyncClosureTask;
 use pocketmine\utils\Utils;
 
 define('WORKER_PLAYER_DATA', 0); //Воркер для операций, связанных с игроками
@@ -68,8 +70,8 @@ function levelLoaded($name){
 	return API::$server->isLevelLoaded($name);
 }
 
-function levelGenerated($name){
-	return API::$server->isLevelGenerated($name);
+function levelGenerated(string $name, string $path = "") : bool{
+	return API::$server->isLevelGenerated($name, $path);
 }
 
 function level($name = null){
@@ -78,13 +80,13 @@ function level($name = null){
 	return API::$server->getLevelByName($name);
 }
 
-function loadLevel($name, $generator = null){
+function loadLevel($name, string $path = "", $generator = null){
 	$server = &API::$server;
-	if(!$server->isLevelGenerated($name)){
-		$server->generateLevel($name, null, $generator);
+	if(!$server->isLevelGenerated($name, $path)) {
+		$server->generateLevel($name, $path, null, $generator);
 	}
 	if(!$server->isLevelLoaded($name)){
-		$server->loadLevel($name);
+		$server->loadLevel($name, $path);
 	}
 	return $server->getLevelByName($name);
 }
@@ -242,8 +244,12 @@ function regEvents($plugin, $listener = null){
 	server()->getPluginManager()->registerEvents($listener, $plugin);
 }
 
-function async($task, $worker = WORKER_DOP_DATA){
-	API::$scheduler->scheduleAsyncTaskToWorker($task, $worker);
+function async(AsyncTask|\Closure $execute, int $worker = WORKER_DOP_DATA, array $parameters = []) : void{
+	if ($execute instanceof \Closure) {
+		API::$scheduler->scheduleAsyncTaskToWorker(new AsyncClosureTask($execute, $parameters), $worker);
+	} else {
+		API::$scheduler->scheduleAsyncTaskToWorker($execute, $worker);
+	}
 }
 
 function path(){

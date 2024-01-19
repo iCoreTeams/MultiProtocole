@@ -129,7 +129,9 @@ class ServerHandler{
 				$offset += 2;
 				$protocol = ord($packet[$offset++]);
 				$clientID = Binary::readLong(substr($packet, $offset, 8));
-				$this->instance->openSession($identifier, $address, $port, $clientID, $protocol);
+				$offset += 8;
+				$isValid = Binary::readBool(substr($packet, $offset, 1));
+				$this->instance->openSession($identifier, $address, $port, $clientID, $protocol, $isValid);
 			}elseif($id === ITCProtocol::PACKET_CLOSE_SESSION){
 				$identifier = Binary::readInt(substr($packet, $offset, 4));
 				$offset += 4;

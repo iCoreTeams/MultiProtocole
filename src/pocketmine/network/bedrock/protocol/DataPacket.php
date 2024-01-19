@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\network\bedrock\protocol;
@@ -7,6 +27,7 @@ namespace pocketmine\network\bedrock\protocol;
 #include <rules/DataPacket.h>
 
 use InvalidArgumentException;
+use LogicException;
 use pocketmine\block\BlockIds;
 use pocketmine\entity\Attribute;
 use pocketmine\item\Durable;
@@ -26,6 +47,7 @@ use pocketmine\network\bedrock\protocol\types\CommandOriginData;
 use pocketmine\network\bedrock\protocol\types\Experiments;
 use pocketmine\network\bedrock\protocol\types\inventory\ItemInstance;
 use pocketmine\network\bedrock\protocol\types\inventory\LegacySetItemSlot;
+use pocketmine\network\bedrock\protocol\types\ItemDescriptorType;
 use pocketmine\network\bedrock\protocol\types\itemStack\StackRequestSlotInfo;
 use pocketmine\network\bedrock\protocol\types\skin\PersonaPiece;
 use pocketmine\network\bedrock\protocol\types\skin\PieceTintColor;
@@ -37,6 +59,7 @@ use pocketmine\network\mcpe\NetworkBinaryStream;
 use pocketmine\network\mcpe\NetworkNbtSerializer;
 use pocketmine\network\mcpe\protocol\DataPacket as MCPEDataPacket;
 use pocketmine\utils\BinaryDataException;
+use pocketmine\utils\UUID;
 use UnexpectedValueException;
 use function count;
 use function get_class;
@@ -273,6 +296,47 @@ abstract class DataPacket extends MCPEDataPacket{
 		});
 	}
 
+	public function putRecipeIngredient(Item $item) : void{
+		if($item->isNull()){
+			$this->putByte(0);
+		}else{
+			if($item->hasAnyDamageValue()){
+				[$netId, ] = ItemPalette::getRuntimeFromLegacyId($item->getId(), 0);
+				$netData = 0x7fff;
+			}else{
+				[$netId, $netData] = ItemPalette::getRuntimeFromLegacyId($item->getId(), $item->getDamage());
+			}
+
+			$this->putByte(ItemDescriptorType::INT_ID_META);
+			$this->putLShort($netId);
+			if($netId !== 0){
+				$this->putLShort($netData);
+			}
+		}
+		$this->putVarInt($item->getCount());
+	}
+
+	public function getRecipeIngredient() : Item{
+		$descriptorType = $this->getByte();
+		if($descriptorType === ItemDescriptorType::INT_ID_META){
+			$netId = $this->getLShort();
+			if($netId !== 0){
+				$netData = $this->getLShort();
+			}else{
+				$netData = 0;
+			}
+		}elseif($descriptorType === ItemDescriptorType::STRING_ID_META){
+			$netId = ItemPalette::getRuntimeFromStringId($this->getString());
+			$netData = $this->getLShort();
+		}else{
+			throw new LogicException("Unsupported conversion of recipe ingredient");
+		}
+
+		[$id, $meta] = ItemPalette::getLegacyFromRuntimeId($netId, $netData);
+		$cnt = $this->getVarInt();
+		return Item::get($id, $meta, $cnt);
+	}
+
 	/**
 	 * @return array, members are in the structure [name => [type, value, isPlayerModifiable]]
 	 */
@@ -351,6 +415,69 @@ abstract class DataPacket extends MCPEDataPacket{
 		$this->putByte($link->type);
 		$this->putBool($link->immediate);
 		$this->putBool($link->riderInitiated);
+	}
+
+	/**
+	 * Reads a list of Attributes from the stream.
+	 * @return Attribute[]
+	 *
+	 * @throws \UnexpectedValueException if reading an attribute with an unrecognized name
+	 */
+	public function getAttributeList() : array{
+		$list = [];
+		$count = $this->getUnsignedVarInt();
+		if($count > 128){
+			throw new \UnexpectedValueException("Too many attributes: $count");
+		}
+
+		for($i = 0; $i < $count; ++$i){
+			$min = $this->getLFloat();
+			$max = $this->getLFloat();
+			$current = $this->getLFloat();
+			$default = $this->getLFloat();
+			$id = $this->getString();
+
+			for($j = 0, $modifierCount = $this->getUnsignedVarInt(); $j < $modifierCount; $j++){
+				$this->getString(); // id
+				$this->getString(); // name
+				$this->getLFloat(); // amount
+				$this->getLInt(); // operation
+				$this->getLInt(); // operand
+				$this->getBool(); // serializable
+			}
+
+			$attr = Attribute::getAttributeByName($id);
+			if($attr !== null){
+				$attr->setMinValue($min);
+				$attr->setMaxValue($max);
+				$attr->setValue($current);
+				$attr->setDefaultValue($default);
+
+				$list[] = $attr;
+			}else{
+				throw new \UnexpectedValueException("Unknown attribute type \"$id\"");
+			}
+		}
+
+		return $list;
+	}
+
+	/**
+	 * Writes a list of Attributes to the packet buffer using the standard format.
+	 *
+	 * @param Attribute ...$attributes
+	 */
+	public function putAttributeList(Attribute ...$attributes) : void{
+		$this->putUnsignedVarInt(count($attributes));
+		foreach($attributes as $attribute){
+			$this->putLFloat($attribute->getMinValue());
+			$this->putLFloat($attribute->getMaxValue());
+			$this->putLFloat($attribute->getValue());
+			$this->putLFloat($attribute->getDefaultValue());
+			$this->putString($attribute->getName());
+
+			$this->putUnsignedVarInt(0); // attribute modifiers count
+		}
 	}
 
 	/**
@@ -547,6 +674,7 @@ abstract class DataPacket extends MCPEDataPacket{
 		$settings->paletteName = $this->getString();
 		$settings->ignoreEntities = $this->getBool();
 		$settings->ignoreBlocks = $this->getBool();
+		$settings->allowNonTickingChunks = $this->getBool();
 		$this->getBlockPosition($settings->structureSizeX, $settings->structureSizeY, $settings->structureSizeZ);
 		$this->getBlockPosition($settings->structureOffsetX, $settings->structureOffsetY, $settings->structureOffsetZ);
 		$settings->lastTouchedByPlayerId = $this->getActorUniqueId();
@@ -565,6 +693,7 @@ abstract class DataPacket extends MCPEDataPacket{
 		$this->putString($settings->paletteName);
 		$this->putBool($settings->ignoreEntities);
 		$this->putBool($settings->ignoreBlocks);
+		$this->putBool($settings->allowNonTickingChunks);
 		$this->putBlockPosition($settings->structureSizeX, $settings->structureSizeY, $settings->structureSizeZ);
 		$this->putBlockPosition($settings->structureOffsetX, $settings->structureOffsetY, $settings->structureOffsetZ);
 		$this->putActorUniqueId($settings->lastTouchedByPlayerId);
@@ -644,7 +773,7 @@ abstract class DataPacket extends MCPEDataPacket{
         $isPersona = $this->getBool();
         $isCapeOnClassic = $this->getBool();
         $isPrimaryUser = $this->getBool();
-        $isOverride = $this->getBool();
+		$isOverride = $this->getBool();
 
         return new Skin($skinId, $skinPlayFabId, $skinResourcePatch, $skinImage, $animations, $capeImage, $geometryData, $animationData, $isPremium, $isPersona, $isCapeOnClassic, $capeId, $fullSkinId, $armSize, $skinColor, $personaPieces, $pieceTintColors, true, $geometryDataVersion, $isPrimaryUser, $isOverride);
 	}
@@ -672,7 +801,7 @@ abstract class DataPacket extends MCPEDataPacket{
         $this->putString($skin->getGeometryDataEngineVersion());
         $this->putString($skin->getAnimationData());
 		$this->putString($skin->getCapeId());
-		$this->putString($skin->getFullSkinId());
+		$this->putString(UUID::fromRandom()->toString()); // TODO: different full skin ID every time, a hack for 1.19.x bug
 		$this->putString($skin->getArmSize());
 		$this->putString($skin->getSkinColor());
 
@@ -690,7 +819,7 @@ abstract class DataPacket extends MCPEDataPacket{
         $this->putBool($skin->isPersona());
         $this->putBool($skin->isCapeOnClassic());
         $this->putBool($skin->isPrimaryUser());
-        $this->putBool($skin->isOverride());
+		$this->putBool($skin->isOverride());
     }
 
 	/**
@@ -820,65 +949,4 @@ abstract class DataPacket extends MCPEDataPacket{
 		}
 		$this->putBool($experiments->hasPreviouslyUsedExperiments);
 	}
-
-    /**
-     * Reads a list of Attributes from the stream.
-     * @return Attribute[]
-     *
-     * @throws \UnexpectedValueException if reading an attribute with an unrecognized name
-     */
-    public function getAttributeList() : array{
-        $list = [];
-        $count = $this->getUnsignedVarInt();
-        if($count > 128){
-            throw new \UnexpectedValueException("Too many attributes: $count");
-        }
-
-        for($i = 0; $i < $count; ++$i){
-            $min = $this->getLFloat();
-            $max = $this->getLFloat();
-            $current = $this->getLFloat();
-            $default = $this->getLFloat();
-            $id = $this->getString();
-            for($j = 0, $modifierCount = $this->getUnsignedVarInt(); $j < $modifierCount; $j++){
-                $idM = $this->getString();
-                $name = $this->getString();
-                $amount = $this->getLFloat();
-                $operation = $this->getLInt();
-                $operand = $this->getLInt();
-                $serializable = $this->getBool();
-            }
-
-            $attr = Attribute::getAttributeByName($id);
-            if($attr !== null){
-                $attr->setMinValue($min);
-                $attr->setMaxValue($max);
-                $attr->setValue($current);
-                $attr->setDefaultValue($default);
-
-                $list[] = $attr;
-            }else{
-                throw new \UnexpectedValueException("Unknown attribute type \"$id\"");
-            }
-        }
-
-        return $list;
-    }
-
-    /**
-     * Writes a list of Attributes to the packet buffer using the standard format.
-     *
-     * @param Attribute ...$attributes
-     */
-    public function putAttributeList(Attribute ...$attributes) : void{
-        $this->putUnsignedVarInt(count($attributes));
-        foreach($attributes as $attribute){
-            $this->putLFloat($attribute->getMinValue());
-            $this->putLFloat($attribute->getMaxValue());
-            $this->putLFloat($attribute->getValue());
-            $this->putLFloat($attribute->getDefaultValue());
-            $this->putString($attribute->getName());
-            $this->putUnsignedVarInt(0);
-        }
-    }
 }

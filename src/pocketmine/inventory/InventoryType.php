@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\inventory;
@@ -20,13 +40,15 @@ class InventoryType{
 	public const FURNACE = 3;
 	public const CRAFTING = 4;
 	public const WORKBENCH = 5;
-	public const STONECUTTER = 6;
+	public const STONECUTTER = 6; //No using to minecraft
 	public const BREWING_STAND = 7;
 	public const ANVIL = 8;
 	public const ENCHANT_TABLE = 9;
 	public const HOPPER = 10;
 	public const DROPPER = 11;
 	public const ENDER_CHEST = 12;
+    public const BEACON = 14;
+    public const SHULKER_BOX = 15;
 
 	public const PLAYER_FLOATING = 254;
 
@@ -65,8 +87,10 @@ class InventoryType{
 			static::HOPPER =>          new InventoryType(5, "Hopper", WindowTypes::HOPPER),
 			static::DROPPER =>         new InventoryType(9, "Dropper", WindowTypes::DROPPER),
 			static::ENDER_CHEST =>     new InventoryType(27, "Ender Chest", WindowTypes::CONTAINER),
-			static::PLAYER_FLOATING => new InventoryType(36, "Floating", null) //Mirror all slots of main inventory (needed for large item pickups)
-		];
+			static::PLAYER_FLOATING => new InventoryType(36, "Floating", null), //Mirror all slots of main inventory (needed for large item pickups)
+            static::BEACON =>          new InventoryType(0, "Beacon", WindowTypes::BEACON),
+			static::SHULKER_BOX =>     new InventoryType(27, "ShulkerBox", WindowTypes::CONTAINER),
+        ];
 	}
 
 	/**

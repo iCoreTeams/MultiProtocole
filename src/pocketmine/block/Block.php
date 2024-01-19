@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 /**
@@ -8,7 +28,6 @@ declare(strict_types=1);
 namespace pocketmine\block;
 
 use pocketmine\entity\Entity;
-use pocketmine\event\entity\EntityBlockBounceEvent;
 use pocketmine\item\enchantment\Enchantment;
 use pocketmine\item\Item;
 use pocketmine\item\Tool;
@@ -21,6 +40,7 @@ use pocketmine\metadata\Metadatable;
 use pocketmine\metadata\MetadataValue;
 use pocketmine\Player;
 use pocketmine\plugin\Plugin;
+use pocketmine\event\entity\EntityBlockBounceEvent;
 use function array_merge;
 
 class Block extends Position implements BlockIds, Metadatable{
@@ -44,7 +64,7 @@ class Block extends Position implements BlockIds, Metadatable{
 	public static $diffusesSkyLight = null;
 	/** @var \SplFixedArray */
 	public static $blastResistance = null;
-    /** @var \SplFixedArray */
+	/** @var \SplFixedArray */
     public static $hasEntityCollision = null;
 
 	/**
@@ -64,7 +84,7 @@ class Block extends Position implements BlockIds, Metadatable{
 			self::$transparent = new \SplFixedArray(256);
 			self::$diffusesSkyLight = new \SplFixedArray(256);
 			self::$blastResistance = new \SplFixedArray(256);
-            self::$hasEntityCollision = new \SplFixedArray(256);
+			self::$hasEntityCollision = new \SplFixedArray(256);
 
 			self::registerBlock(new Air());
 			self::registerBlock(new Stone());
@@ -226,8 +246,6 @@ class Block extends Position implements BlockIds, Metadatable{
 			self::registerBlock(new WoodenStairs(Block::ACACIA_STAIRS, 0, "Acacia Stairs"));
 			self::registerBlock(new WoodenStairs(Block::DARK_OAK_STAIRS, 0, "Dark Oak Stairs"));
 
-            self::registerBlock(new Slime());
-
 			self::registerBlock(new IronTrapdoor());
 			self::registerBlock(new Prismarine());
 			self::registerBlock(new SeaLantern());
@@ -284,6 +302,8 @@ class Block extends Position implements BlockIds, Metadatable{
 			self::registerBlock(new Beetroot());
 			self::registerBlock(new Stonecutter());
 			self::registerBlock(new GlowingObsidian());
+			self::registerBlock(new Slime());
+            self::registerBlock(new ShulkerBox());
 
 			foreach(self::$list as $id => $block){
 				if($block === null){
@@ -328,7 +348,7 @@ class Block extends Position implements BlockIds, Metadatable{
 		self::$lightFilter[$id] = $block->getLightFilter() + 1; //opacity plus 1 standard light filter
 		self::$diffusesSkyLight[$id] = $block->diffusesSkyLight();
 		self::$blastResistance[$id] = $block->getBlastResistance();
-        self::$hasEntityCollision[$id] = $block->hasEntityCollision();
+		self::$hasEntityCollision[$id] = $block->hasEntityCollision();
 	}
 
 	/**
@@ -340,7 +360,11 @@ class Block extends Position implements BlockIds, Metadatable{
 	 */
 	public static function get($id, $meta = 0, Position $pos = null){
 		try{
-            $block = self::$fullList[($id << 4) | $meta];
+			if(!isset(self::$fullList[($id << 4) | $meta])) {
+				$block = null;
+			} else {
+				$block = self::$fullList[($id << 4) | $meta];
+			}
 			if($block !== null){
 				$block = clone $block;
 			}else{
@@ -386,6 +410,10 @@ class Block extends Position implements BlockIds, Metadatable{
 		$this->meta = $meta;
 		$this->fallbackName = $name;
 		$this->itemId = $itemId;
+	}
+
+	public function asItem() : Item{
+		return new Item($this->id, $this->meta);
 	}
 
 	/**
@@ -802,6 +830,30 @@ class Block extends Position implements BlockIds, Metadatable{
 
 	}
 
+	public function onLanded(Entity $entity) : void{
+		$ev = new EntityBlockBounceEvent($entity, $this, $this->getBounceMotionMultiplier(), $this->getBounceFallDistanceMultiplier());
+		if($entity->isSneaking()){
+			$ev->setCancelled();
+		}
+
+		$ev->call();
+
+		if($ev->isCancelled()){
+			return;
+		}
+
+		$entity->motionY *= -$ev->getMotionMultiplier();
+		$entity->fallDistance *= $ev->getFallDistanceMultiplier();
+	}
+
+	public function getBounceMotionMultiplier() : float{
+		return 0.0;
+	}
+
+	public function getBounceFallDistanceMultiplier() : float{
+		return 1.0;
+	}
+
 	/**
 	 * @return AxisAlignedBB[]
 	 */
@@ -827,30 +879,6 @@ class Block extends Position implements BlockIds, Metadatable{
 
 		return [];
 	}
-
-    public function onLanded(Entity $entity) : void{
-        $ev = new EntityBlockBounceEvent($entity, $this, $this->getBounceMotionMultiplier(), $this->getBounceFallDistanceMultiplier());
-        if($entity->isSneaking()){
-            $ev->setCancelled();
-        }
-
-        $ev->call();
-
-        if($ev->isCancelled()){
-            return;
-        }
-
-        $entity->motionY *= -$ev->getMotionMultiplier();
-        $entity->fallDistance *= $ev->getFallDistanceMultiplier();
-    }
-
-    public function getBounceMotionMultiplier() : float{
-        return 0.0;
-    }
-
-    public function getBounceFallDistanceMultiplier() : float{
-        return 1.0;
-    }
 
 	/**
 	 * @return AxisAlignedBB|null

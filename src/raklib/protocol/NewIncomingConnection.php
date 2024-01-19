@@ -21,7 +21,11 @@ namespace raklib\protocol;
 
 use raklib\RakLib;
 use raklib\utils\InternetAddress;
+use raklib\server\SessionManager;
 use function strlen;
+use function filter_var;
+use const FILTER_VALIDATE_IP;
+use const FILTER_FLAG_IPV6;
 
 class NewIncomingConnection extends Packet{
 	public static $ID = MessageIdentifiers::ID_NEW_INCOMING_CONNECTION;
@@ -31,6 +35,9 @@ class NewIncomingConnection extends Packet{
 
 	/** @var InternetAddress[] */
 	public $systemAddresses = [];
+
+	/** @var InternetAddress[] */
+	public $realSystemAdresses = [];
 
 	/** @var int */
 	public $sendPingTime;
@@ -56,11 +63,29 @@ class NewIncomingConnection extends Packet{
 			if($this->offset >= $stopOffset){
 				$this->systemAddresses[$i] = clone $dummy;
 			}else{
-				$this->systemAddresses[$i] = $this->getAddress();
+				$this->systemAddresses[$i] = $this->realSystemAdresses[$i] = $this->getAddress();
 			}
 		}
 
 		$this->sendPingTime = $this->getLong();
 		$this->sendPongTime = $this->getLong();
+	}
+
+	public function checkValid(SessionManager $manager) : bool{
+		if (count($this->realSystemAdresses) !== RakLib::$SYSTEM_ADDRESS_COUNT) {
+			return false;
+		}
+		$ipv6 = $this->realSystemAdresses[0];
+		$ipv4 = $this->realSystemAdresses[1];
+		if ($ipv6->equals($this->address) || $ipv4->equals($this->address)) {
+			return false;
+		}
+		if (!filter_var($ipv6->getIp(), FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
+			return false;
+		}
+		if ($this->sendPongTime < $manager->getRakNetTimeMS()) {
+			return false;
+		}
+		return true;
 	}
 }

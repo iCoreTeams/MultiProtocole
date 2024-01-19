@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\entity;
@@ -10,9 +30,9 @@ use pocketmine\event\entity\EntityDamageByChildEntityEvent;
 use pocketmine\event\entity\EntityDamageByEntityEvent;
 use pocketmine\event\entity\EntityDamageEvent;
 use pocketmine\event\entity\ProjectileHitEvent;
+use pocketmine\event\Timings;
 use pocketmine\level\Level;
 use pocketmine\level\Position;
-use pocketmine\math\Math;
 use pocketmine\math\RayTraceResult;
 use pocketmine\math\Vector3;
 use pocketmine\math\VoxelRayTrace;
@@ -22,7 +42,6 @@ use pocketmine\nbt\tag\FloatTag;
 use pocketmine\nbt\tag\IntTag;
 use pocketmine\nbt\tag\ShortTag;
 use pocketmine\Player;
-use pocketmine\timings\Timings;
 use function atan2;
 use function ceil;
 use function min;
@@ -39,9 +58,6 @@ abstract class Projectile extends Entity{
 
 	protected $shootingEntity;
 
-    /** @var bool */
-    protected $wasHittingBlock = false;
-
 	public function __construct(Level $level, CompoundTag $nbt, ?Entity $shootingEntity = null){
 		if($shootingEntity !== null){
 			$this->setShootingEntity($shootingEntity);
@@ -57,47 +73,6 @@ abstract class Projectile extends Entity{
 		$this->setOwningEntity($entity);
 		$this->shootingEntity = $entity;
 	}
-
-    public function entityShoot(Entity $shooter, float $pitchOffset, float $velocity, float $inaccuracy) : void{
-        $xz = cos($shooter->pitch / 180 * M_PI);
-        $x = -$xz * sin($shooter->yaw / 180 * M_PI);
-        $y = -sin(($shooter->pitch + $pitchOffset) / 180 * M_PI);
-        $z = $xz * cos($shooter->yaw / 180 * M_PI);
-
-        $this->shoot($this->temporalVector->setComponents($x, $y, $z), $velocity, $inaccuracy);
-
-        $shooterSpeed = $shooter->getSpeed();
-
-        $motion = $this->getMotion();
-        $motion->x += $shooterSpeed->x;
-        $motion->z += $shooterSpeed->z;
-
-        if(!$shooter->onGround){
-            $motion->y += $shooterSpeed->y;
-        }
-
-        $this->setMotion($motion);
-    }
-
-    public function shoot(Vector3 $direction, float $velocity, float $inaccuracy) : void{
-        $len = $direction->length();
-        if($len == 0){
-            return;
-        }
-
-        $motion = $direction->asVector3();
-        $motion->x /= $len;
-        $motion->y /= $len;
-        $motion->z /= $len;
-        $motion->x += Math::randomGaussian() * 0.0075 * $inaccuracy;
-        $motion->y += Math::randomGaussian() * 0.0075 * $inaccuracy;
-        $motion->z += Math::randomGaussian() * 0.0075 * $inaccuracy;
-        $motion->x *= $velocity;
-        $motion->y *= $velocity;
-        $motion->z *= $velocity;
-
-        $this->setMotion($motion);
-    }
 
 	public function attack($damage, EntityDamageEvent $source){
 		if($source->getCause() === EntityDamageEvent::CAUSE_VOID){
@@ -387,11 +362,4 @@ abstract class Projectile extends Entity{
 	protected function onHitBlock(Block $blockHit, RayTraceResult $hitResult) : void{
 		$this->blockHit = clone $blockHit;
 	}
-
-    /**
-     * @return bool
-     */
-    public function wasHittingBlock() : bool{
-        return $this->wasHittingBlock;
-    }
 }

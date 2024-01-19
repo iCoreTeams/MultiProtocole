@@ -1,5 +1,24 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
 declare(strict_types=1);
 
 /**
@@ -7,13 +26,11 @@ declare(strict_types=1);
  */
 namespace pocketmine\scheduler;
 
+use pmmp\thread\ThreadSafeArray;
 use pocketmine\plugin\Plugin;
 use pocketmine\plugin\PluginException;
 use pocketmine\Server;
 use pocketmine\utils\ReversePriorityQueue;
-
-use function count;
-use function get_class;
 
 class ServerScheduler{
 	public static $WORKERS = 2;
@@ -41,8 +58,7 @@ class ServerScheduler{
 
 	public function __construct(){
 		$this->queue = new ReversePriorityQueue();
-		$server = Server::getInstance();
-		$this->asyncPool = new AsyncPool($server, self::$WORKERS, (int) max(-1, (int) $server->getProperty("memory.async-worker-hard-limit", 256)));
+		$this->asyncPool = new AsyncPool(Server::getInstance(), self::$WORKERS, (int) max(-1, (int) Server::getInstance()->getProperty("memory.async-worker-hard-limit", 256)));
 		$this->objectStore = new \SplObjectStorage();
 	}
 
@@ -53,6 +69,10 @@ class ServerScheduler{
 	 */
 	public function scheduleTask(Task $task){
 		return $this->addTask($task, -1, -1);
+	}
+
+	public function getAsyncPool() : AsyncPool{
+		return $this->asyncPool;
 	}
 
 	/**
@@ -68,6 +88,7 @@ class ServerScheduler{
 		}
 		$id = $this->nextId();
 		$task->setTaskId($id);
+		$task->progressUpdates = new ThreadSafeArray;
 		$this->asyncPool->submitTask($task);
 	}
 
@@ -85,6 +106,7 @@ class ServerScheduler{
 		}
 		$id = $this->nextId();
 		$task->setTaskId($id);
+		$task->progressUpdates = new ThreadSafeArray;
 		$this->asyncPool->submitTaskToWorker($task, $worker);
 	}
 
@@ -163,8 +185,12 @@ class ServerScheduler{
 		return true;
 	}
 
-	public function getAsyncPool() : AsyncPool{
-		return $this->asyncPool;
+	public function getAsyncTaskPoolSize() : int{
+		return $this->asyncPool->getSize();
+	}
+
+	public function increaseAsyncTaskPoolSize(int $newSize){
+		$this->asyncPool->increaseSize($newSize);
 	}
 
 	/**
@@ -173,7 +199,7 @@ class ServerScheduler{
 	 *
 	 * @return null|TaskHandler
 	 */
-	public function scheduleDelayedTask(Task $task, int $delay) : ?TaskHandler{
+	public function scheduleDelayedTask(Task $task, int $delay){
 		return $this->addTask($task, $delay, -1);
 	}
 
@@ -183,7 +209,7 @@ class ServerScheduler{
 	 *
 	 * @return null|TaskHandler
 	 */
-	public function scheduleRepeatingTask(Task $task, int $period) : ?TaskHandler{
+	public function scheduleRepeatingTask(Task $task, int $period){
 		return $this->addTask($task, -1, $period);
 	}
 
@@ -194,8 +220,13 @@ class ServerScheduler{
 	 *
 	 * @return null|TaskHandler
 	 */
-	public function scheduleDelayedRepeatingTask(Task $task, int $delay, int $period) : ?TaskHandler{
+	public function scheduleDelayedRepeatingTask(Task $task, int $delay, int $period){
 		return $this->addTask($task, $delay, $period);
+	}
+
+	public function shutdown() : void{
+	    $this->cancelAllTasks();
+	    $this->asyncPool->shutdown();
 	}
 
 	/**
@@ -221,7 +252,7 @@ class ServerScheduler{
 		}
 	}
 
-	public function cancelAllTasks(){
+	public function cancelAllTasks() : void{
 		foreach($this->tasks as $task){
 			$task->cancel();
 		}
@@ -287,11 +318,6 @@ class ServerScheduler{
 		return $handler;
 	}
 
-	public function shutdown() : void{
-		$this->cancelAllTasks();
-		$this->asyncPool->shutdown();
-	}
-
 	/**
 	 * @param int $currentTick
 	 */
@@ -326,7 +352,7 @@ class ServerScheduler{
 	}
 
 	private function isReady(int $currentTicks) : bool{
-		return !$this->queue->isEmpty() and $this->queue->current()->getNextRun() <= $currentTicks;
+		return count($this->tasks) > 0 and $this->queue->current()->getNextRun() <= $currentTicks;
 	}
 
 	/**

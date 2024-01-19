@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\network\bedrock\protocol;
@@ -62,8 +82,6 @@ class LoginPacket extends DataPacket{
 	public $uiProfile;
 	/** @var string */
 	public $deviceId;
-	/** @var string */
-	public $proxyToken;
 
 	/**
 	 * This field may be used by plugins to bypass keychain verification. It should only be used for plugins such as
@@ -137,7 +155,6 @@ class LoginPacket extends DataPacket{
 		$this->deviceId = $this->clientData["DeviceId"] ?? "";
 		$this->uiProfile = $this->clientData["UIProfile"] ?? 0;
 		$this->clientVersion = $this->clientData["GameVersion"] ?? "";
-		$this->proxyToken = $this->clientData["ProxyToken"] ?? "";
 	}
 
 	protected function decodeSkin() : void{
@@ -207,7 +224,10 @@ class LoginPacket extends DataPacket{
 			$this->clientData["SkinColor"] ?? "#0",
 			$personaPieces,
 			$pieceTintColors,
-			true
+			true,
+			base64_decode($this->clientData["SkinGeometryDataEngineVersion"] ?? ""),
+			true,
+			$this->clientData["OverrideSkin"] ?? true
 		);
 	}
 

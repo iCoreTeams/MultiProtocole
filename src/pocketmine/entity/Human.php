@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\entity;
@@ -117,25 +137,25 @@ class Human extends Creature implements ProjectileSource, InventoryHolder{
 	 * @param Player|Player[]|null $target
 	 */
 	public function sendSkin($target = null){
-		$target = $target ?? $this->hasSpawned;
-		if($target instanceof Player){
-			$target = [$target];
-		}
+        $target = $target ?? $this->hasSpawned;
+        if($target instanceof Player){
+            $target = [$target];
+        }
 
-		$pk = new PlayerSkinPacket();
-		$pk->uuid = $this->getUniqueId();
-		$pk->skin = $this->skin->getBedrockSkin();
+        $pk = new PlayerSkinPacket();
+        $pk->uuid = $this->getUniqueId();
+        $pk->skin = $this->skin->getBedrockSkin();
 
-		foreach($target as $player){
-			if($player instanceof BedrockPlayer){
-				$player->sendDataPacket($pk);
-			}elseif($player !== $this){
-				// PW10 players need a respawn to update skin
-				$this->despawnFrom($player, false);
-				$this->spawnTo($player);
-			}
-		}
-	}
+        foreach($target as $player){
+            if($player instanceof BedrockPlayer){
+                $player->sendDataPacket($pk);
+            }elseif($player !== $this){
+                // PW10 players need a respawn to update skin
+                $this->despawnFrom($player, false);
+                $this->spawnTo($player);
+            }
+        }
+    }
 
 	public function jump(){
 		parent::jump();

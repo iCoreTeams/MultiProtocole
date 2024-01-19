@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\network\bedrock\protocol;
@@ -62,10 +82,8 @@ class PacketPool{
 		static::registerPacket(new InventorySlotPacket());
 		static::registerPacket(new ContainerSetDataPacket());
 		static::registerPacket(new CraftingDataPacket());
-
+		static::registerPacket(new CraftingEventPacket());
 		static::registerPacket(new GuiDataPickItemPacket());
-        static::registerPacket(new UpdateAbilitiesPacket());
-        static::registerPacket(new UpdateAdventureSettingsPacket());
 		static::registerPacket(new BlockActorDataPacket());
 		static::registerPacket(new PlayerInputPacket());
 		static::registerPacket(new LevelChunkPacket());
@@ -127,6 +145,7 @@ class PacketPool{
 		static::registerPacket(new UpdateSoftEnumPacket());
 		static::registerPacket(new NetworkStackLatencyPacket());
 
+		static::registerPacket(new ScriptCustomEventPacket());
 		static::registerPacket(new SpawnParticleEffectPacket());
 		static::registerPacket(new AvailableActorIdentifiersPacket());
 		static::registerPacket(new LevelSoundEventPacketV2());
@@ -153,7 +172,6 @@ class PacketPool{
 		static::registerPacket(new AnvilDamagePacket());
 		static::registerPacket(new CompletedUsingItemPacket());
 		static::registerPacket(new NetworkSettingsPacket());
-        static::registerPacket(new RequestNetworkSettingsPacket());
 		static::registerPacket(new PlayerAuthInputPacket());
 		static::registerPacket(new CreativeContentPacket());
 		static::registerPacket(new PlayerEnchantOptionsPacket());
@@ -172,13 +190,22 @@ class PacketPool{
 		static::registerPacket(new CameraShakePacket());
 		static::registerPacket(new PlayerFogPacket());
 		static::registerPacket(new CorrectPlayerMovePredictionPacket());
-        static::registerPacket(new OpenSignPacket());
 		static::registerPacket(new ItemComponentPacket());
 		static::registerPacket(new FilterTextPacket());
 		static::registerPacket(new SimulationTypePacket());
 		static::registerPacket(new NpcDialoguePacket());
 
+		static::registerPacket(new RequestAbilityPacket());
+
 		static::registerPacket(new ToastRequestPacket());
+		static::registerPacket(new UpdateAbilitiesPacket());
+		static::registerPacket(new UpdateAdventureSettingsPacket());
+
+		static::registerPacket(new RequestNetworkSettingsPacket());
+		static::registerPacket(new AgentAnimationPacket());
+		static::registerPacket(new RefreshEntitlementsPacket());
+		static::registerPacket(new SetPlayerInventoryOptionsPacket());
+		static::registerPacket(new PlayerToggleCrafterSlotRequestPacket());
 	}
 
 	/**

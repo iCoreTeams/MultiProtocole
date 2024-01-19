@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\event\server;
@@ -50,6 +70,10 @@ class QueryRegenerateEvent extends ServerEvent{
 	private $port;
 	/** @var string */
 	private $ip;
+	/** @var bool */
+	private $visiblePlayersNicknames = false;
+	/** @var string */
+	private string $customServerName = "";
 
 	/** @var array */
 	private $extraData = [];
@@ -61,22 +85,27 @@ class QueryRegenerateEvent extends ServerEvent{
 	 */
 	public function __construct(Server $server, int $timeout = 5){
 		$this->timeout = $timeout;
+		$this->customServerName = $server->getAdvancedProperty("query.server-name", "AquaMine Server");
 		$this->motd = $server->getMotd();
 		$this->subMotd = $server->getName() . " v" . $server->getPocketMineVersion();
-		$this->listPlugins = $server->getProperty("settings.query-plugins", true);
+		$this->listPlugins = $server->getAdvancedProperty("query.visible-plugins", false);
+		$this->visiblePlayersNicknames = $server->getAdvancedProperty("query.visible-players-nicknames", false);
 		$this->plugins = $server->getPluginManager()->getPlugins();
 		$this->players = [];
-		foreach($server->getOnlinePlayers() as $player){
-			if($player->isOnline()){
-				$this->players[] = $player;
+		$onlinePlayers = $server->getOnlinePlayers();
+		if ($server->getAdvancedProperty("query.visible-players", false)) {
+			foreach ($onlinePlayers as $player) {
+				if ($player->isOnline()) {
+					$this->players[] = $player;
+				}
 			}
 		}
 
 		$this->gametype = ($server->getGamemode() & 0x01) === 0 ? "SMP" : "CMP";
-		$this->version = $server->getVersion();
-		$this->server_engine = $server->getName() . " " . $server->getPocketMineVersion();
-		$this->map = $server->getDefaultLevel() === null ? "unknown" : $server->getDefaultLevel()->getName();
-		$this->numPlayers = count($this->players);
+		$this->version = $server->getVersion() . ' - ' . $server->getBedrockVersion();
+		$this->server_engine = $this->subMotd;
+		$this->map = $server->getAdvancedProperty("query.visible-map", false) ? $server->getDefaultLevel() === null ? "unknown" : $server->getDefaultLevel()->getName() : "world";
+		$this->numPlayers = count($onlinePlayers);
 		$this->maxPlayers = $server->getMaxPlayers();
 		$this->whitelist = $server->hasWhitelist() ? "on" : "off";
 		$this->port = $server->getPort();
@@ -263,7 +292,7 @@ class QueryRegenerateEvent extends ServerEvent{
 
 		$KVdata = [
 			"splitnum" => chr(128),
-			"hostname" => $this->motd,
+			"hostname" => $this->customServerName,
 			"gametype" => $this->gametype,
 			"game_id" => self::GAME_ID,
 			"version" => $this->version,
@@ -286,8 +315,11 @@ class QueryRegenerateEvent extends ServerEvent{
 		}
 
 		$query .= "\x00\x01player_\x00\x00";
-		foreach($this->players as $player){
-			$query .= $player->getName() . "\x00";
+		$i = 0;
+		foreach($this->players as $player) {
+			$identifier = "player" . $i++;
+			if ($this->visiblePlayersNicknames) $identifier = $player->getName();
+			$query .= $identifier. "\x00";
 		}
 		$query .= "\x00";
 

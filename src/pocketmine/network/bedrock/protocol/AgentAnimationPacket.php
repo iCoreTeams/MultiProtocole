@@ -1,14 +1,24 @@
 <?php
 
 /*
- * This file is part of BedrockProtocol.
- * Copyright (C) 2014-2022 PocketMine Team <https://github.com/pmmp/BedrockProtocol>
  *
- * BedrockProtocol is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- */
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
 
 declare(strict_types=1);
 
@@ -17,39 +27,34 @@ namespace pocketmine\network\bedrock\protocol;
 use pocketmine\network\NetworkSession;
 
 class AgentAnimationPacket extends DataPacket{
-    public const NETWORK_ID = ProtocolInfo::AGENT_ANIMATION_PACKET;
+	public const NETWORK_ID = ProtocolInfo::AGENT_ANIMATION_PACKET;
 
-    public const TYPE_ARM_SWING = 0;
-    public const TYPE_SHRUG = 1;
+	public const TYPE_ARM_SWING = 0;
+	public const TYPE_SHRUG = 1;
 
-    public int $animationType;
-    public int $actorRuntimeId;
+	private int $animationType;
+	private int $actorRuntimeId;
 
-    /**
-     * @generate-create-func
-     */
-    public static function create(int $animationType, int $actorRuntimeId) : self{
-        $result = new self;
-        $result->animationType = $animationType;
-        $result->actorRuntimeId = $actorRuntimeId;
-        return $result;
-    }
+	public function getAnimationType() : int{ return $this->animationType; }
 
-    public function getAnimationType() : int{ return $this->animationType; }
+	public function getActorRuntimeId() : int{ return $this->actorRuntimeId; }
 
-    public function getActorRuntimeId() : int{ return $this->actorRuntimeId; }
+	public function decodePayload(){
+		$this->animationType = $this->getByte();
+		$this->actorRuntimeId = $this->getActorRuntimeId();
+	}
 
-    public function decodePayload() : void{
-        $this->animationType = $this->getByte();
-        $this->actorRuntimeId = $this->getActorRuntimeId();
-    }
+	public function encodePayload(){
+		$this->putByte($this->animationType);
+		$this->putActorRuntimeId($this->actorRuntimeId);
+	}
 
-    public function encodePayload() : void{
-        $this->putByte($this->animationType);
-        $this->putActorRuntimeId($this->actorRuntimeId);
-    }
+    
+	public function mustBeDecoded() : bool{
+		return false;
+	}
 
-    public function handle(NetworkSession $session) : bool{
-        return $session->handleAgentAnimation($this);
-    }
+	public function handle(NetworkSession $session) : bool{
+		return $session->handleAgentAnimation($this);
+	}
 }

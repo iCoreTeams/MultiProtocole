@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\item;
@@ -19,10 +39,6 @@ abstract class ProjectileItem extends Item{
 
 	abstract public function getThrowForce() : float;
 
-    public function getPitchOffset() : float{
-        return 0.0;
-    }
-
 	/**
 	 * Helper function to apply extra NBT tags to pass to the created projectile.
 	 *
@@ -41,6 +57,7 @@ abstract class ProjectileItem extends Item{
 		$this->addExtraTags($nbt);
 
 		$projectile = Entity::createEntity($this->getProjectileEntityType(), $player->level, $nbt, $player);
+		$projectile->setMotion($projectile->getMotion()->multiply($this->getThrowForce()));
 		if($player->isSurvival()){
 			$player->getInventory()->setItemInHand(--$this->count > 0 ? $this : Item::get(Item::AIR));
 		}
@@ -51,12 +68,10 @@ abstract class ProjectileItem extends Item{
 			if($projectileEv->isCancelled()){
 				$projectile->flagForDespawn();
 			}else{
-                $projectile->entityShoot($player, $this->getPitchOffset(), $this->getThrowForce(), 1.0);
 				$projectile->spawnToAll();
 				$player->level->broadcastLevelSoundEvent($player, LevelSoundEventPacket::SOUND_THROW, 0, 0x13f); //Yay! Magic numbers
 			}
 		}else{
-            $projectile->setMotion($projectile->getMotion()->multiply($this->getThrowForce()));
 			$projectile->spawnToAll();
 		}
 

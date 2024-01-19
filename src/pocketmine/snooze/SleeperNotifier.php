@@ -1,16 +1,37 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\snooze;
 
+use pmmp\thread\ThreadSafe;
 use function assert;
 
 /**
  * Notifiers are Threaded objects which can be attached to threaded sleepers in order to wake them up. They also record
  * state so that the main thread handler can determine which notifier woke up the sleeper.
  */
-class SleeperNotifier extends \Threaded{
+class SleeperNotifier extends ThreadSafe{
 	/** @var ThreadedSleeper */
 	private $threadedSleeper;
 

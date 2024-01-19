@@ -1,20 +1,30 @@
 <?php
 
 /*
- * This file is part of BedrockProtocol.
- * Copyright (C) 2014-2022 PocketMine Team <https://github.com/pmmp/BedrockProtocol>
  *
- * BedrockProtocol is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- */
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
 
 declare(strict_types=1);
 
 namespace pocketmine\network\bedrock\protocol\types;
 
-use pocketmine\network\mcpe\NetworkBinaryStream;
+use pocketmine\network\bedrock\protocol\MapInfoRequestPacket;
 use pocketmine\utils\Color;
 use function intdiv;
 
@@ -22,19 +32,20 @@ final class MapInfoRequestPacketClientPixel{
 
 	private const Y_INDEX_MULTIPLIER = 128;
 
-	public function __construct(
-		public Color $color,
-		public int $x,
-		public int $y
-	){}
+	/** @var Color */
+	public $color;
+	/** @var int */
+	public $x;
+	/** @var int */
+	public $y;
 
-	public function getColor() : Color{ return $this->color; }
+	public function __construct(Color $color, int $x, int $y){
+		$this->color = $color;
+		$this->x = $x;
+		$this->y = $y;
+	}
 
-	public function getX() : int{ return $this->x; }
-
-	public function getY() : int{ return $this->y; }
-
-	public static function read(NetworkBinaryStream $in) : self{
+	public static function read(MapInfoRequestPacket $in) : self{
 		$color = $in->getLInt();
 		$index = $in->getLShort();
 
@@ -44,7 +55,7 @@ final class MapInfoRequestPacketClientPixel{
 		return new self(Color::fromRGBA($color), $x, $y);
 	}
 
-	public function write(NetworkBinaryStream $out) : void{
+	public function write(MapInfoRequestPacket $out) : void{
 		$out->putLInt($this->color->toRGBA());
 		$out->putLShort($this->x + ($this->y * self::Y_INDEX_MULTIPLIER));
 	}

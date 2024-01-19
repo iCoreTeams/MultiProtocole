@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\item;
@@ -28,8 +48,7 @@ abstract class TieredTool extends Tool {
             self::TIER_WOODEN => 60,
             self::TIER_STONE => 132,
             self::TIER_IRON => 251,
-            self::TIER_DIAMOND => 1562,
-            self::TIER_NETHERITE => 2562
+            self::TIER_DIAMOND => 1562
         ];
 
         if(!isset($levels[$tier])){
@@ -45,8 +64,7 @@ abstract class TieredTool extends Tool {
             self::TIER_GOLD => 5,
             self::TIER_STONE => 6,
             self::TIER_IRON => 7,
-            self::TIER_DIAMOND => 8,
-            self::TIER_NETHERITE => 9
+            self::TIER_DIAMOND => 8
         ];
 
         if(!isset($levels[$tier])){
@@ -62,7 +80,6 @@ abstract class TieredTool extends Tool {
             self::TIER_STONE => 4,
             self::TIER_IRON => 6,
             self::TIER_DIAMOND => 8,
-            self::TIER_NETHERITE => 9,
             self::TIER_GOLD => 12
         ];
 

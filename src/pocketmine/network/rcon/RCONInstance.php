@@ -1,12 +1,33 @@
 <?php
 
+/*
+ *
+ *  ____            _        _   __  __ _                  __  __ ____
+ * |  _ \ ___   ___| | _____| |_|  \/  (_)_ __   ___      |  \/  |  _ \
+ * | |_) / _ \ / __| |/ / _ \ __| |\/| | | '_ \ / _ \_____| |\/| | |_) |
+ * |  __/ (_) | (__|   <  __/ |_| |  | | | | | |  __/_____| |  | |  __/
+ * |_|   \___/ \___|_|\_\___|\__|_|  |_|_|_| |_|\___|     |_|  |_|_|
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * @author PocketMine Team
+ * @link http://www.pocketmine.net/
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\network\rcon;
 
 use pocketmine\snooze\SleeperNotifier;
-use pocketmine\Thread;
+use pocketmine\thread\Thread;
+use pocketmine\thread\log\ThreadSafeLogger;
 use pocketmine\utils\Binary;
+use pmmp\thread\Thread as NativeThread;
 use function count;
 use function ltrim;
 use function microtime;
@@ -26,7 +47,6 @@ use function str_replace;
 use function strlen;
 use function substr;
 use function trim;
-use const PTHREADS_INHERIT_NONE;
 use const SO_KEEPALIVE;
 use const SO_LINGER;
 use const SOCKET_ECONNRESET;
@@ -35,34 +55,34 @@ use const SOL_SOCKET;
 class RCONInstance extends Thread{
 
 	/** @var string */
-	public $cmd;
+	public string $cmd;
 	/** @var string */
-	public $response;
+	public string $response;
 
 	/** @var bool */
-	private $stop;
-	/** @var resource */
-	private $socket;
+	private bool $stop;
+	/** @var \Socket */
+	private \Socket $socket;
 	/** @var string */
-	private $password;
+	private string $password;
 	/** @var int */
-	private $maxClients;
-	/** @var \ThreadedLogger */
-	private $logger;
-	/** @var resource */
-	private $ipcSocket;
+	private int $maxClients;
+	/** @var ThreadSafeLogger */
+	private ThreadSafeLogger $logger;
+	/** @var \Socket */
+	private \Socket $ipcSocket;
 	/** @var SleeperNotifier|null */
-	private $notifier;
+	private ?SleeperNotifier $notifier;
 
 	/**
-	 * @param resource             $socket
-	 * @param string               $password
-	 * @param int                  $maxClients
-	 * @param \ThreadedLogger      $logger
-	 * @param resource             $ipcSocket
-	 * @param null|SleeperNotifier $notifier
+	 * @param \Socket             $socket
+	 * @param string              $password
+	 * @param int                 $maxClients
+	 * @param \ThreadedLogger     $logger
+	 * @param \Socket             $ipcSocket
+	 * @param ?SleeperNotifier    $notifier
 	 */
-	public function __construct($socket, string $password, int $maxClients = 50, \ThreadedLogger $logger, $ipcSocket, ?SleeperNotifier $notifier){
+	public function __construct($socket, string $password, int $maxClients, ThreadSafeLogger $logger, $ipcSocket, ?SleeperNotifier $notifier){
 		$this->stop = false;
 		$this->cmd = "";
 		$this->response = "";
@@ -73,10 +93,15 @@ class RCONInstance extends Thread{
 		$this->ipcSocket = $ipcSocket;
 		$this->notifier = $notifier;
 
-		$this->start(PTHREADS_INHERIT_NONE);
+		$this->start(NativeThread::INHERIT_CONSTANTS);
 	}
 
-	private function writePacket($client, int $requestID, int $packetType, string $payload){
+	/**
+	 * @param \Socket $client
+	 *
+	 * @return int|false
+	 */
+	private function writePacket($client, int $requestID, int $packetType, string $payload) : mixed{
 		$pk = Binary::writeLInt($requestID)
 			. Binary::writeLInt($packetType)
 			. $payload
@@ -84,7 +109,15 @@ class RCONInstance extends Thread{
 		return socket_write($client, Binary::writeLInt(strlen($pk)) . $pk);
 	}
 
-	private function readPacket($client, ?int &$requestID, ?int &$packetType, ?string &$payload){
+	/**
+	 * @param \Socket   $client
+	 * @param int      $requestID reference parameter
+	 * @param int      $packetType reference parameter
+	 * @param string   $payload reference parameter
+	 *
+	 * @return bool
+	 */
+	private function readPacket($client, ?int &$requestID, ?int &$packetType, ?string &$payload) : bool{
 		$d = @socket_read($client, 4);
 
 		socket_getpeername($client, $ip, $port);
@@ -124,16 +157,22 @@ class RCONInstance extends Thread{
 		return true;
 	}
 
-	public function close(){
+	/**
+	 * @return void
+	 */
+	public function close() : void{
 		$this->stop = true;
 	}
 
-	public function run(){
+	/**
+	 * @return void
+	 */
+	public function onRun() : void{
 		$this->registerClassLoader();
 
-		/** @var resource[] $clients */
+		/** @var \Socket] $clients */
 		$clients = [];
-		/** @var int[] $authenticated */
+		/** @var bool[] $authenticated */
 		$authenticated = [];
 		/** @var float[] $timeouts */
 		$timeouts = [];
@@ -174,8 +213,6 @@ class RCONInstance extends Thread{
 						if($p === false){
 							$disconnect[$id] = $sock;
 							continue;
-						}elseif($p === null){
-							continue;
 						}
 
 						switch($packetType){
@@ -201,7 +238,7 @@ class RCONInstance extends Thread{
 								}
 								if($payload !== ""){
 									$this->cmd = ltrim($payload);
-									$this->synchronized(function(){
+									$this->synchronized(function() : void{
 										$this->notifier->wakeupSleeper();
 										$this->wait();
 									});
@@ -232,12 +269,12 @@ class RCONInstance extends Thread{
 		}
 	}
 
+	/**
+	 * @param \Socket $client
+	 */
 	private function disconnectClient($client) : void{
 		socket_getpeername($client, $ip, $port);
-
-		static $lingerOptions = ["l_onoff" => 1, "l_linger" => 1];
-		@socket_set_option($client, SOL_SOCKET, SO_LINGER, $lingerOptions);
-
+		@socket_set_option($client, SOL_SOCKET, SO_LINGER, ["l_onoff" => 1, "l_linger" => 1]);
 		@socket_shutdown($client, 2);
 		@socket_set_block($client);
 		@socket_read($client, 1);

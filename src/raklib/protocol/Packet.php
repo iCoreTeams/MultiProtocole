@@ -20,6 +20,7 @@ namespace raklib\protocol;
 use pocketmine\utils\BinaryDataException;
 use pocketmine\utils\BinaryStream;
 use raklib\utils\InternetAddress;
+use raklib\server\SessionManager;
 use function assert;
 use function count;
 use function explode;
@@ -90,6 +91,10 @@ abstract class Packet extends BinaryStream{
 		}else{
 			throw new \InvalidArgumentException("IP version $address->version is not supported");
 		}
+	}
+
+	public function checkValid(SessionManager $manager) : bool{
+		return true;
 	}
 
 	public function encode() : void{

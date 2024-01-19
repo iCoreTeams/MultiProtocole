@@ -2,27 +2,29 @@
 
 /*
  *
- *  ____            _        _   __  __ _                  __  __ ____
- * |  _ \ ___   ___| | _____| |_|  \/  (_)_ __   ___      |  \/  |  _ \
- * | |_) / _ \ / __| |/ / _ \ __| |\/| | | '_ \ / _ \_____| |\/| | |_) |
- * |  __/ (_) | (__|   <  __/ |_| |  | | | | | |  __/_____| |  | |  __/
- * |_|   \___/ \___|_|\_\___|\__|_|  |_|_|_| |_|\___|     |_|  |_|_|
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
  *
- * @author PocketMine Team
- * @link http://www.pocketmine.net/
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
  *
  *
 */
 
+declare(strict_types=1);
+
 namespace pocketmine\level\generator\object;
 
 use pocketmine\block\Block;
-use pocketmine\block\Leaves;
 use pocketmine\block\Wood;
 use pocketmine\level\ChunkManager;
 use pocketmine\utils\Random;
@@ -31,27 +33,14 @@ class BirchTree extends Tree{
 
 	protected $superBirch = false;
 
-	/**
-	 * BirchTree constructor.
-	 *
-	 * @param bool $superBirch
-	 */
-	public function __construct($superBirch = false){
+	public function __construct(bool $superBirch = false){
 		$this->trunkBlock = Block::LOG;
 		$this->leafBlock = Block::LEAVES;
-		$this->leafType = Leaves::BIRCH;
 		$this->type = Wood::BIRCH;
-		$this->superBirch = (bool) $superBirch;
+		$this->superBirch = $superBirch;
 	}
 
-	/**
-	 * @param ChunkManager $level
-	 * @param              $x
-	 * @param              $y
-	 * @param              $z
-	 * @param Random $random
-	 */
-	public function placeObject(ChunkManager $level, $x, $y, $z, Random $random){
+	public function placeObject(ChunkManager $level, int $x, int $y, int $z, Random $random){
 		$this->treeHeight = $random->nextBoundedInt(3) + 5;
 		if($this->superBirch){
 			$this->treeHeight += 5;

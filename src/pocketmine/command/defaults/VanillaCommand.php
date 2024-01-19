@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\command\defaults;
@@ -13,8 +33,8 @@ abstract class VanillaCommand extends Command{
 	public const MAX_COORD = 30000000;
 	public const MIN_COORD = -30000000;
 
-	public function __construct($name, $description = "", $usageMessage = null, array $aliases = []){
-		parent::__construct($name, $description, $usageMessage, $aliases);
+	public function __construct($name, $description = "", $usageMessage = null, array $aliases = [], bool $haveArguments = false){
+		parent::__construct($name, $description, $usageMessage, $aliases, $haveArguments);
 	}
 
 	protected function getInteger(CommandSender $sender, $value, $min = self::MIN_COORD, $max = self::MAX_COORD){

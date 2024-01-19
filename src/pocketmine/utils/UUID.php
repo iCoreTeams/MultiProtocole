@@ -1,22 +1,28 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\utils;
-
-use function bin2hex;
-use function explode;
-use function getmypid;
-use function getmyuid;
-use function hash;
-use function hex2bin;
-use function hexdec;
-use function implode;
-use function mt_rand;
-use function strlen;
-use function substr;
-use function time;
-use function trim;
 
 class UUID{
 
@@ -45,14 +51,7 @@ class UUID{
 	 * @return UUID
 	 */
 	public static function fromString(string $uuid, int $version = null) : UUID{
-		$hex = "";
-		foreach(explode("-", trim($uuid)) as $part){
-			if(strlen($part) % 2 !== 0){
-				$part = "0" . $part;
-			}
-			$hex .= $part;
-		}
-		return self::fromBinary(hex2bin($hex), $version);
+		return self::fromBinary(hex2bin(str_replace("-", "", trim($uuid))), $version);
 	}
 
 	/**
@@ -92,13 +91,10 @@ class UUID{
 		return Binary::writeInt($this->parts[0]) . Binary::writeInt($this->parts[1]) . Binary::writeInt($this->parts[2]) . Binary::writeInt($this->parts[3]);
 	}
 
-	public function toString() : string{
+	public function toString(){
 		$hex = bin2hex($this->toBinary());
 
-		//xxxxxxxx-xxxx-Mxxx-Nxxx-xxxxxxxxxxxx 8-4-4-4-12
-		if($this->version !== null){
-			return substr($hex, 0, 8) . "-" . substr($hex, 8, 4) . "-" . hexdec(strval($this->version)) . substr($hex, 13, 3) . "-8" . substr($hex, 17, 3) . "-" . substr($hex, 20, 12);
-		}
+		//xxxxxxxx-xxxx-Mxxx-Nxxx-xxxxxxxxxxxx 8-4-4-12
 		return substr($hex, 0, 8) . "-" . substr($hex, 8, 4) . "-" . substr($hex, 12, 4) . "-" . substr($hex, 16, 4) . "-" . substr($hex, 20, 12);
 	}
 

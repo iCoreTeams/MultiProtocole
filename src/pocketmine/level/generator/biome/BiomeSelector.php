@@ -2,65 +2,71 @@
 
 /*
  *
- *  ____            _        _   __  __ _                  __  __ ____
- * |  _ \ ___   ___| | _____| |_|  \/  (_)_ __   ___      |  \/  |  _ \
- * | |_) / _ \ / __| |/ / _ \ __| |\/| | | '_ \ / _ \_____| |\/| | |_) |
- * |  __/ (_) | (__|   <  __/ |_| |  | | | | | |  __/_____| |  | |  __/
- * |_|   \___/ \___|_|\_\___|\__|_|  |_|_|_| |_|\___|     |_|  |_|_|
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
  *
- * @author PocketMine Team
- * @link http://www.pocketmine.net/
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
  *
  *
 */
 
+declare(strict_types=1);
+
 namespace pocketmine\level\generator\biome;
 
 use pocketmine\level\generator\noise\Simplex;
-use pocketmine\level\generator\normal\biome\UnknownBiome;
 use pocketmine\utils\Random;
 
-abstract class BiomeSelector{
+use function call_user_func;
+
+class BiomeSelector{
+
+	/** @var Biome */
+	private $fallback;
+
 	/** @var Simplex */
 	private $temperature;
 	/** @var Simplex */
 	private $rainfall;
 
-	/** @var Biome[]|\SplFixedArray */
-	private $map = [];
+	/** @var Biome[] */
+	private $biomes = [];
 
-	public function __construct(Random $random){
+	/** @var \SplFixedArray */
+	private $map = null;
+
+	/** @var callable */
+	private $lookup;
+
+	public function __construct(Random $random, callable $lookup, Biome $fallback){
+		$this->fallback = $fallback;
+		$this->lookup = $lookup;
 		$this->temperature = new Simplex($random, 2, 1 / 16, 1 / 512);
 		$this->rainfall = new Simplex($random, 2, 1 / 16, 1 / 512);
 	}
-
-	/**
-	 * Lookup function called by recalculate() to determine the biome to use for this temperature and rainfall.
-	 *
-	 * @param float $temperature
-	 * @param float $rainfall
-	 *
-	 * @return int biome ID 0-255
-	 */
-	abstract protected function lookup(float $temperature, float $rainfall) : int;
 
 	public function recalculate(){
 		$this->map = new \SplFixedArray(64 * 64);
 
 		for($i = 0; $i < 64; ++$i){
 			for($j = 0; $j < 64; ++$j){
-				$biome = Biome::getBiome($this->lookup($i / 63, $j / 63));
-				if($biome instanceof UnknownBiome){
-					throw new \RuntimeException("Unknown biome returned by selector with ID " . $biome->getId());
-				}
-				$this->map[$i + ($j << 6)] = $biome;
+				$this->map[$i + ($j << 6)] = call_user_func($this->lookup, $i / 63, $j / 63);
 			}
 		}
+	}
+
+	public function addBiome(Biome $biome){
+		$this->biomes[$biome->getId()] = $biome;
 	}
 
 	public function getTemperature($x, $z){
@@ -77,10 +83,11 @@ abstract class BiomeSelector{
 	 *
 	 * @return Biome
 	 */
-	public function pickBiome($x, $z){
+	public function pickBiome($x, $z) : Biome{
 		$temperature = (int) ($this->getTemperature($x, $z) * 63);
 		$rainfall = (int) ($this->getRainfall($x, $z) * 63);
 
-		return $this->map[$temperature + ($rainfall << 6)];
+		$biomeId = $this->map[$temperature + ($rainfall << 6)];
+		return $this->biomes[$biomeId] ?? $this->fallback;
 	}
 }

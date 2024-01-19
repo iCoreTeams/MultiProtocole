@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 /**
  * Implementation of MCPE-style chunks with subchunks with XZY ordering.
  */
@@ -78,6 +98,8 @@ class Chunk{
 	/** @var array */
 	protected $customData = [];
 
+	protected bool $protect = false;
+
 	/**
 	 * @param int                 $chunkX
 	 * @param int                 $chunkZ
@@ -132,6 +154,14 @@ class Chunk{
 
 		$this->NBTtiles = $tiles;
 		$this->NBTentities = $entities;
+	}
+
+	public function setProtect(bool $protect = true) : void{
+		$this->protect = $protect;
+	}
+
+	public function isProtected() : bool{
+		return $this->protect;
 	}
 
 	/**

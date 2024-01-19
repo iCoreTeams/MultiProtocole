@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 
@@ -16,25 +36,25 @@ class MapInfoRequestPacket extends DataPacket{
 
 	/** @var int */
 	public $mapId;
-    /** @var MapInfoRequestPacketClientPixel[] */
-    public array $clientPixels = [];
+	/** @var MapInfoRequestPacketClientPixel[] */
+	public $clientPixels = [];
 
 	public function decodePayload(){
 		$this->mapId = $this->getActorUniqueId();
 
-        $this->clientPixels = [];
-        for($i = 0, $count = $this->getLInt(); $i < $count; $i++){
-            $this->clientPixels[] = MapInfoRequestPacketClientPixel::read($this);
-        }
+		$this->clientPixels = [];
+		for($i = 0, $count = $this->getLInt(); $i < $count; $i++){
+			$this->clientPixels[] = MapInfoRequestPacketClientPixel::read($this);
+		}
 	}
 
 	public function encodePayload(){
 		$this->putActorUniqueId($this->mapId);
 
-        $this->putLInt(count($this->clientPixels));
-        foreach($this->clientPixels as $pixel){
-            $pixel->write($this);
-        }
+		$this->putLInt(count($this->clientPixels));
+		foreach($this->clientPixels as $pixel){
+			$pixel->write($this);
+		}
 	}
 
 	public function mustBeDecoded() : bool{

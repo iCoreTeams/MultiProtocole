@@ -1,87 +1,63 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\scheduler;
 
-use pocketmine\utils\Terminal;
-use pocketmine\utils\Utils;
-use pocketmine\Worker;
-
-use function gc_enable;
-use function ini_set;
+use pocketmine\thread\Worker;
+use pocketmine\thread\log\ThreadSafeLogger;
 
 class AsyncWorker extends Worker{
-	/** @var mixed[] */
-	private static $store = [];
 
-	private $logger;
-	private $id;
+	private ThreadSafeLogger $logger;
+	private int $id;
 
-	/** @var int */
-	private $memoryLimit;
-
-	public function __construct(\ThreadedLogger $logger, int $id, int $memoryLimit){
+	public function __construct(ThreadSafeLogger $logger, int $id){
 		$this->logger = $logger;
 		$this->id = $id;
-		$this->memoryLimit = $memoryLimit;
 	}
 
-	public function run(){
-		error_reporting(-1);
-
+	public function onRun() : void{
 		$this->registerClassLoader();
-
-		//set this after the autoloader is registered
-		set_error_handler([Utils::class, 'errorExceptionHandler']);
+		\GlobalLogger::set($this->logger);
 
 		gc_enable();
-		Terminal::init();
-		
-		if($this->memoryLimit > 0){
-			ini_set('memory_limit', $this->memoryLimit . 'M');
-			$this->logger->debug("Set memory limit to " . $this->memoryLimit . " MB");
-		}else{
-			ini_set('memory_limit', '-1');
-			$this->logger->debug("No memory limit set");
-		}
+		ini_set("memory_limit", '-1');
+
+		global $store;
+		$store = [];
 	}
 
 	public function handleException(\Throwable $e){
+		parent::onUncaughtException($e);
 		$this->logger->logException($e);
+	}
+
+	public function getLogger() : ThreadSafeLogger{
+		return $this->logger;
 	}
 
 	public function getThreadName() : string{
 		return "Asynchronous Worker #" . $this->id;
-	}
-
-	public function getAsyncWorkerId() : int{
-		return $this->id;
-	}
-
-	/**
-	 * Saves mixed data into the worker's thread-local object store. This can be used to store objects which you
-	 * want to use on this worker thread from multiple AsyncTasks.
-	 *
-	 * @param string $identifier
-	 * @param mixed  $value
-	 */
-	public function saveToThreadStore(string $identifier, $value) : void{
-		self::$store[$identifier] = $value;
-	}
-
-	/**
-	 * Retrieves mixed data from the worker's thread-local object store.
-	 *
-	 * Note that the thread-local object store could be cleared and your data might not exist, so your code should
-	 * account for the possibility that what you're trying to retrieve might not exist.
-	 *
-	 * Objects stored in this storage may ONLY be retrieved while the task is running.
-	 *
-	 * @param string $identifier
-	 * @return mixed
-	 */
-	public function getFromThreadStore(string $identifier){
-		return self::$store[$identifier] ?? null;
 	}
 }

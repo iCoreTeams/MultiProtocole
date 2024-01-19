@@ -1,20 +1,31 @@
 <?php
 
 /*
- * This file is part of BedrockProtocol.
- * Copyright (C) 2014-2022 PocketMine Team <https://github.com/pmmp/BedrockProtocol>
  *
- * BedrockProtocol is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- */
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
 
 declare(strict_types=1);
 
 namespace pocketmine\network\bedrock\protocol\types;
 
-use pocketmine\network\mcpe\NetworkBinaryStream;
+use InvalidArgumentException;
+use pocketmine\network\bedrock\protocol\UpdateAbilitiesPacket;
 
 final class UpdateAbilitiesPacketLayer{
 
@@ -22,7 +33,6 @@ final class UpdateAbilitiesPacketLayer{
 	public const LAYER_BASE = 1;
 	public const LAYER_SPECTATOR = 2;
 	public const LAYER_COMMANDS = 3;
-    public const LAYER_EDITOR = 4;
 
 	public const ABILITY_BUILD = 0;
 	public const ABILITY_MINE = 1;
@@ -42,39 +52,66 @@ final class UpdateAbilitiesPacketLayer{
 	public const ABILITY_MUTED = 15;
 	public const ABILITY_WORLD_BUILDER = 16;
 	public const ABILITY_NO_CLIP = 17;
-    public const ABILITY_PRIVILEGED_BUILDER = 18;
-    public const NUMBER_OF_ABILITIES = 19;
+	public const ABILITY_PRIVILEGED_BUILDER = 17;
+
+	public const NUMBER_OF_ABILITIES = 19;
+
+	/** @var int */
+	private $layerId;
+	/** @var bool[] */
+	private $boolAbilities;
+	/** @var float|null */
+	private $flySpeed;
+	/** @var float|null */
+	private $walkSpeed;
 
 	/**
+	 * @param int $layerId
 	 * @param bool[] $boolAbilities
-	 * @phpstan-param array<self::ABILITY_*, bool> $boolAbilities
+	 * @param float|null $flySpeed
+	 * @param float|null $walkSpeed
 	 */
-	public function __construct(
-		private int $layerId,
-		private array $boolAbilities,
-		private ?float $flySpeed,
-		private ?float $walkSpeed
-	){}
-
-	public function getLayerId() : int{ return $this->layerId; }
+	public function __construct(int $layerId, array $boolAbilities, ?float $flySpeed, ?float $walkSpeed){
+		$this->layerId = $layerId;
+		$this->boolAbilities = $boolAbilities;
+		$this->flySpeed = $flySpeed;
+		$this->walkSpeed = $walkSpeed;
+	}
 
 	/**
-	 * Returns a list of abilities set/overridden by this layer. If the ability value is not set, the index is omitted.
-	 * @return bool[]
-	 * @phpstan-return array<self::ABILITY_*, bool>
+	 * @return int
 	 */
-	public function getBoolAbilities() : array{ return $this->boolAbilities; }
+	public function getLayerId() : int{
+		return $this->layerId;
+	}
 
-	public function getFlySpeed() : ?float{ return $this->flySpeed; }
+	/**
+	 * @return bool[]
+	 */
+	public function getBoolAbilities() : array{
+		return $this->boolAbilities;
+	}
 
-	public function getWalkSpeed() : ?float{ return $this->walkSpeed; }
+	/**
+	 * @return float|null
+	 */
+	public function getFlySpeed() : ?float{
+		return $this->flySpeed;
+	}
 
-	public static function decode(NetworkBinaryStream $in) : self{
-		$layerId = $in->getLShort();
-		$setAbilities = $in->getLInt();
-		$setAbilityValues = $in->getLInt();
-		$flySpeed = $in->getLFloat();
-		$walkSpeed = $in->getLFloat();
+	/**
+	 * @return float|null
+	 */
+	public function getWalkSpeed() : ?float{
+		return $this->walkSpeed;
+	}
+
+	public static function decode(UpdateAbilitiesPacket $pk) : self{
+		$layerId = $pk->getLShort();
+		$setAbilities = $pk->getLInt();
+		$setAbilityValues = $pk->getLInt();
+		$flySpeed = $pk->getLFloat();
+		$walkSpeed = $pk->getLFloat();
 
 		$boolAbilities = [];
 		for($i = 0; $i < self::NUMBER_OF_ABILITIES; $i++){
@@ -87,13 +124,13 @@ final class UpdateAbilitiesPacketLayer{
 		}
 		if(($setAbilities & (1 << self::ABILITY_FLY_SPEED)) === 0){
 			if($flySpeed !== 0.0){
-				throw new \Exception("Fly speed should be zero if the layer does not set it");
+				throw new InvalidArgumentException("Fly speed should be zero if the layer does not set it");
 			}
 			$flySpeed = null;
 		}
 		if(($setAbilities & (1 << self::ABILITY_WALK_SPEED)) === 0){
 			if($walkSpeed !== 0.0){
-				throw new \Exception("Walk speed should be zero if the layer does not set it");
+				throw new InvalidArgumentException("Walk speed should be zero if the layer does not set it");
 			}
 			$walkSpeed = null;
 		}
@@ -101,8 +138,8 @@ final class UpdateAbilitiesPacketLayer{
 		return new self($layerId, $boolAbilities, $flySpeed, $walkSpeed);
 	}
 
-	public function encode(NetworkBinaryStream $out) : void{
-		$out->putLShort($this->layerId);
+	public function encode(UpdateAbilitiesPacket $pk) : void{
+		$pk->putLShort($this->layerId);
 
 		$setAbilities = 0;
 		$setAbilityValues = 0;
@@ -117,9 +154,9 @@ final class UpdateAbilitiesPacketLayer{
 			$setAbilities |= (1 << self::ABILITY_WALK_SPEED);
 		}
 
-		$out->putLInt($setAbilities);
-		$out->putLInt($setAbilityValues);
-		$out->putLFloat($this->flySpeed ?? 0);
-		$out->putLFloat($this->walkSpeed ?? 0);
+		$pk->putLInt($setAbilities);
+		$pk->putLInt($setAbilityValues);
+		$pk->putLFloat($this->flySpeed ?? 0);
+		$pk->putLFloat($this->walkSpeed ?? 0);
 	}
 }

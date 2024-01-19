@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\network\bedrock\protocol;
@@ -9,12 +29,26 @@ namespace pocketmine\network\bedrock\protocol;
  */
 interface ProtocolInfo{
 
-    /** Actual Minecraft: PE protocol version */
-    public const CURRENT_PROTOCOL = 630;
-    /** Current Minecraft PE version reported by the server. This is usually the earliest currently supported version. */
-    public const MINECRAFT_VERSION = 'v1.20.50';
-    /** Version number sent to clients in ping responses. */
-    public const MINECRAFT_VERSION_NETWORK = '1.20.50';
+	/**
+	 * NOTE TO DEVELOPERS
+	 * Do not waste your time or ours submitting pull requests changing game and/or protocol version numbers.
+	 * Pull requests changing game and/or protocol version numbers will be closed.
+	 *
+	 * This file is generated automatically, do not edit it manually.
+	 */
+
+	/**
+	 * Actual Minecraft: PE protocol version
+	 */
+	public const CURRENT_PROTOCOL = 630;
+	/**
+	 * Current Minecraft PE version reported by the server. This is usually the earliest currently supported version.
+	 */
+	public const MINECRAFT_VERSION = 'v1.20.50';
+	/**
+	 * Version number sent to clients in ping responses.
+	 */
+	public const MINECRAFT_VERSION_NETWORK = '1.20.50';
 
 	public const MCPE_RAKNET_PACKET_ID = "\xfe";
 
@@ -33,11 +67,10 @@ interface ProtocolInfo{
 	public const ADD_ACTOR_PACKET = 0x0d;
 	public const REMOVE_ACTOR_PACKET = 0x0e;
 	public const ADD_ITEM_ACTOR_PACKET = 0x0f;
-
 	public const TAKE_ITEM_ACTOR_PACKET = 0x11;
 	public const MOVE_ACTOR_ABSOLUTE_PACKET = 0x12;
 	public const MOVE_PLAYER_PACKET = 0x13;
-	public const RIDER_JUMP_PACKET = 0x14; //PASSENGER_JUMP_PACKET
+	public const RIDER_JUMP_PACKET = 0x14;
 	public const UPDATE_BLOCK_PACKET = 0x15;
 	public const ADD_PAINTING_PACKET = 0x16;
 	public const TICK_SYNC_PACKET = 0x17;
@@ -70,9 +103,9 @@ interface ProtocolInfo{
 	public const INVENTORY_SLOT_PACKET = 0x32;
 	public const CONTAINER_SET_DATA_PACKET = 0x33;
 	public const CRAFTING_DATA_PACKET = 0x34;
-
+	public const CRAFTING_EVENT_PACKET = 0x35;
 	public const GUI_DATA_PICK_ITEM_PACKET = 0x36;
-
+	public const ADVENTURE_SETTINGS_PACKET = 0x37;
 	public const BLOCK_ACTOR_DATA_PACKET = 0x38;
 	public const PLAYER_INPUT_PACKET = 0x39;
 	public const LEVEL_CHUNK_PACKET = 0x3a;
@@ -134,6 +167,7 @@ interface ProtocolInfo{
 	public const UPDATE_SOFT_ENUM_PACKET = 0x72;
 	public const NETWORK_STACK_LATENCY_PACKET = 0x73;
 
+	public const SCRIPT_CUSTOM_EVENT_PACKET = 0x75;
 	public const SPAWN_PARTICLE_EFFECT_PACKET = 0x76;
 	public const AVAILABLE_ACTOR_IDENTIFIERS_PACKET = 0x77;
 	public const LEVEL_SOUND_EVENT_PACKET_V2 = 0x78;
@@ -200,31 +234,28 @@ interface ProtocolInfo{
 	public const AGENT_ACTION_EVENT_PACKET = 0xb5; // unsupported
 	public const CHANGE_MOB_PROPERTY_PACKET = 0xb6; // unsupported
 	public const LESSON_PROGRESS_PACKET = 0xb7; // unsupported
-	public const REQUEST_ABILITY_PACKET = 0xb8; // unsupported
+	public const REQUEST_ABILITY_PACKET = 0xb8;
 	public const REQUEST_PERMISSIONS_PACKET = 0xb9; // unsupported
 	public const TOAST_REQUEST_PACKET = 0xba;
-    public const UPDATE_ABILITIES_PACKET = 0xbb;
-    public const UPDATE_ADVENTURE_SETTINGS_PACKET = 0xbc;
-    public const DEATH_INFO_PACKET = 0xbd;
-    public const EDITOR_NETWORK_PACKET = 0xbe;
-    public const FEATURE_REGISTRY_PACKET = 0xbf;
-    public const SERVER_STATS_PACKET = 0xc0;
-    public const REQUEST_NETWORK_SETTINGS_PACKET = 0xc1;
-    public const GAME_TEST_REQUEST_PACKET = 0xc2;
-    public const GAME_TEST_RESULTS_PACKET = 0xc3;
-    public const UPDATE_CLIENT_INPUT_LOCKS_PACKET = 0xc4;
+	public const UPDATE_ABILITIES_PACKET = 0xbb;
+	public const UPDATE_ADVENTURE_SETTINGS_PACKET = 0xbc;
+	public const DEATH_INFO_PACKET = 0xbd; // unsupported
+	public const EDITOR_NETWORK_PACKET = 0xbe; // unsupported
+	public const FEATURE_REGISTRY_PACKET = 0xbf; // unsupported
+	public const SERVER_STATS_PACKET = 0xc0; // unsupported
+	public const REQUEST_NETWORK_SETTINGS_PACKET = 0xc1;
+	public const GAME_TEST_REQUEST_PACKET = 0xc2; // unsupported
+	public const GAME_TEST_RESULTS_PACKET = 0xc3; // unsupported
+	public const UPDATE_CLIENT_INPUT_LOCKS_PACKET = 0xc4; // unsupported
+	public const CAMERA_PRESETS_PACKET = 0xc6; // unsupported
+	public const UNLOCKED_RECIPES_PACKET = 0xc7; // unsupported
 
-    public const CAMERA_PRESETS_PACKET = 0xc6;
-    public const UNLOCKED_RECIPES_PACKET = 0xc7;
-
-    public const CAMERA_INSTRUCTION_PACKET = 0x12c;
-    public const COMPRESSED_BIOME_DEFINITION_LIST_PACKET = 0x12d;
-    public const TRIM_DATA_PACKET = 0x12e;
-    public const OPEN_SIGN_PACKET = 0x12f;
-    public const AGENT_ANIMATION_PACKET = 0x130;
-    public const REFRESH_ENTITLEMENTS_PACKET = 0x131;
-
-    public const PLAYER_TOGGLE_CRAFTER_SLOT_REQUEST_PACKET = 0x132;
-    public const SET_PLAYER_INVENTORY_OPTIONS_PACKET = 0x133;
+	public const CAMERA_INSTRUCTION_PACKET = 0x12c; // unsupported
+	public const COMPRESSED_BIOME_DEFINITION_LIST_PACKET = 0x12d; // unsupported
+	public const TRIM_DATA_PACKET = 0x12e; // unsupported
+	public const OPEN_SIGN_PACKET = 0x12f;
+	public const AGENT_ANIMATION_PACKET = 0x130;
+	public const REFRESH_ENTITLEMENTS_PACKET = 0x131;
+	public const PLAYER_TOGGLE_CRAFTER_SLOT_REQUEST_PACKET = 0x132;
+	public const SET_PLAYER_INVENTORY_OPTIONS_PACKET = 0x133;
 }
-

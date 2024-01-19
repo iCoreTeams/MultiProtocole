@@ -1,51 +1,48 @@
 <?php
 
 /*
- * This file is part of BedrockProtocol.
- * Copyright (C) 2014-2022 PocketMine Team <https://github.com/pmmp/BedrockProtocol>
  *
- * BedrockProtocol is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- */
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
 
 declare(strict_types=1);
 
 namespace pocketmine\network\bedrock\protocol;
 
+#include <rules/DataPacket.h>
+
 use pocketmine\network\NetworkSession;
 
-/**
- * This is the first packet sent in a game session. It contains the client's protocol version.
- * The server is expected to respond to this with network settings, which will instruct the client which compression
- * type to use, amongst other things.
- */
 class RequestNetworkSettingsPacket extends DataPacket{
-    public const NETWORK_ID = ProtocolInfo::REQUEST_NETWORK_SETTINGS_PACKET;
+	public const NETWORK_ID = ProtocolInfo::REQUEST_NETWORK_SETTINGS_PACKET;
 
-    private int $protocolVersion;
+	/** @var int */
+	public $protocolVersion;
 
-    /**
-     * @generate-create-func
-     */
-    public static function create(int $protocolVersion) : self{
-        $result = new self;
-        $result->protocolVersion = $protocolVersion;
-        return $result;
-    }
+	public function decodePayload(){
+		$this->protocolVersion = $this->getInt();
+	}
 
-    public function getProtocolVersion() : int{ return $this->protocolVersion; }
+	public function encodePayload(){
+		$this->putInt($this->protocolVersion);
+	}
 
-    public function decodePayload() : void{
-        $this->protocolVersion = $this->getInt();
-    }
-
-    public function encodePayload() : void{
-        $this->putInt($this->protocolVersion);
-    }
-
-    public function handle(NetworkSession $session) : bool{
-        return $session->handleRequestNetworkSettings($this);
-    }
+	public function handle(NetworkSession $session) : bool{
+		return $session->handleRequestNetworkSettings($this);
+	}
 }

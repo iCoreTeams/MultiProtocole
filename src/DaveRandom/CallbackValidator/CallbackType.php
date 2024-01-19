@@ -2,8 +2,6 @@
 
 namespace DaveRandom\CallbackValidator;
 
-use ReflectionNamedType;
-
 final class CallbackType
 {
     /**
@@ -93,13 +91,12 @@ final class CallbackType
         $byRef = $candidate->returnsReference();
         $returnType = $candidate->getReturnType();
 
-        $typeName = null;
-        $nullable = false;
         if ($returnType !== null) {
-            if($returnType instanceof ReflectionNamedType){
-                $typeName = $returnType->getName();
-            }
+            $typeName = $returnType->getName();
             $nullable = $returnType->allowsNull();
+        } else {
+            $typeName = null;
+            $nullable = false;
         }
 
         if (!$this->returnType->isSatisfiedBy($typeName, $nullable, $byRef)) {
@@ -111,14 +108,13 @@ final class CallbackType
         foreach ($candidate->getParameters() as $position => $parameter) {
             $byRef = $parameter->isPassedByReference();
 
-            $typeName = null;
-            $nullable = false;
             if ($parameter->hasType()) {
                 $type = $parameter->getType();
-                if($type instanceof ReflectionNamedType){
-                    $typeName = $type->getName();
-                }
+                $typeName = $type->getName();
                 $nullable = $type->allowsNull();
+            } else {
+                $typeName = null;
+                $nullable = false;
             }
 
             // Parameters that exist in the prototype must always be satisfied directly

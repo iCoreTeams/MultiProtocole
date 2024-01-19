@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\network\bedrock\protocol;
@@ -7,12 +27,10 @@ namespace pocketmine\network\bedrock\protocol;
 #include <rules/DataPacket.h>
 
 use pocketmine\entity\Attribute;
-use pocketmine\entity\EntityIds;
 use pocketmine\math\Vector3;
+use pocketmine\network\bedrock\protocol\types\actor\ActorLink;
 use pocketmine\network\bedrock\protocol\types\actor\PropertySyncData;
 use pocketmine\network\NetworkSession;
-use pocketmine\network\bedrock\protocol\types\actor\ActorLink;
-use function array_search;
 use function count;
 
 class AddActorPacket extends DataPacket{
@@ -34,14 +52,15 @@ class AddActorPacket extends DataPacket{
 	public $yaw = 0.0;
 	/** @var float */
 	public $headYaw = 0.0;
-    /** @var float */
-    public $bodyYaw = 0.0;
+	/** @var float */
+	public $bodyYaw = 0.0;
 
 	/** @var Attribute[] */
 	public $attributes = [];
 	/** @var array */
 	public $metadata = [];
-    public PropertySyncData $syncedProperties;
+	/** @var PropertySyncData|null */
+	public $syncedProperties;
 	/** @var ActorLink[] */
 	public $links = [];
 
@@ -54,7 +73,7 @@ class AddActorPacket extends DataPacket{
 		$this->pitch = $this->getLFloat();
 		$this->yaw = $this->getLFloat();
 		$this->headYaw = $this->getLFloat();
-        $this->bodyYaw = $this->getLFloat();
+		$this->bodyYaw = $this->getLFloat();
 
 		$attrCount = $this->getUnsignedVarInt();
 		for($i = 0; $i < $attrCount; ++$i){
@@ -75,7 +94,8 @@ class AddActorPacket extends DataPacket{
 		}
 
 		$this->metadata = $this->getActorMetadata();
-        $this->syncedProperties = PropertySyncData::read($this);
+		$this->syncedProperties = PropertySyncData::read($this);
+
 		$linkCount = $this->getUnsignedVarInt();
 		for($i = 0; $i < $linkCount; ++$i){
 			$this->links[] = $this->getActorLink();
@@ -91,7 +111,7 @@ class AddActorPacket extends DataPacket{
 		$this->putLFloat($this->pitch);
 		$this->putLFloat($this->yaw);
 		$this->putLFloat($this->headYaw);
-        $this->putLFloat($this->bodyYaw);
+		$this->putLFloat($this->bodyYaw);
 
 		$this->putUnsignedVarInt(count($this->attributes));
 		foreach($this->attributes as $attribute){
@@ -102,7 +122,8 @@ class AddActorPacket extends DataPacket{
 		}
 
 		$this->putActorMetadata($this->metadata);
-        $this->syncedProperties->write($this);
+		($this->syncedProperties ?? new PropertySyncData())->write($this);
+
 		$this->putUnsignedVarInt(count($this->links));
 		foreach($this->links as $link){
 			$this->putActorLink($link);

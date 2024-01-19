@@ -1,42 +1,61 @@
 <?php
 
 /*
- * This file is part of BedrockProtocol.
- * Copyright (C) 2014-2022 PocketMine Team <https://github.com/pmmp/BedrockProtocol>
  *
- * BedrockProtocol is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- */
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
 
 declare(strict_types=1);
 
 namespace pocketmine\network\bedrock\protocol;
 
-use pocketmine\math\Vector3;
+#include <rules/DataPacket.h>
+
+
 use pocketmine\network\NetworkSession;
 
-/**
- * Sent by the server to open the sign GUI for a sign.
- */
 class OpenSignPacket extends DataPacket{
-    public const NETWORK_ID = ProtocolInfo::OPEN_SIGN_PACKET;
+	public const NETWORK_ID = ProtocolInfo::OPEN_SIGN_PACKET;
 
-    public Vector3 $blockPosition;
-    public bool $front;
+	/** @var int */
+	public $x;
+	/** @var int */
+	public $y;
+	/** @var int */
+	public $z;
+	/** @var bool */
+	public $front;
 
-    public function decodePayload() : void{
-        $this->blockPosition = $this->getVector3();
-        $this->front = $this->getBool();
-    }
+	public function decodePayload(){
+		$this->getBlockPosition($this->x, $this->y, $this->z);
+		$this->front = $this->getBool();
+	}
 
-    public function encodePayload() : void{
-        $this->putVector3($this->blockPosition);
-        $this->putBool($this->front);
-    }
+	public function encodePayload(){
+		$this->putBlockPosition($this->x, $this->y, $this->z);
+		$this->putBool($this->front);
+	}
 
-    public function handle(NetworkSession $session) : bool{
-        return $session->handleOpenSign($this);
-    }
+	public function mustBeDecoded() : bool{
+		return false;
+	}
+
+	public function handle(NetworkSession $session) : bool{
+		return $session->handleOpenSign($this);
+	}
 }

@@ -1,23 +1,41 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\block;
 
-use pocketmine\event\block\SignChangeEvent;
+use pocketmine\BedrockPlayer;
 use pocketmine\item\Item;
 use pocketmine\item\Tool;
 use pocketmine\level\Level;
 use pocketmine\math\Vector3;
 use pocketmine\nbt\tag\CompoundTag;
+use pocketmine\network\bedrock\protocol\OpenSignPacket;
 use pocketmine\Player;
-use pocketmine\tile\Sign;
 use pocketmine\tile\Tile;
 use function floor;
 
 class SignPost extends Transparent{
-
-    protected ?int $editorEntityRuntimeId = null;
 
 	protected $id = self::SIGN_POST;
 
@@ -41,15 +59,8 @@ class SignPost extends Transparent{
 		return null;
 	}
 
-    public function setEditorEntityRuntimeId(?int $editorEntityRuntimeId) : self{
-        $this->editorEntityRuntimeId = $editorEntityRuntimeId;
-        return $this;
-    }
 
 	public function place(Item $item, Block $block, Block $target, $face, $fx, $fy, $fz, Player $player = null){
-        if($player !== null){
-            $this->editorEntityRuntimeId = $player->getId();
-        }
 		if($face !== 0){
 			$nbt = CompoundTag::create()
 				->setString("id", Tile::SIGN)
@@ -81,6 +92,13 @@ class SignPost extends Transparent{
 
 			Tile::createTile(Tile::SIGN, $this->getLevel(), $nbt);
 
+			if($player instanceof BedrockPlayer){
+				$pk = new OpenSignPacket();
+				[$pk->x, $pk->y, $pk->z] = [$this->x, $this->y, $this->z];
+				$pk->front = true;
+				$player->sendDataPacket($pk);
+			}
+
 			return true;
 		}
 
@@ -108,35 +126,4 @@ class SignPost extends Transparent{
 	public function getToolType(){
 		return Tool::TYPE_AXE;
 	}
-
-    /**
-     * Called by the player controller (network session) to update the sign text, firing events as appropriate.
-     *
-     * @return bool if the sign update was successful.
-     * @throws \UnexpectedValueException if the text payload is too large
-     */
-    public function updateText(Player $author, array $text) : bool{
-        $size = 0;
-        foreach($text as $line){
-            $size += strlen($line);
-        }
-        if($size > 1000){
-            throw new \UnexpectedValueException($author->getName() . " tried to write $size bytes of text onto a sign (bigger than max 1000)");
-        }
-        $ev = new SignChangeEvent($this, $author, $text);
-        if($this->editorEntityRuntimeId === null || $this->editorEntityRuntimeId !== $author->getId()){
-            $ev->setCancelled();
-        }
-        $ev->call();
-        if(!$ev->isCancelled()){
-            if(($tile = $this->getLevel()->getTile($this)) instanceof Sign){
-                $tile->setText($text[0], $text[1], $text[2], $text[3]);
-            }
-            $this->setEditorEntityRuntimeId(null);
-            $this->getLevel()->setBlock($this, $this);
-            return true;
-        }
-
-        return false;
-    }
 }

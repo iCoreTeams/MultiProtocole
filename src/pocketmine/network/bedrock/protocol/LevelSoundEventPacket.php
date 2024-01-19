@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\network\bedrock\protocol;
@@ -265,6 +285,188 @@ class LevelSoundEventPacket extends DataPacket{
 	public const SOUND_AMBIENT_WORRIED = 253;
 	public const SOUND_CANT_BREED = 254;
 	public const SOUND_UNDEFINED = 255;
+	public const CANT_BREED = 254;
+	public const ITEM_SHIELD_BLOCK = 255;
+	public const ITEM_BOOK_PUT = 256;
+	public const BLOCK_GRINDSTONE_USE = 257;
+	public const BLOCK_BELL_HIT = 258;
+	public const BLOCK_CAMPFIRE_CRACKLE = 259;
+	public const ROAR = 260;
+	public const STUN = 261;
+	public const BLOCK_SWEET_BERRY_BUSH_HURT = 262;
+	public const BLOCK_SWEET_BERRY_BUSH_PICK = 263;
+	public const BLOCK_CARTOGRAPHY_TABLE_USE = 264;
+	public const BLOCK_STONECUTTER_USE = 265;
+	public const BLOCK_COMPOSTER_EMPTY = 266;
+	public const BLOCK_COMPOSTER_FILL = 267;
+	public const BLOCK_COMPOSTER_FILL_SUCCESS = 268;
+	public const BLOCK_COMPOSTER_READY = 269;
+	public const BLOCK_BARREL_OPEN = 270;
+	public const BLOCK_BARREL_CLOSE = 271;
+	public const RAID_HORN = 272;
+	public const BLOCK_LOOM_USE = 273;
+	public const AMBIENT_IN_RAID = 274;
+	public const UI_CARTOGRAPHY_TABLE_TAKE_RESULT = 275;
+	public const UI_STONECUTTER_TAKE_RESULT = 276;
+	public const UI_LOOM_TAKE_RESULT = 277;
+	public const BLOCK_SMOKER_SMOKE = 278;
+	public const BLOCK_BLASTFURNACE_FIRE_CRACKLE = 279;
+	public const BLOCK_SMITHING_TABLE_USE = 280;
+	public const SCREECH = 281;
+	public const SLEEP = 282;
+	public const BLOCK_FURNACE_LIT = 283;
+	public const CONVERT_MOOSHROOM = 284;
+	public const MILK_SUSPICIOUSLY = 285;
+	public const CELEBRATE = 286;
+	public const JUMP_PREVENT = 287;
+	public const AMBIENT_POLLINATE = 288;
+	public const BLOCK_BEEHIVE_DRIP = 289;
+	public const BLOCK_BEEHIVE_ENTER = 290;
+	public const BLOCK_BEEHIVE_EXIT = 291;
+	public const BLOCK_BEEHIVE_WORK = 292;
+	public const BLOCK_BEEHIVE_SHEAR = 293;
+	public const DRINK_HONEY = 294;
+	public const AMBIENT_CAVE = 295;
+	public const RETREAT = 296;
+	public const CONVERTED_TO_ZOMBIFIED = 297;
+	public const ADMIRE = 298;
+	public const STEP_LAVA = 299;
+	public const TEMPT = 300;
+	public const PANIC = 301;
+	public const ANGRY = 302;
+	public const AMBIENT_WARPED_FOREST_MOOD = 303;
+	public const AMBIENT_SOULSAND_VALLEY_MOOD = 304;
+	public const AMBIENT_NETHER_WASTES_MOOD = 305;
+	public const RESPAWN_ANCHOR_BASALT_DELTAS_MOOD = 306;
+	public const AMBIENT_CRIMSON_FOREST_MOOD = 307;
+	public const RESPAWN_ANCHOR_CHARGE = 308;
+	public const RESPAWN_ANCHOR_DEPLETE = 309;
+	public const RESPAWN_ANCHOR_SET_SPAWN = 310;
+	public const RESPAWN_ANCHOR_AMBIENT = 311;
+	public const PARTICLE_SOUL_ESCAPE_QUIET = 312;
+	public const PARTICLE_SOUL_ESCAPE_LOUD = 313;
+	public const RECORD_PIGSTEP = 314;
+	public const LODESTONE_COMPASS_LINK_COMPASS_TO_LODESTONE = 315;
+	public const SMITHING_TABLE_USE = 316;
+	public const ARMOR_EQUIP_NETHERITE = 317;
+	public const AMBIENT_WARPED_FOREST_LOOP = 318;
+	public const AMBIENT_SOULSAND_VALLEY_LOOP = 319;
+	public const AMBIENT_NETHER_WASTES_LOOP = 320;
+	public const AMBIENT_BASALT_DELTAS_LOOP = 321;
+	public const AMBIENT_CRIMSON_FOREST_LOOP = 322;
+	public const AMBIENT_WARPED_FOREST_ADDITIONS = 323;
+	public const AMBIENT_SOULSAND_VALLEY_ADDITIONS = 324;
+	public const AMBIENT_NETHER_WASTES_ADDITIONS = 325;
+	public const AMBIENT_BASALT_DELTAS_ADDITIONS = 326;
+	public const AMBIENT_CRIMSON_FOREST_ADDITIONS = 327;
+	public const POWER_ON_SCULK_SENSOR = 328;
+	public const POWER_OFF_SCULK_SENSOR = 329;
+	public const BUCKET_FILL_POWDER_SNOW = 330;
+	public const BUCKET_EMPTY_POWDER_SNOW = 331;
+	public const CAULDRON_DRIP_WATER_POINTED_DRIPSTONE = 332;
+	public const CAULDRON_DRIP_LAVA_POINTED_DRIPSTONE = 333;
+	public const DRIP_WATER_POINTED_DRIPSTONE = 334;
+	public const DRIP_LAVA_POINTED_DRIPSTONE = 335;
+	public const PICK_BERRIES_CAVE_VINES = 336;
+	public const TILT_DOWN_BIG_DRIPLEAF = 337;
+	public const TILT_UP_BIG_DRIPLEAF = 338;
+	public const COPPER_WAX_ON = 339;
+	public const COPPER_WAX_OFF = 340;
+	public const SCRAPE = 341;
+	public const MOB_PLAYER_HURT_DROWN = 342;
+	public const MOB_PLAYER_HURT_ON_FIRE = 343;
+	public const MOB_PLAYER_HURT_FREEZE = 344;
+	public const ITEM_SPYGLASS_USE = 345;
+	public const ITEM_SPYGLASS_STOP_USING = 346;
+	public const CHIME_AMETHYST_BLOCK = 347;
+	public const AMBIENT_SCREAMER = 348;
+	public const HURT_SCREAMER = 349;
+	public const DEATH_SCREAMER = 350;
+	public const MILK_SCREAMER = 351;
+	public const JUMP_TO_BLOCK = 352;
+	public const PRE_RAM = 353;
+	public const PRE_RAM_SCREAMER = 354;
+	public const RAM_IMPACT = 355;
+	public const RAM_IMPACT_SCREAMER = 356;
+	public const SQUID_INK_SQUIRT = 357;
+	public const GLOW_SQUID_INK_SQUIRT = 358;
+	public const CONVERT_TO_STRAY = 359;
+	public const CAKE_ADD_CANDLE = 360;
+	public const EXTINGUISH_CANDLE = 361;
+	public const AMBIENT_CANDLE = 362;
+	public const BLOCK_CLICK = 363;
+	public const BLOCK_CLICK_FAIL = 364;
+	public const BLOCK_SCULK_CATALYST_BLOOM = 365;
+	public const BLOCK_SCULK_SHRIEKER_SHRIEK = 366;
+	public const NEARBY_CLOSE = 367;
+	public const NEARBY_CLOSER = 368;
+	public const NEARBY_CLOSEST = 369;
+	public const AGITATED = 370;
+	public const RECORD_OTHERSIDE = 371;
+	public const TONGUE = 372;
+	public const IRONGOLEM_CRACK = 373;
+	public const IRONGOLEM_REPAIR = 374;
+	public const LISTENING = 375;
+	public const HEARTBEAT = 376;
+	public const HORN_BREAK = 377;
+
+	public const BLOCK_SCULK_SPREAD = 379;
+	public const CHARGE_SCULK = 380;
+	public const BLOCK_SCULK_SENSOR_PLACE = 381;
+	public const BLOCK_SCULK_SHRIEKER_PLACE = 382;
+	public const HORN_CALL0 = 383;
+	public const HORN_CALL1 = 384;
+	public const HORN_CALL2 = 385;
+	public const HORN_CALL3 = 386;
+	public const HORN_CALL4 = 387;
+	public const HORN_CALL5 = 388;
+	public const HORN_CALL6 = 389;
+	public const HORN_CALL7 = 390;
+
+	public const IMITATE_WARDEN = 426;
+	public const LISTENING_ANGRY = 427;
+	public const ITEM_GIVEN = 428;
+	public const ITEM_TAKEN = 429;
+	public const DISAPPEARED = 430;
+	public const REAPPEARED = 431;
+	public const DRINK_MILK = 432;
+	public const BLOCK_FROG_SPAWN_HATCH = 433;
+	public const LAY_SPAWN = 434;
+	public const BLOCK_FROG_SPAWN_BREAK = 435;
+	public const SONIC_BOOM = 436;
+	public const SONIC_CHARGE = 437;
+	public const ITEM_THROWN = 438;
+	public const RECORD_5 = 439;
+	public const CONVERT_TO_FROG = 440;
+
+	public const BLOCK_ENCHANTING_TABLE_USE = 442;
+	public const STEP_SAND = 443;
+	public const DASH_READY = 444;
+	public const BUNDLE_DROP_CONTENTS = 445;
+	public const BUNDLE_INSERT = 446;
+	public const BUNDLE_REMOVE_ONE = 447;
+	public const PRESSURE_PLATE_CLICK_OFF = 448;
+	public const PRESSURE_PLATE_CLICK_ON = 449;
+	public const BUTTON_CLICK_OFF = 450;
+	public const BUTTON_CLICK_ON = 451;
+	public const DOOR_OPEN = 452;
+	public const DOOR_CLOSE = 453;
+	public const TRAPDOOR_OPEN = 454;
+	public const TRAPDOOR_CLOSE = 455;
+	public const FENCE_GATE_OPEN = 456;
+	public const FENCE_GATE_CLOSE = 457;
+	public const INSERT = 458;
+	public const PICKUP = 459;
+	public const INSERT_ENCHANTED = 460;
+	public const PICKUP_ENCHANTED = 461;
+	public const BRUSH = 462;
+	public const BRUSH_COMPLETED = 463;
+	public const SHATTER_POT = 464;
+	public const BREAK_POT = 465;
+	public const BLOCK_SNIFFER_EGG_CRACK = 466;
+	public const BLOCK_SNIFFER_EGG_HATCH = 467;
+	public const BLOCK_SIGN_WAXED_INTERACT_FAIL = 468;
+	public const RECORD_RELIC = 469;
 
 	/** @var int */
 	public $sound;

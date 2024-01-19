@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\network\bedrock\chunk;
@@ -33,10 +53,7 @@ class BedrockChunkRequestTask extends AsyncTask{
 	/** @var int */
 	protected $compressionLevel;
 
-	/** @var int */
-	protected $protocolVersion;
-
-	public function __construct(Level $level, Chunk $chunk, int $protocolVersion){
+	public function __construct(Level $level, Chunk $chunk){
 		$this->levelId = $level->getId();
 		$this->compressionLevel = NetworkCompression::$LEVEL;
 
@@ -45,8 +62,6 @@ class BedrockChunkRequestTask extends AsyncTask{
 
 		$this->tileData = BedrockChunkSerializer::serializeTiles($chunk);
 		$this->chunk = $chunk->fastSerialize();
-
-		$this->protocolVersion = $protocolVersion;
 	}
 
 	public function onRun(){
@@ -61,7 +76,6 @@ class BedrockChunkRequestTask extends AsyncTask{
         $pk->subChunkCount += BedrockChunkSerializer::LOWER_PADDING_SIZE;
 
         $c = Closure::fromCallable([BlockPalette::class, "getRuntimeFromLegacyId"]);
-
         $pk->data = BedrockChunkSerializer::serialize($chunk, $c, $this->tileData);
 
 		$stream = new BedrockPacketBatch();
@@ -74,7 +88,7 @@ class BedrockChunkRequestTask extends AsyncTask{
 		$level = $server->getLevel($this->levelId);
 		if($level instanceof Level){
 			if($this->hasResult()){
-				BedrockChunkCache::getInstance($level, $this->protocolVersion)->requestCallback($this->chunkX, $this->chunkZ, $this->getResult());
+				BedrockChunkCache::getInstance($level)->requestCallback($this->chunkX, $this->chunkZ, $this->getResult());
 			}else{
 				$server->getLogger()->error("Chunk request for level #" . $this->levelId . ", x=" . $this->chunkX . ", z=" . $this->chunkZ . " doesn't have any result data");
 			}

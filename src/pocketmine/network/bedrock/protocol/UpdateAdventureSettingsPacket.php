@@ -1,18 +1,31 @@
 <?php
 
 /*
- * This file is part of BedrockProtocol.
- * Copyright (C) 2014-2022 PocketMine Team <https://github.com/pmmp/BedrockProtocol>
  *
- * BedrockProtocol is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- */
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
 
 declare(strict_types=1);
 
 namespace pocketmine\network\bedrock\protocol;
+
+#include <rules/DataPacket.h>
+
 
 use pocketmine\network\NetworkSession;
 
@@ -22,39 +35,21 @@ use pocketmine\network\NetworkSession;
  * In practice, there's no difference between the two for a custom server.
  * This includes flags such as worldImmutable (makes players unable to build), autoJump, showNameTags, noPvM, and noMvP.
  */
-class UpdateAdventureSettingsPacket extends DataPacket {
+class UpdateAdventureSettingsPacket extends DataPacket{
 	public const NETWORK_ID = ProtocolInfo::UPDATE_ADVENTURE_SETTINGS_PACKET;
 
-	private bool $noAttackingMobs;
-	private bool $noAttackingPlayers;
-	private bool $worldImmutable;
-	private bool $showNameTags;
-	private bool $autoJump;
+	/** @var bool */
+	public $noAttackingMobs;
+	/** @var bool */
+	public $noAttackingPlayers;
+	/** @var bool */
+	public $worldImmutable;
+	/** @var bool */
+	public $showNameTags;
+	/** @var bool */
+	public $autoJump;
 
-	/**
-	 * @generate-create-func
-	 */
-	public static function create(bool $noAttackingMobs, bool $noAttackingPlayers, bool $worldImmutable, bool $showNameTags, bool $autoJump) : self{
-		$result = new self;
-		$result->noAttackingMobs = $noAttackingMobs;
-		$result->noAttackingPlayers = $noAttackingPlayers;
-		$result->worldImmutable = $worldImmutable;
-		$result->showNameTags = $showNameTags;
-		$result->autoJump = $autoJump;
-		return $result;
-	}
-
-	public function isNoAttackingMobs() : bool{ return $this->noAttackingMobs; }
-
-	public function isNoAttackingPlayers() : bool{ return $this->noAttackingPlayers; }
-
-	public function isWorldImmutable() : bool{ return $this->worldImmutable; }
-
-	public function isShowNameTags() : bool{ return $this->showNameTags; }
-
-	public function isAutoJump() : bool{ return $this->autoJump; }
-
-    public function decodePayload() : void{
+	public function decodePayload(){
 		$this->noAttackingMobs = $this->getBool();
 		$this->noAttackingPlayers = $this->getBool();
 		$this->worldImmutable = $this->getBool();
@@ -62,7 +57,7 @@ class UpdateAdventureSettingsPacket extends DataPacket {
 		$this->autoJump = $this->getBool();
 	}
 
-    public function encodePayload() : void{
+	public function encodePayload(){
 		$this->putBool($this->noAttackingMobs);
 		$this->putBool($this->noAttackingPlayers);
 		$this->putBool($this->worldImmutable);

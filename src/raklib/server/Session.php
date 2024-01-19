@@ -54,6 +54,8 @@ class Session{
 
 	private const CHANNEL_COUNT = 32;
 
+	private const NEW_INCOMING_DATAGRAM_PACKETS = 2;
+
 	public static $WINDOW_SIZE = 2048;
 
 	/** @var int */
@@ -146,6 +148,9 @@ class Session{
 
 	/** @var int */
 	private $internalId;
+	private bool $isValid = true;
+	/** @var bool */
+	private bool $newIncomingDatagramValid = false;
 
 	public function __construct(SessionManager $sessionManager, \Logger $logger, InternetAddress $address, int $clientId, int $mtuSize, int $internalId, int $protocol){
 		if($mtuSize < self::MIN_MTU_SIZE){
@@ -176,6 +181,10 @@ class Session{
 		$this->protocol = $protocol;
 
 		$this->internalId = $internalId;
+	}
+
+	public function isValid() : bool{
+		return $this->isValid;
 	}
 
 	/**
@@ -540,14 +549,7 @@ class Session{
 			return;
 		}
 
-        $id = ord($packet->buffer[0]);
-
-        if ($id == 9 && $packet->reliability == 0){
-            $this->sessionManager->getLogger()->debug($this->address->getIp() . " failed login packets validation.");
-            $this->sessionManager->blockAddress($this->address->getIp(), 15);
-            return;
-        }
-
+		$id = ord($packet->buffer[0]);
 		if($id < MessageIdentifiers::ID_USER_PACKET_ENUM){ //internal data packet
 			if($this->state === self::STATE_CONNECTING){
 				if($id === ConnectionRequest::$ID){
@@ -562,6 +564,20 @@ class Session{
 				}elseif($id === NewIncomingConnection::$ID){
 					$dataPacket = new NewIncomingConnection($packet->buffer);
 					$dataPacket->decode();
+
+					if ($this->isValid) {
+						if ($packet->reliability !== PacketReliability::RELIABLE_ORDERED) {
+							var_dump('AAAAAAAAAAAAAAA');
+							$this->isValid = false;
+						}
+						/*} else if (!$dataPacket->checkValid($this->sessionManager)) {
+							//var_dump('BBBBBBBBBBBBBBB');
+							//$this->isValid = false;*/
+						/*} else if ($this->protocol === RakLib::MCPE_RAKNET_PROTOCOL_VERSION && !$this->newIncomingDatagramValid) {
+							var_dump('EEEEEEEEEEEEEEE');
+							$this->isValid = false;
+						}*/
+					}
 
 					if($dataPacket->address->port === $this->sessionManager->getPort() or !$this->sessionManager->portChecking){
 						$this->state = self::STATE_CONNECTED; //FINALLY!
@@ -611,6 +627,24 @@ class Session{
 
 		if($packet instanceof Datagram){ //In reality, ALL of these packets are datagrams.
 			$packet->decode();
+
+			if ($this->protocol === RakLib::MCPE_RAKNET_PROTOCOL_VERSION && !$this->newIncomingDatagramValid) {
+				if (count(($packets = $packet->packets)) === self::NEW_INCOMING_DATAGRAM_PACKETS) {
+					/** @var int[] $passPackets */
+					$passPackets = [];
+					foreach ($packets as $datagramPkt) {
+						$id = ord($datagramPkt->buffer[0]);
+						if ($id === NewIncomingConnection::$ID || $id === ConnectedPing::$ID) {
+							if (!in_array($id, $passPackets)) {
+								$passPackets[] = $id;
+							}
+						}
+					}
+					if (count($passPackets) === self::NEW_INCOMING_DATAGRAM_PACKETS) {
+						$this->newIncomingDatagramValid = true;
+					}
+				}
+			}
 
 			if($packet->seqNumber < $this->windowStart or $packet->seqNumber > $this->windowEnd or isset($this->ACKQueue[$packet->seqNumber])){
 				$this->logger->debug("Received duplicate or out-of-window packet from " . $this->address . " (sequence number $packet->seqNumber, window " . $this->windowStart . "-" . $this->windowEnd . ")");

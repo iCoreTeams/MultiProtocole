@@ -1,10 +1,32 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\scheduler;
 
-use pocketmine\Collectable;
+use pmmp\thread\ThreadSafeArray;
+use pmmp\thread\Runnable;
+use pocketmine\thread\NonThreadSafeValue;
 use pocketmine\Server;
 
 /**
@@ -16,21 +38,20 @@ use pocketmine\Server;
  *
  * WARNING: Do not call PocketMine-MP API methods, or save objects (and arrays containing objects) from/on other Threads!!
  */
-use function assert;
-use function igbinary_serialize;
-use function igbinary_unserialize;
+abstract class AsyncTask extends Runnable{
 
-abstract class AsyncTask extends Collectable{
+	private static ?\ArrayObject $threadLocalStorage = null;
 
 	/** @var AsyncWorker $worker */
 	public $worker = null;
+	public $workerId = 0;
 
-	/** @var \Threaded */
-	public $progressUpdates;
+	/** @var ThreadSafeArray */
+	public ThreadSafeArray $progressUpdates;
 
-	private $result = null;
-	private $serialized = false;
+	private NonThreadSafeValue|string|int|bool|null|float $result = null;
 	private $cancelRun = false;
+	private $isGarbage = false;
 	/** @var int|null */
 	private $taskId = null;
 
@@ -57,9 +78,10 @@ abstract class AsyncTask extends Collectable{
 		}
 
 		Server::getInstance()->getScheduler()->storeLocalComplex($this, $complexData);
+		$this->progressUpdates = new ThreadSafeArray;
 	}
 
-	public function run(){
+	public function run() : void{
 		$this->result = null;
 
 		if($this->cancelRun !== true){
@@ -67,22 +89,55 @@ abstract class AsyncTask extends Collectable{
 				$this->onRun();
 			}catch(\Throwable $e){
 				$this->crashed = true;
-				$this->worker->handleException($e);
+				
+				\GlobalLogger::get()->logException($e);
 			}
 		}
 
 		$this->setGarbage();
 	}
 
+	/**
+	 * Saves mixed data in thread-local storage. Data stored using this storage is **only accessible from the thread it
+	 * was stored on**. Data stored using this method will **not** be serialized.
+	 * This can be used to store references to variables which you need later on on the same thread, but not others.
+	 *
+	 * For example, plugin references could be stored in the constructor of the async task (which is called on the main
+	 * thread) using this, and then fetched in onCompletion() (which is also called on the main thread), without them
+	 * becoming serialized.
+	 *
+	 * Scalar types can be stored directly in class properties instead of using this storage.
+	 *
+	 * Objects stored in this storage can be retrieved using fetchLocal() on the same thread that this method was called
+	 * from.
+	 *
+	 * @param mixed  $complexData the data to store
+	 */
+	protected function storeLocal(string $key, $complexData) : void{
+		if(self::$threadLocalStorage === null){
+			/*
+			 * It's necessary to use an object (not array) here because pthreads is stupid. Non-default array statics
+			 * will be inherited when task classes are copied to the worker thread, which would cause unwanted
+			 * inheritance of primitive thread-locals, which we really don't want for various reasons.
+			 * It won't try to inherit objects though, so this is the easiest solution.
+			 */
+			self::$threadLocalStorage = new \ArrayObject();
+		}
+		self::$threadLocalStorage[spl_object_id($this)][$key] = $complexData;
+	}
+
 	public function isCrashed() : bool{
-		return $this->crashed or $this->isTerminated();
+		return $this->crashed;
 	}
 
 	/**
 	 * @return mixed
 	 */
 	public function getResult(){
-		return $this->serialized ? igbinary_unserialize($this->result) : $this->result;
+		if($this->result instanceof NonThreadSafeValue){
+			return $this->result->deserialize();
+		}
+		return $this->result;
 	}
 
 	public function cancelRun(){
@@ -97,7 +152,7 @@ abstract class AsyncTask extends Collectable{
 	 * @return bool
 	 */
 	public function hasResult() : bool{
-		return $this->result !== null;
+		return $this->getResult() !== null;
 	}
 
 	/**
@@ -105,8 +160,7 @@ abstract class AsyncTask extends Collectable{
 	 * @param bool  $serialize
 	 */
 	public function setResult($result, bool $serialize = true){
-		$this->result = $serialize ? igbinary_serialize($result) : $result;
-		$this->serialized = $serialize;
+		$this->result = is_scalar($result) || is_null($result) ? $result : new NonThreadSafeValue($result);
 	}
 
 	public function setTaskId(int $taskId){
@@ -121,29 +175,29 @@ abstract class AsyncTask extends Collectable{
 	}
 
 	/**
-	 * @see AsyncWorker::getFromThreadStore()
+	 * Gets something into the local thread store.
+	 * You have to initialize this in some way from the task on run
 	 *
 	 * @param string $identifier
 	 * @return mixed
 	 */
 	public function getFromThreadStore(string $identifier){
-		if($this->worker === null or $this->isGarbage()){
-			throw new \BadMethodCallException("Objects stored in AsyncWorker thread-local storage can only be retrieved during task execution");
-		}
-		return $this->worker->getFromThreadStore($identifier);
+		global $store;
+		return ($this->isGarbage() or !isset($store[$identifier])) ? null : $store[$identifier];
 	}
 
 	/**
-	 * @see AsyncWorker::saveToThreadStore()
+	 * Saves something into the local thread store.
+	 * This might get deleted at any moment.
 	 *
 	 * @param string $identifier
 	 * @param mixed  $value
 	 */
 	public function saveToThreadStore(string $identifier, $value){
-		if($this->worker === null or $this->isGarbage()){
-			throw new \BadMethodCallException("Objects can only be added to AsyncWorker thread-local storage during task execution");
+		global $store;
+		if(!$this->isGarbage()){
+			$store[$identifier] = $value;
 		}
-		$this->worker->saveToThreadStore($identifier, $value);
 	}
 
 	/**
@@ -169,10 +223,10 @@ abstract class AsyncTask extends Collectable{
 	 * Call this method from {@link AsyncTask#onRun} (AsyncTask execution thread) to schedule a call to
 	 * {@link AsyncTask#onProgressUpdate} from the main thread with the given progress parameter.
 	 *
-	 * @param mixed $progress A value that can be safely igbinary_serialize()'ed.
+	 * @param mixed $progress A value that can be safely serialize()'ed.
 	 */
-	public function publishProgress($progress){
-		$this->progressUpdates[] = igbinary_serialize($progress);
+	public function publishProgress($progress) {
+		$this->progressUpdates[] = igbinary_serialize($progress) ?? throw new \InvalidArgumentException("Progress must be serializable");
 	}
 
 	/**
@@ -193,33 +247,11 @@ abstract class AsyncTask extends Collectable{
 	 * {@link AsyncTask#onCompletion} is called.
 	 *
 	 * @param Server $server
-	 * @param mixed  $progress The parameter passed to {@link AsyncTask#publishProgress}. It is igbinary_serialize()'ed
-	 *                         and then igbinary_unserialize()'ed, as if it has been cloned.
+	 * @param mixed  $progress The parameter passed to {@link AsyncTask#publishProgress}. It is serialize()'ed
+	 *                         and then unserialize()'ed, as if it has been cloned.
 	 */
 	public function onProgressUpdate(Server $server, $progress){
 
-	}
-
-	/**
-	 * Saves mixed data in thread-local storage on the parent thread. You may use this to retain references to objects
-	 * or arrays which you need to access in {@link AsyncTask::onCompletion} which cannot be stored as a property of
-	 * your task (due to them becoming serialized).
-	 *
-	 * Scalar types can be stored directly in class properties instead of using this storage.
-	 *
-	 * WARNING: THIS METHOD SHOULD ONLY BE CALLED FROM THE MAIN THREAD!
-	 *
-	 * @param mixed $complexData the data to store
-	 *
-	 * @return void
-	 * @throws \BadMethodCallException if called from any thread except the main thread
-	 */
-	protected function storeLocal($complexData, Server $server = null){
-		if($server === null){
-			$server = Server::getInstance();
-			assert($server !== null, "Call this method only from the main thread!");
-		}
-		Server::getInstance()->getScheduler()->storeLocalComplex($this, $complexData);
 	}
 
 	/**
@@ -267,14 +299,18 @@ abstract class AsyncTask extends Collectable{
 		return $server->getScheduler()->peekLocalComplex($this);
 	}
 
-	public function cleanObject(){
-		foreach($this as $p => $v){
-			if(!($v instanceof \Threaded)){
-				$this->{$p} = null;
-			}
+	public function cleanObject() : void{
+		if (self::$threadLocalStorage !== null && isset(self::$threadLocalStorage[$this])) {
+			unset(self::$threadLocalStorage[$this]);
 		}
+        $this->setGarbage();
+	}
 
-		$this->setGarbage();
+	public function isGarbage() : bool{
+		return $this->isGarbage;
+	}
+
+	public function setGarbage(){
+		$this->isGarbage = true;
 	}
 }
-

@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 /**
@@ -9,8 +29,9 @@ declare(strict_types=1);
 namespace pocketmine\utils;
 
 use DaveRandom\CallbackValidator\CallbackType;
-use pocketmine\ThreadManager;
-use function array_map;
+use pocketmine\thread\ThreadManager;
+use pocketmine\errorhandler\ErrorTypeToStringMap;
+use pocketmine\thread\ThreadCrashInfoFrame;
 use function bin2hex;
 use function chunk_split;
 use function count;
@@ -30,6 +51,7 @@ use function implode;
 use function is_array;
 use function is_object;
 use function is_string;
+use function lcg_value;
 use function memory_get_usage;
 use function ord;
 use function php_uname;
@@ -58,6 +80,7 @@ use function substr;
 use function sys_get_temp_dir;
 use function trim;
 use const AF_INET;
+use const M_PI;
 use const PHP_EOL;
 use const PHP_INT_MAX;
 use const PHP_INT_SIZE;
@@ -76,6 +99,21 @@ class Utils{
 	private static $serverUniqueId = null;
 
 	/**
+	 * Generates an unique identifier to a callable
+	 *
+	 * @param callable $variable
+	 *
+	 * @return string
+	 */
+	public static function getCallableIdentifier(callable $variable){
+		if(is_array($variable)){
+			return sha1(strtolower(spl_object_id($variable[0])) . "::" . strtolower($variable[1]));
+		}else{
+			return sha1(strtolower($variable));
+		}
+	}
+
+	/**
 	 * Gets this machine / server instance unique ID
 	 * Returns a hash, the first 32 characters (or 16 if raw)
 	 * will be an identifier that won't change frequently.
@@ -85,19 +123,6 @@ class Utils{
 	 *
 	 * @return UUID
 	 */
-
-    public static function cloneCallback() : \Closure{
-        return static function(object $o){
-            return clone $o;
-        };
-    }
-
-    public static function cloneObjectArray(array $array) : array{
-        /** @phpstan-var \Closure(T) : T $callback */
-        $callback = self::cloneCallback();
-        return array_map($callback, $array);
-    }
-
 	public static function getMachineUniqueId(string $extra = "") : UUID{
 		if(self::$serverUniqueId !== null and $extra === ""){
 			return self::$serverUniqueId;
@@ -169,6 +194,175 @@ class Utils{
 	}
 
 	/**
+	 * Returns a readable identifier for the class of the given object. Sanitizes class names for anonymous classes.
+	 *
+	 * @throws \ReflectionException
+	 */
+	public static function getNiceClassName(object $obj) : string{
+		$reflect = new \ReflectionClass($obj);
+		if($reflect->isAnonymous()){
+			$filename = $reflect->getFileName();
+
+			return "anonymous@" . ($filename !== false ?
+					Filesystem::cleanPath($filename) . "#L" . $reflect->getStartLine() :
+					"internal"
+				);
+		}
+
+		return $reflect->getName();
+	}
+
+	/**
+	 * @param mixed[][] $trace
+	 * @phpstan-param list<array<string, mixed>> $trace
+	 *
+	 * @return string[]
+	 */
+	public static function printableTrace(array $trace, int $maxStringLength = 80) : array{
+		$messages = [];
+		for($i = 0; isset($trace[$i]); ++$i){
+			$params = "";
+			if(isset($trace[$i]["args"]) || isset($trace[$i]["params"])){
+				if(isset($trace[$i]["args"])){
+					$args = $trace[$i]["args"];
+				}else{
+					$args = $trace[$i]["params"];
+				}
+				/** @var mixed[] $args */
+
+				$paramsList = [];
+				$offset = 0;
+				foreach($args as $argId => $value){
+					$paramsList[] = ($argId === $offset ? "" : "$argId: ") . self::stringifyValueForTrace($value, $maxStringLength);
+					$offset++;
+				}
+				$params = implode(", ", $paramsList);
+			}
+			$messages[] = "#$i " . (isset($trace[$i]["file"]) ? Filesystem::cleanPath($trace[$i]["file"]) : "") . "(" . (isset($trace[$i]["line"]) ? $trace[$i]["line"] : "") . "):" . (isset($trace[$i]["class"]) ? $trace[$i]["class"] . (($trace[$i]["type"] === "dynamic" || $trace[$i]["type"] === "->") ? "->" : "::") : "") . (is_array($trace[$i]) ? ($trace[$i]["function"] . "(" . Utils::printable($params) . ")") : "");
+		}
+		return $messages;
+	}
+
+	/**
+	 * @phpstan-template TValue
+	 * @phpstan-param TValue|false $value
+	 * @phpstan-param string|\Closure() : string $context
+	 * @phpstan-return TValue
+	 */
+	public static function assumeNotFalse(mixed $value, \Closure|string $context = "This should never be false") : mixed{
+		if($value === false){
+			throw new AssumptionFailedError("Assumption failure: " . (is_string($context) ? $context : $context()) . " (THIS IS A BUG)");
+		}
+		return $value;
+	}
+
+	/**
+	 * Similar to {@link Utils::printableTrace()}, but associates metadata such as file and line number with each frame.
+	 * This is used to transmit thread-safe information about crash traces to the main thread when a thread crashes.
+	 *
+	 * @param mixed[][] $rawTrace
+	 * @phpstan-param list<array<string, mixed>> $rawTrace
+	 *
+	 * @return ThreadCrashInfoFrame[]
+	 */
+	public static function printableTraceWithMetadata(array $rawTrace, int $maxStringLength = 80) : array{
+		$printableTrace = self::printableTrace($rawTrace, $maxStringLength);
+		$safeTrace = [];
+		foreach($printableTrace as $frameId => $printableFrame){
+			$rawFrame = $rawTrace[$frameId];
+			$safeTrace[$frameId] = new ThreadCrashInfoFrame(
+				$printableFrame,
+				$rawFrame["file"] ?? "unknown",
+				$rawFrame["line"] ?? 0
+			);
+		}
+
+		return $safeTrace;
+	}
+
+	/**
+	 * @return mixed[][]
+	 * @phpstan-return list<array<string, mixed>>
+	 */
+	public static function currentTrace(int $skipFrames = 0) : array{
+		++$skipFrames; //omit this frame from trace, in addition to other skipped frames
+		if(function_exists("xdebug_get_function_stack") && count($trace = @xdebug_get_function_stack()) !== 0){
+			$trace = array_reverse($trace);
+		}else{
+			$e = new \Exception();
+			$trace = $e->getTrace();
+		}
+		for($i = 0; $i < $skipFrames; ++$i){
+			unset($trace[$i]);
+		}
+		return array_values($trace);
+	}
+
+	/**
+	 * @return string[]
+	 */
+	public static function printableCurrentTrace(int $skipFrames = 0) : array{
+		return self::printableTrace(self::currentTrace(++$skipFrames));
+	}
+
+
+	private static function printableExceptionMessage(\Throwable $e) : string{
+		$errstr = preg_replace('/\s+/', ' ', trim($e->getMessage()));
+
+		$errno = $e->getCode();
+		if(is_int($errno)){
+			try{
+				$errno = ErrorTypeToStringMap::get($errno);
+			}catch(\InvalidArgumentException $ex){
+				//pass
+			}
+		}
+
+		$errfile = $e->getFile();
+		$errline = $e->getLine();
+
+		return get_class($e) . ": \"$errstr\" ($errno) in \"$errfile\" at line $errline";
+	}
+
+	/**
+	 * @param mixed[] $trace
+	 * @return string[]
+	 */
+	public static function printableExceptionInfo(\Throwable $e, $trace = null) : array{
+		if($trace === null){
+			$trace = $e->getTrace();
+		}
+
+		$lines = [self::printableExceptionMessage($e)];
+		$lines[] = "--- Stack trace ---";
+		foreach(Utils::printableTrace($trace) as $line){
+			$lines[] = "  " . $line;
+		}
+		for($prev = $e->getPrevious(); $prev !== null; $prev = $prev->getPrevious()){
+			$lines[] = "--- Previous ---";
+			$lines[] = self::printableExceptionMessage($prev);
+			foreach(Utils::printableTrace($prev->getTrace()) as $line){
+				$lines[] = "  " . $line;
+			}
+		}
+		$lines[] = "--- End of exception information ---";
+		return $lines;
+	}
+
+	private static function stringifyValueForTrace(mixed $value, int $maxStringLength) : string{
+		return match(true){
+			is_object($value) => "object " . self::getNiceClassName($value) . "#" . spl_object_id($value),
+			is_array($value) => "array[" . count($value) . "]",
+			is_string($value) => "string[" . strlen($value) . "] " . substr(Utils::printable($value), 0, $maxStringLength),
+			is_bool($value) => $value ? "true" : "false",
+			is_int($value) => "int " . $value,
+			is_float($value) => "float " . $value,
+			$value === null => "null",
+			default => gettype($value) . " " . Utils::printable((string) $value)
+		};
+	}
+
+	/**
 	 * Returns the current Operating System
 	 * Windows => win
 	 * MacOS => mac
@@ -182,31 +376,47 @@ class Utils{
 	 *
 	 * @return string
 	 */
-	public static function getOS(bool $recalculate = false) : string{
-		if(self::$os === null or $recalculate){
+	public static function getOS(bool $recalculate = false) : OS{
+		if(self::$os === null || $recalculate){
 			$uname = php_uname("s");
 			if(stripos($uname, "Darwin") !== false){
 				if(strpos(php_uname("m"), "iP") === 0){
-					self::$os = "ios";
+					self::$os = OS::IOS;
 				}else{
-					self::$os = "mac";
+					self::$os = OS::MACOS;
 				}
-			}elseif(stripos($uname, "Win") !== false or $uname === "Msys"){
-				self::$os = "win";
+			}elseif(stripos($uname, "Win") !== false || $uname === "Msys"){
+				self::$os = OS::WINDOWS;
 			}elseif(stripos($uname, "Linux") !== false){
 				if(@file_exists("/system/build.prop")){
-					self::$os = "android";
+					self::$os = OS::ANDROID;
 				}else{
-					self::$os = "linux";
+					self::$os = OS::LINUX;
 				}
-			}elseif(stripos($uname, "BSD") !== false or $uname === "DragonFly"){
-				self::$os = "bsd";
+			}elseif(stripos($uname, "BSD") !== false || $uname === "DragonFly"){
+				self::$os = OS::BSD;
 			}else{
-				self::$os = "other";
+				self::$os = OS::UNKNOWN;
 			}
 		}
 
 		return self::$os;
+	}
+
+	/**
+	 * Generator which forces array keys to string during iteration.
+	 * This is necessary because PHP has an anti-feature where it casts numeric string keys to integers, leading to
+	 * various crashes.
+	 *
+	 * @phpstan-template TKeyType of string
+	 * @phpstan-template TValueType
+	 * @phpstan-param array<TKeyType, TValueType> $array
+	 * @phpstan-return \Generator<TKeyType, TValueType, void, void>
+	 */
+	public static function stringifyKeys(array $array) : \Generator{
+		foreach($array as $key => $value){ // @phpstan-ignore-line - this is where we fix the stupid bullshit with array keys :)
+			yield (string) $key => $value;
+		}
 	}
 
 	/**
@@ -490,32 +700,9 @@ class Utils{
 	}
 
 	public static function cleanPath($path){
-		return str_replace(["\\", ".php", "phar://", str_replace(["\\", "phar://"], ["/", ""], \pocketmine\PATH), str_replace(["\\", "phar://"], ["/", ""], \pocketmine\PLUGIN_PATH)], ["/", "", "", "", ""], $path);
-	}
-
-	/**
-	 * @param array $trace
-	 *
-	 * @return array
-	 */
-	public static function printableTrace(array $trace) : array{
-		$messages = [];
-		for($i = 0; isset($trace[$i]); ++$i){
-			$params = "";
-			if(isset($trace[$i]["args"]) or isset($trace[$i]["params"])){
-				if(isset($trace[$i]["args"])){
-					$args = $trace[$i]["args"];
-				}else{
-					$args = $trace[$i]["params"];
-				}
-
-				$params = implode(", ", array_map(function($value){
-					return (is_object($value) ? get_class($value) . " object" : gettype($value) . " " . (is_array($value) ? "Array()" : Utils::printable(@strval($value))));
-				}, $args));
-			}
-			$messages[] = "#$i " . (isset($trace[$i]["file"]) ? self::cleanPath($trace[$i]["file"]) : "") . "(" . (isset($trace[$i]["line"]) ? $trace[$i]["line"] : "") . "): " . (isset($trace[$i]["class"]) ? $trace[$i]["class"] . (($trace[$i]["type"] === "dynamic" or $trace[$i]["type"] === "->") ? "->" : "::") : "") . $trace[$i]["function"] . "(" . Utils::printable($params) . ")";
-		}
-		return $messages;
+		$pmPath = defined(\pocketmine\PATH) ? \pocketmine\PATH : "";
+		$pluginPath = defined(\pocketmine\PLUGIN_PATH) ? \pocketmine\PLUGIN_PATH : "";
+		return str_replace(["\\", ".php", "phar://", str_replace(["\\", "phar://"], ["/", ""], $pmPath), str_replace(["\\", "phar://"], ["/", ""], $pluginPath)], ["/", "", "", "", ""], $path);
 	}
 
 	/**
@@ -602,7 +789,7 @@ class Utils{
 			//non-class function
 			return $func->getName();
 		}
-		return "closure@" . self::cleanPath($func->getFileName()) . "#L" . $func->getStartLine();
+		return "closure@" . Filesystem::cleanPath($func->getFileName()) . "#L" . $func->getStartLine();
 	}
 
 	/**
@@ -621,66 +808,4 @@ class Utils{
 
 		return true; //stfu operator
 	}
-
-    public static function assumeNotFalse(mixed $value, \Closure|string $context = "This should never be false") : mixed{
-        if($value === false){
-            throw new AssumptionFailedError("Assumption failure: " . (is_string($context) ? $context : $context()) . " (THIS IS A BUG)");
-        }
-        return $value;
-    }
-
-    /**
-     * Generator which forces array keys to string during iteration.
-     * This is necessary because PHP has an anti-feature where it casts numeric string keys to integers, leading to
-     * various crashes.
-     *
-     * @phpstan-template TKeyType of string
-     * @phpstan-template TValueType
-     * @phpstan-param array<TKeyType, TValueType> $array
-     * @phpstan-return \Generator<TKeyType, TValueType, void, void>
-     */
-    public static function stringifyKeys(array $array) : \Generator{
-        foreach($array as $key => $value){ // @phpstan-ignore-line - this is where we fix the stupid bullshit with array keys :)
-            yield (string) $key => $value;
-        }
-    }
-
-    /**
-     * Extracts one-line tags from the doc-comment
-     *
-     * @return string[] an array of tagName => tag value. If the tag has no value, an empty string is used as the value.
-     */
-    public static function parseDocComment(string $docComment) : array{
-        $rawDocComment = substr($docComment, 3, -2); //remove the opening and closing markers
-        if($rawDocComment === false){ //usually empty doc comment, but this is safer and statically analysable
-            return [];
-        }
-        preg_match_all('/(*ANYCRLF)^[\t ]*(?:\* )?@([a-zA-Z]+)(?:[\t ]+(.+?))?[\t ]*$/m', $rawDocComment, $matches);
-
-        $result = array_combine($matches[1], $matches[2]);
-        return $result;
-    }
-
-    public static function stupid_json_decode(string $json, bool $assoc = false)
-    {
-        if (preg_match('/^\[(.+)\]$/s', $json, $matches) > 0) {
-            $parts = preg_split('/(?:"(?:\\"|[^"])*"|)\K(,)/', $matches[1]); //Splits on commas not inside quotes, ignoring escaped quotes
-            foreach ($parts as $k => $part) {
-                $part = trim($part);
-                if ($part === "") {
-                    $part = "\"\"";
-                }
-                $parts[$k] = $part;
-            }
-
-            $fixed = "[" . implode(",", $parts) . "]";
-            if (($ret = json_decode($fixed, $assoc)) === null) {
-                throw new \InvalidArgumentException("Failed to fix JSON: " . json_last_error_msg() . "(original: $json, modified: $fixed)");
-            }
-
-            return $ret;
-        }
-
-        return json_decode($json, $assoc);
-    }
 }

@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\item;
@@ -8,14 +28,6 @@ use pocketmine\block\BlockIds;
 
 interface ItemIds extends BlockIds{
 
-
-    public const NETHERITE_SWORD = 743;
-    public const NETHERITE_HELMET = 748;
-    public const NETHERITE_CHESTPLATE = 749;
-    public const NETHERITE_LEGGINS = 750;
-    public const NETHERITE_BOOTS = 751;
-
-    public const NETHERITE_SCRAP = 752;
 	public const IRON_SHOVEL = 256;
 	public const IRON_PICKAXE = 257;
 	public const IRON_AXE = 258;

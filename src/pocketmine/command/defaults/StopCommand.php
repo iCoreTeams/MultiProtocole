@@ -1,12 +1,32 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\command\defaults;
 
 use pocketmine\command\Command;
 use pocketmine\command\CommandSender;
-use pocketmine\lang\TranslationContainer;
+use pocketmine\event\TranslationContainer;
 
 class StopCommand extends VanillaCommand{
 
@@ -14,7 +34,8 @@ class StopCommand extends VanillaCommand{
 		parent::__construct(
 			$name,
 			"%pocketmine.command.stop.description",
-			"%commands.stop.usage"
+			"%commands.stop.usage",
+			[]
 		);
 		$this->setPermission("pocketmine.command.stop");
 	}

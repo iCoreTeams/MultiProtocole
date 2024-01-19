@@ -1,56 +1,61 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\scheduler;
 
 use pocketmine\Server;
-use pocketmine\timings\Timings;
-use pocketmine\utils\Utils;
-use function count;
-use const PTHREADS_INHERIT_CONSTANTS;
-use const PTHREADS_INHERIT_INI;
+use pocketmine\event\Timings;
+use pmmp\thread\ThreadSafeArray;
+use pmmp\thread\Thread as NativeThread;
 
 class AsyncPool{
 
-	private const WORKER_START_OPTIONS = PTHREADS_INHERIT_INI | PTHREADS_INHERIT_CONSTANTS;
-
-	/** @var Server */
-	private $server;
-
-	protected $size;
-
-	/** @var int */
-	private $workerMemoryLimit;
+	private const WORKER_START_OPTIONS = NativeThread::INHERIT_INI | NativeThread::INHERIT_CONSTANTS;
 
 	/** @var AsyncTask[] */
-	private $tasks = [];
+	private array $tasks = [];
 	/** @var int[] */
-	private $taskWorkers = [];
+	private array $taskWorkers = [];
 
 	/** @var AsyncWorker[] */
-	private $workers = [];
+	private array $workers = [];
 	/** @var int[] */
-	private $workerUsage = [];
-	/** @var int[] */
-	private $workerLastUsed = [];
-
+	private array $workerUsage = [];
+	private array $workerLastUsed = [];
 	/** @var \Closure[] */
 	private $workerStartHooks = [];
 
-	public function __construct(Server $server, int $size, int $workerMemoryLimit){
-		$this->server = $server;
-		$this->size = $size;
-		$this->workerMemoryLimit = $workerMemoryLimit;
-	}
-
-	public function getSize() : int{
-		return $this->size;
-	}
-
-	public function increaseSize(int $newSize){
-		if($newSize > $this->size){
-			$this->size = $newSize;
+	public function __construct(
+		private Server $server,
+		protected int $size,
+		protected int $workerMemoryLimit
+	){
+		for($i = 0; $i < $this->size; ++$i){
+			$this->workerUsage[$i] = 0;
+			$this->workers[$i] = new AsyncWorker($this->server->getLogger(), $i + 1);
+			$this->workers[$i]->setClassLoader($this->server->getLoader());
+			$this->workers[$i]->start();
 		}
 	}
 
@@ -79,13 +84,20 @@ class AsyncPool{
 		unset($this->workerStartHooks[spl_object_id($hook)]);
 	}
 
-	/**
-	 * Returns an array of IDs of currently running workers.
-	 *
-	 * @return int[]
-	 */
-	public function getRunningWorkers() : array{
-		return array_keys($this->workers);
+	public function getSize() : int{
+		return $this->size;
+	}
+
+	public function increaseSize(int $newSize){
+		if($newSize > $this->size){
+			for($i = $this->size; $i < $newSize; ++$i){
+				$this->workerUsage[$i] = 0;
+				$this->workers[$i] = new AsyncWorker($this->server->getLogger(), $i + 1);
+				$this->workers[$i]->setClassLoader($this->server->getLoader());
+				$this->workers[$i]->start();
+			}
+			$this->size = $newSize;
+		}
 	}
 
 	/**
@@ -118,13 +130,39 @@ class AsyncPool{
 			throw new \InvalidArgumentException("Invalid worker $worker");
 		}
 
-		$task->progressUpdates = new \Threaded;
+		$task->progressUpdates = new ThreadSafeArray;
+		$task->worker = ($workerInstance = $this->getWorker($worker));
+		$task->workerId = $worker;
 		$this->tasks[$task->getTaskId()] = $task;
 
-		$this->getWorker($worker)->stack($task);
+		$workerInstance->stack($task);
 		$this->workerUsage[$worker]++;
 		$this->taskWorkers[$task->getTaskId()] = $worker;
 		$this->workerLastUsed[$worker] = time();
+	}
+
+	public function submitTask(AsyncTask $task){
+		if(isset($this->tasks[$task->getTaskId()]) or $task->isGarbage()){
+			return;
+		}
+
+		$worker = $this->selectWorker();
+		$this->submitTaskToWorker($task, $worker);
+		return $worker;
+	}
+
+	public function shutdownUnusedWorkers() : int{
+		$time = time();
+
+		$ret = 0;
+		foreach($this->workerUsage as $i => $usage){
+			if($usage === 0 and (!isset($this->workerLastUsed[$i]) or $this->workerLastUsed[$i] + 300 < $time)){
+				$this->workers[$i]->quit();
+				unset($this->workers[$i], $this->workerUsage[$i], $this->workerLastUsed[$i]);
+				$ret++;
+			}
+		}
+		return $ret;
 	}
 
 	public function selectWorker() : int{
@@ -153,15 +191,12 @@ class AsyncPool{
 		return $worker;
 	}
 
-	public function submitTask(AsyncTask $task){
-		if(isset($this->tasks[$task->getTaskId()]) or $task->isGarbage()){
-			return;
-		}
-
-		$worker = $this->selectWorker();
-		$this->submitTaskToWorker($task, $worker);
-		return $worker;
-	}
+	/*
+	* @return int[]
+	*/
+   public function getRunningWorkers() : array{
+	   return array_keys($this->workers);
+   }
 
 	private function removeTask(AsyncTask $task, bool $force = false){
 		if(isset($this->taskWorkers[$task->getTaskId()])){
@@ -205,20 +240,6 @@ class AsyncPool{
 		}
 	}
 
-	public function shutdownUnusedWorkers() : int{
-		$time = time();
-
-		$ret = 0;
-		foreach($this->workerUsage as $i => $usage){
-			if($usage === 0 and (!isset($this->workerLastUsed[$i]) or $this->workerLastUsed[$i] + 300 < $time)){
-				$this->workers[$i]->quit();
-				unset($this->workers[$i], $this->workerUsage[$i], $this->workerLastUsed[$i]);
-				$ret++;
-			}
-		}
-		return $ret;
-	}
-
 	public function collectTasks(){
 		Timings::$schedulerAsyncTimer->startTiming();
 
@@ -233,7 +254,7 @@ class AsyncPool{
 				}
 
 				$this->removeTask($task);
-			}elseif($task->isCrashed()){
+			}elseif($task->isTerminated() or $task->isCrashed()){
 				$this->server->getLogger()->critical("Could not execute asynchronous task " . (new \ReflectionClass($task))->getShortName() . ": Task crashed");
 				$this->removeTask($task, true);
 			}
@@ -243,7 +264,6 @@ class AsyncPool{
 
 		Timings::$schedulerAsyncTimer->stopTiming();
 	}
-
 	public function shutdown() : void{
 		$this->collectTasks();
 		$this->removeTasks();

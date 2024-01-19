@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 
@@ -88,6 +108,11 @@ class ResourcePackManager{
 		}else{
 			throw new InvalidArgumentException("Can't load pack $packPath: file or directory not found");
 		}
+	}
+
+	public function addPack(ResourcePack $pack) : void{
+		$this->resourcePacks[] = $pack;
+		$this->uuidList[$pack->getPackId()] = $pack;
 	}
 
 	/**

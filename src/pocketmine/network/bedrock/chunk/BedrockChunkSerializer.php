@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\network\bedrock\chunk;
@@ -63,8 +83,17 @@ final class BedrockChunkSerializer{
 		$blocks = SubChunkConverter::convertSubChunkXZY($subChunk->getBlockIdArray(), $subChunk->getBlockDataArray());
 
 		// 1 is network format (palette out of runtimeIDs), 0 is storage format (palette out of NBT tags)
-		$result->putByte(($blocks->getBitsPerBlock() << 1) | 1);
-		$result->put($blocks->getWordArray()); // LInt array
+	    if($blocks->getBitsPerBlock() === 0){
+			//TODO: we use these in memory, but the game doesn't support them yet
+			//polyfill them with 1-bpb instead
+			$bitsPerBlock = 1;
+			$words = str_repeat("\x00", PalettedBlockArray::getExpectedWordArraySize(1));
+		}else{
+			$bitsPerBlock = $blocks->getBitsPerBlock();
+			$words = $blocks->getWordArray();
+		}
+		$result->putByte(($bitsPerBlock << 1) | 1);
+		$result->put($words);
 		$palette = $blocks->getPalette();
 
 		//these LSHIFT by 1 uvarints are optimizations: the client expects zigzag varints here

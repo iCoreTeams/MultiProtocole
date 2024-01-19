@@ -1,15 +1,37 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine;
 
 use pocketmine\block\Air;
 use pocketmine\block\Block;
-use pocketmine\block\SignPost;
 use pocketmine\entity\Arrow;
 use pocketmine\entity\Human;
 use pocketmine\entity\Item as DroppedItem;
+use pocketmine\entity\object\MinecartAbstract;
+use pocketmine\entity\object\MinecartEmpty;
+use pocketmine\entity\Rideable;
 use pocketmine\entity\Skin;
 use pocketmine\event\inventory\CraftItemEvent;
 use pocketmine\event\inventory\InventoryPickupArrowEvent;
@@ -25,8 +47,9 @@ use pocketmine\event\player\PlayerToggleSneakEvent;
 use pocketmine\event\player\PlayerToggleSprintEvent;
 use pocketmine\event\player\PlayerTransferEvent;
 use pocketmine\event\server\DataPacketSendEvent;
-use pocketmine\form\Form;
-use pocketmine\form\FormValidationException;
+use pocketmine\event\TextContainer;
+use pocketmine\event\Timings;
+use pocketmine\event\TranslationContainer;
 use pocketmine\inventory\BaseTransaction;
 use pocketmine\inventory\DropItemTransaction;
 use pocketmine\inventory\PlayerInventory;
@@ -37,8 +60,6 @@ use pocketmine\item\enchantment\Enchantment;
 use pocketmine\item\FlintSteel;
 use pocketmine\item\Item;
 use pocketmine\item\SpawnEgg;
-use pocketmine\lang\TextContainer;
-use pocketmine\lang\TranslationContainer;
 use pocketmine\level\Level;
 use pocketmine\level\WeakPosition;
 use pocketmine\math\Vector3;
@@ -70,11 +91,10 @@ use pocketmine\network\bedrock\protocol\ItemFrameDropItemPacket;
 use pocketmine\network\bedrock\protocol\LevelSoundEventPacket;
 use pocketmine\network\bedrock\protocol\LoginPacket;
 use pocketmine\network\bedrock\protocol\MobEquipmentPacket;
-use pocketmine\network\bedrock\protocol\ModalFormRequestPacket;
 use pocketmine\network\bedrock\protocol\NetworkChunkPublisherUpdatePacket;
 use pocketmine\network\bedrock\protocol\NetworkSettingsPacket;
-use pocketmine\network\bedrock\protocol\OpenSignPacket;
 use pocketmine\network\bedrock\protocol\PlayerActionPacket;
+use pocketmine\network\bedrock\protocol\PlayerInputPacket;
 use pocketmine\network\bedrock\protocol\PlayerListPacket;
 use pocketmine\network\bedrock\protocol\PlayerSkinPacket;
 use pocketmine\network\bedrock\protocol\PlayStatusPacket;
@@ -97,6 +117,8 @@ use pocketmine\network\bedrock\protocol\types\CommandData;
 use pocketmine\network\bedrock\protocol\types\CommandEnum;
 use pocketmine\network\bedrock\protocol\types\CommandParameter;
 use pocketmine\network\bedrock\protocol\types\CommandPermissions;
+use pocketmine\network\bedrock\protocol\types\CommandOverload;
+use pocketmine\network\bedrock\protocol\types\CompressionAlgorithm;
 use pocketmine\network\bedrock\protocol\types\DimensionIds;
 use pocketmine\network\bedrock\protocol\types\Experiments;
 use pocketmine\network\bedrock\protocol\types\inventory\ContainerIds;
@@ -115,6 +137,8 @@ use pocketmine\network\bedrock\protocol\types\UseItemTransactionData;
 use pocketmine\network\bedrock\protocol\UpdateAbilitiesPacket;
 use pocketmine\network\bedrock\protocol\UpdateAdventureSettingsPacket;
 use pocketmine\network\bedrock\protocol\UpdateAttributesPacket;
+use pocketmine\network\bedrock\protocol\ModalFormRequestPacket;
+use pocketmine\network\bedrock\protocol\PlayerAuthInputPacket;
 use pocketmine\network\bedrock\StaticPacketCache;
 use pocketmine\network\bedrock\utils\BedrockUtils;
 use pocketmine\network\bedrock\VerifyLoginTask;
@@ -129,12 +153,12 @@ use pocketmine\network\mcpe\protocol\EntityEventPacket as MCPEEntityEventPacket;
 use pocketmine\network\mcpe\protocol\LevelEventPacket as MCPELevelEventPacket;
 use pocketmine\network\mcpe\protocol\LevelSoundEventPacket as MCPELevelSoundEventPacket;
 use pocketmine\network\mcpe\protocol\TakeItemEntityPacket as MCPETakeItemEntityPacket;
+use pocketmine\form\Form;
 use pocketmine\network\NetworkInterface;
 use pocketmine\resourcepacks\ResourcePack;
 use pocketmine\tile\ItemFrame;
 use pocketmine\tile\Spawnable;
 use pocketmine\tile\Tile;
-use pocketmine\timings\Timings;
 use pocketmine\utils\TextFormat;
 use pocketmine\utils\UUID;
 use function array_merge;
@@ -175,10 +199,14 @@ class BedrockPlayer extends Player{
 	/** @var int */
 	protected $clientClosingWindowId = -1;
 
-    protected int $formIdCounter = 0;
+	/** @var bool */
+	protected $enableCompression = true;
 
-    /** @var Form[] */
-    protected array $forms = [];
+	/** @var string|null */
+	protected $lastRequestedFullSkinId = null;
+	protected int $formIdCounter = 0;
+	/** @var Form[] */
+	protected array $forms = [];
 
 	/**
 	 * @internal
@@ -228,11 +256,20 @@ class BedrockPlayer extends Player{
 	 * @param string          $ip
 	 * @param int             $port
 	 */
-	public function __construct(NetworkInterface $interface, $clientID, $ip, $port){
-		parent::__construct($interface, $clientID, $ip, $port);
+	public function __construct(NetworkInterface $interface, $clientID, $ip, $port, bool $isValid){
+		parent::__construct($interface, $clientID, $ip, $port, $isValid);
 
 		$this->sessionAdapter = new PlayerNetworkSessionAdapter($this->server, $this);
-		$this->chunkCache = BedrockChunkCache::getInstance($this->level, $this->getChunkProtocol());
+		$this->chunkCache = BedrockChunkCache::getInstance($this->level);
+	}
+
+	/**
+	 * @internal
+	 *
+	 * @param bool $enableCompression
+	 */
+	public function setEnableCompression(bool $enableCompression) : void{
+		$this->enableCompression = $enableCompression;
 	}
 
 	/**
@@ -241,6 +278,13 @@ class BedrockPlayer extends Player{
 	 */
 	public function isBedrock() : bool{
 		return true;
+	}
+
+	/**
+	 * @return bool
+	 */
+	public function hasNetworkCompression() : bool{
+		return $this->enableCompression;
 	}
 
 	/**
@@ -254,45 +298,10 @@ class BedrockPlayer extends Player{
 		}
 	}
 
-    public function handleRequestNetworkSettings(RequestNetworkSettingsPacket $packet) : bool
-    {
-        $currentProtocol = ProtocolInfo::CURRENT_PROTOCOL;
-        if($packet->getProtocolVersion() !== $currentProtocol){
-            if($packet->getProtocolVersion() < $currentProtocol){
-                $message = "disconnectionScreen.outdatedClient";
-                $this->sendPlayStatus(PlayStatusPacket::LOGIN_FAILED_CLIENT, true);
-            }else{
-                $message = "disconnectionScreen.outdatedServer";
-                $this->sendPlayStatus(PlayStatusPacket::LOGIN_FAILED_SERVER, true);
-            }
-            $this->close("", $message, false);
-
-            return true;
-        }
-
-        $batch = new BedrockPacketBatch();
-        $pk = NetworkSettingsPacket::create(
-            NetworkSettingsPacket::COMPRESS_EVERYTHING,
-            NetworkSettingsPacket::ZLIB,
-            false,
-            0,
-            0
-        );
-        $batch->putPacket($pk);
-        $this->sendEncoded(ProtocolInfo::MCPE_RAKNET_PACKET_ID . $batch->buffer, false, true);
-
-        $this->server->getLogger()->debug("Session start handshake completed, awaiting login packet");
-        return true;
-    }
-
-	public function handleBedrockLogin(LoginPacket $packet) : bool{
-		if($this->loggedIn){
-			return false;
-		}
-
+	protected function checkProtocol(int $protocol) : bool{
 		$currentProtocol = ProtocolInfo::CURRENT_PROTOCOL;
-		if($packet->protocol !== $currentProtocol){
-            if($packet->protocol < $currentProtocol){
+		if($protocol !== $currentProtocol){
+			if($protocol < $currentProtocol){
 				$message = "disconnectionScreen.outdatedClient";
 				$this->sendPlayStatus(PlayStatusPacket::LOGIN_FAILED_CLIENT, true);
 			}else{
@@ -300,6 +309,41 @@ class BedrockPlayer extends Player{
 				$this->sendPlayStatus(PlayStatusPacket::LOGIN_FAILED_SERVER, true);
 			}
 			$this->close("", $message, false);
+
+			return false;
+		}
+
+		return true;
+	}
+
+	public function handleRequestNetworkSettings(RequestNetworkSettingsPacket $packet) : bool{
+		if($this->enableCompression){
+			return false;
+		}
+
+		if(!$this->checkProtocol($packet->protocolVersion)){
+			return true;
+		}
+
+		$pk = new NetworkSettingsPacket();
+		$pk->compressionThreshold = NetworkSettingsPacket::COMPRESS_EVERYTHING;
+		$pk->compressionAlgorithm = CompressionAlgorithm::ZLIB;
+		$pk->enableClientThrottling = false;
+		$pk->clientThrottleThreshold = 0;
+		$pk->clientThrottleScalar = 0.0;
+		$this->sendDataPacket($pk, false, true);
+
+		$this->enableCompression = true;
+
+		return true;
+	}
+
+	public function handleBedrockLogin(LoginPacket $packet) : bool{
+		if(!$this->enableCompression or $this->loggedIn){
+			return false;
+		}
+
+		if(!$this->checkProtocol($packet->protocol)){
 			return true;
 		}
 
@@ -409,12 +453,7 @@ class BedrockPlayer extends Player{
 			throw new \InvalidArgumentException("We should never have reached here if the key is invalid");
 		}
 
-		$skipEncryption = function() use ($packet): bool {
-			$proxyToken = $packet->proxyToken;
-			return $proxyToken === self::PROXY_TOKEN;
-		};
-
-		if(EncryptionContext::$ENABLED && !$skipEncryption()){
+		if(EncryptionContext::$ENABLED){
 			$this->getServer()->getScheduler()->getAsyncPool()->submitTask(new PrepareEncryptionTask(
 				$identityPublicKey,
 				function(string $encryptionKey, string $handshakeJwt, string $_, string $_1) use ($packet) : void{
@@ -428,7 +467,13 @@ class BedrockPlayer extends Player{
 
 					$this->awaitingEncryptionHandshake = true;
 
-                    $this->cipher = EncryptionContext::fakeGCM($encryptionKey);
+					if($packet->protocol < 429) {
+						$this->cipher = EncryptionContext::cfb8($encryptionKey);
+					} else {
+						$this->cipher = EncryptionContext::fakeGCM($encryptionKey);
+					}
+
+
 					$this->server->getLogger()->debug("Enabled encryption for " . $this->username);
 				}
 			));
@@ -438,6 +483,14 @@ class BedrockPlayer extends Player{
 	}
 
 	public function handlePlayerSkin(PlayerSkinPacket $packet) : bool{
+		if($packet->skin->getFullSkinId() === $this->lastRequestedFullSkinId){
+			//TODO: HACK! In 1.19.60, the client sends its skin back to us if we sent it a skin different from the one
+			//it's using. We need to prevent this from causing a feedback loop.
+			$this->server->getLogger()->debug("Refused duplicate skin change request for " . $this->getName());
+			return true;
+		}
+		$this->lastRequestedFullSkinId = $packet->skin->getFullSkinId();
+
 		if(!$packet->skin->isValid()){
 			return false;
 		}
@@ -562,7 +615,7 @@ class BedrockPlayer extends Player{
 
 					$pk = new ResourcePackDataInfoPacket();
 					$pk->packId = $pack->getPackId();
-					$pk->maxChunkSize = self::PACK_CHUNK_SIZE; //1MB
+					$pk->maxChunkSize = self::PACK_CHUNK_SIZE;
 					$pk->chunkCount = (int) ceil($pack->getPackSize() / $pk->maxChunkSize);
 					$pk->compressedPackSize = $pack->getPackSize();
 					$pk->sha256 = $pack->getSha256();
@@ -746,6 +799,7 @@ class BedrockPlayer extends Player{
 		}
 
 		$this->server->addOnlinePlayer($this);
+		$this->server->checkPlayerOnline($this);
 
 		$this->sendFullPlayerList();
 
@@ -804,57 +858,44 @@ class BedrockPlayer extends Player{
 	 */
 	public function sendSettings()
     {
-        $this->syncAbilities($this);
-        $this->syncAdventureSettings(); //TODO: we might be able to do this with the abilities packet alone
-    }
-
-    public function hasFiniteResources() : bool{
-        return $this->isSurvival() || $this->isAdventure();
-    }
-
-    public function syncAbilities(BedrockPlayer $for) : void{
-        $isOp = $this->isOp();
-
         //ALL of these need to be set for the base layer, otherwise the client will cry
         $boolAbilities = [
-            UpdateAbilitiesPacketLayer::ABILITY_ALLOW_FLIGHT => $for->getAllowFlight(),
-            UpdateAbilitiesPacketLayer::ABILITY_FLYING => $for->isFlying(),
-            UpdateAbilitiesPacketLayer::ABILITY_NO_CLIP => $for->isSpectator(),
-            UpdateAbilitiesPacketLayer::ABILITY_OPERATOR => $isOp,
-            UpdateAbilitiesPacketLayer::ABILITY_TELEPORT => $for->hasPermission("pocketmine.command.teleport"),
-            UpdateAbilitiesPacketLayer::ABILITY_INVULNERABLE => $for->isCreative(),
+            UpdateAbilitiesPacketLayer::ABILITY_ALLOW_FLIGHT => $this->allowFlight,
+            UpdateAbilitiesPacketLayer::ABILITY_FLYING => $this->flying,
+            UpdateAbilitiesPacketLayer::ABILITY_NO_CLIP => $this->isSpectator(),
+            UpdateAbilitiesPacketLayer::ABILITY_OPERATOR => $this->isOp(),
+            UpdateAbilitiesPacketLayer::ABILITY_TELEPORT => $this->hasPermission("pocketmine.command.teleport"),
+            UpdateAbilitiesPacketLayer::ABILITY_INVULNERABLE => $this->isCreative(),
             UpdateAbilitiesPacketLayer::ABILITY_MUTED => false,
             UpdateAbilitiesPacketLayer::ABILITY_WORLD_BUILDER => false,
-            UpdateAbilitiesPacketLayer::ABILITY_INFINITE_RESOURCES => !$for->hasFiniteResources(),
+            UpdateAbilitiesPacketLayer::ABILITY_INFINITE_RESOURCES => $this->isCreative(),
             UpdateAbilitiesPacketLayer::ABILITY_LIGHTNING => false,
-            UpdateAbilitiesPacketLayer::ABILITY_BUILD => !$for->isSpectator(),
-            UpdateAbilitiesPacketLayer::ABILITY_MINE => !$for->isSpectator(),
-            UpdateAbilitiesPacketLayer::ABILITY_DOORS_AND_SWITCHES => !$for->isSpectator(),
-            UpdateAbilitiesPacketLayer::ABILITY_OPEN_CONTAINERS => !$for->isSpectator(),
-            UpdateAbilitiesPacketLayer::ABILITY_ATTACK_PLAYERS => !$for->isSpectator(),
-            UpdateAbilitiesPacketLayer::ABILITY_ATTACK_MOBS => !$for->isSpectator(),
+            UpdateAbilitiesPacketLayer::ABILITY_BUILD => !$this->isSpectator(),
+            UpdateAbilitiesPacketLayer::ABILITY_MINE => !$this->isSpectator(),
+            UpdateAbilitiesPacketLayer::ABILITY_DOORS_AND_SWITCHES => !$this->isSpectator(),
+            UpdateAbilitiesPacketLayer::ABILITY_OPEN_CONTAINERS => !$this->isSpectator(),
+            UpdateAbilitiesPacketLayer::ABILITY_ATTACK_PLAYERS => !$this->isSpectator(),
+            UpdateAbilitiesPacketLayer::ABILITY_ATTACK_MOBS => !$this->isSpectator(),
         ];
 
-        $this->sendDataPacket(UpdateAbilitiesPacket::create(
-            $isOp ? CommandPermissions::OPERATOR : CommandPermissions::NORMAL,
-            $isOp ? PlayerPermissions::OPERATOR : PlayerPermissions::MEMBER,
-            $for->getId(),
-            [
-                //TODO: dynamic flying speed! FINALLY!!!!!!!!!!!!!!!!!
-                new UpdateAbilitiesPacketLayer(UpdateAbilitiesPacketLayer::LAYER_BASE, $boolAbilities, 0.05, 0.1),
-            ]
-        ));
-    }
+        $pk = new UpdateAbilitiesPacket();
+        $pk->commandPermission = ($this->isOp() ? CommandPermissions::OPERATOR : CommandPermissions::NORMAL);
+        $pk->playerPermission = ($this->isOp() ? PlayerPermissions::OPERATOR : PlayerPermissions::MEMBER);
+        $pk->targetActorUniqueId = $this->getId();
+        $pk->abilityLayers = [
+            //TODO: dynamic flying speed! FINALLY!!!!!!!!!!!!!!!!!
+            new UpdateAbilitiesPacketLayer(UpdateAbilitiesPacketLayer::LAYER_BASE, $boolAbilities, 0.05, 0.1),
+        ];
 
-    public function syncAdventureSettings() : void{
-        //everything except auto jump is handled via UpdateAbilitiesPacket
-        $this->sendDataPacket(UpdateAdventureSettingsPacket::create(
-            noAttackingMobs: false,
-            noAttackingPlayers: false,
-            worldImmutable: false,
-            showNameTags: true,
-            autoJump: $this->hasAutoJump()
-        ));
+        $this->sendDataPacket($pk);
+
+        $pk = new UpdateAdventureSettingsPacket();
+        $pk->noAttackingMobs = false;
+        $pk->noAttackingPlayers = false;
+        $pk->worldImmutable = false;
+        $pk->showNameTags = true;
+        $pk->autoJump = $this->autoJump;
+        $this->sendDataPacket($pk);
     }
 
 	protected function onTerrainReady() : void{
@@ -1081,7 +1122,7 @@ class BedrockPlayer extends Player{
 	}
 
 	public function handleBedrockBlockPickRequest(BlockPickRequestPacket $packet) : bool{
-        if($this->isCreative(true)){
+		if($this->isCreative()){
 			$block = $this->level->getBlockAt($packet->blockX, $packet->blockY, $packet->blockZ);
 
 			$item = $block->getPickedItem();
@@ -1110,6 +1151,49 @@ class BedrockPlayer extends Player{
 		return false;
 	}
 
+	public function toggleSprint(bool $sprint) : bool{
+		if($sprint === $this->sprinting){
+			return true;
+		}
+		$ev = new PlayerToggleSprintEvent($this, $sprint);
+		$ev->call();
+		if($ev->isCancelled()){
+			$this->sendData($this);
+			return false;
+		}
+		$this->setSprinting($sprint);
+		return true;
+	}
+
+	public function toggleGlide(bool $glide) : bool{
+		if ($glide === $this->gliding) return true;
+
+		$ev = new PlayerToggleGlideEvent($this, $glide);
+		$ev->call();
+
+		if ($ev->isCancelled()) {
+			$this->sendData($this);
+			return false;
+		}
+
+		$this->setGliding($glide);
+		return true;
+	}
+
+	public function toggleSneak(bool $sneak) : bool{
+		if($sneak === $this->sneaking){
+			return true;
+		}
+		$ev = new PlayerToggleSneakEvent($this, $sneak);
+		$ev->call();
+		if($ev->isCancelled()){
+			$this->sendData($this);
+			return false;
+		}
+		$this->setSneaking($sneak);
+		return true;
+	}
+
 	public function handleBedrockPlayerAction(PlayerActionPacket $packet) : bool{
 		if($this->spawned === false or (!$this->isAlive() and $packet->action !== PlayerActionPacket::ACTION_RESPAWN)){
 			return true;
@@ -1131,8 +1215,7 @@ class BedrockPlayer extends Player{
 				}
 				$block = $target->getSide($packet->face);
 				if($block->getId() === Block::FIRE){
-                    $this->level->setBlock($block, new Air());
-                    $this->level->broadcastLevelSoundEvent($block, MCPELevelSoundEventPacket::SOUND_EXTINGUISH_FIRE);
+					$this->level->setBlock($block, new Air());
 					break;
 				}
 
@@ -1201,40 +1284,16 @@ class BedrockPlayer extends Player{
 				$this->jump();
 				return true;
 			case PlayerActionPacket::ACTION_START_SPRINT:
-				$ev = new PlayerToggleSprintEvent($this, true);
-				$ev->call();
-				if($ev->isCancelled()){
-					$this->sendData($this);
-				}else{
-					$this->setSprinting(true);
-				}
+				$this->toggleSprint(true);
 				return true;
 			case PlayerActionPacket::ACTION_STOP_SPRINT:
-				$ev = new PlayerToggleSprintEvent($this, false);
-				$ev->call();
-				if($ev->isCancelled()){
-					$this->sendData($this);
-				}else{
-					$this->setSprinting(false);
-				}
+				$this->toggleSprint(false);
 				return true;
 			case PlayerActionPacket::ACTION_START_SNEAK:
-				$ev = new PlayerToggleSneakEvent($this, true);
-				$ev->call();
-				if($ev->isCancelled()){
-					$this->sendData($this);
-				}else{
-					$this->setSneaking(true);
-				}
+				$this->toggleSneak(true);
 				return true;
 			case PlayerActionPacket::ACTION_STOP_SNEAK:
-				$ev = new PlayerToggleSneakEvent($this, false);
-				$ev->call();
-				if($ev->isCancelled()){
-					$this->sendData($this);
-				}else{
-					$this->setSneaking(false);
-				}
+				$this->toggleSneak(false);
 				return true;
 			case PlayerActionPacket::ACTION_START_GLIDE:
 				if($this->inventory->getChestplate()->getId() !== Item::ELYTRA){
@@ -1243,39 +1302,25 @@ class BedrockPlayer extends Player{
 					$this->inventory->sendContents($this);
 					return false;
 				}
-				$ev = new PlayerToggleGlideEvent($this, true);
-				$ev->call();
-				if($ev->isCancelled()){
-					$this->sendData($this);
-				}else{
-					$this->setGliding(true);
-				}
+				$this->toggleGlide(true);
 				return true;
 			case PlayerActionPacket::ACTION_STOP_GLIDE:
-				$ev = new PlayerToggleGlideEvent($this, false);
-				$ev->call();
-				if($ev->isCancelled()){
-					$this->sendData($this);
-				}else{
-					$this->setGliding(false);
-				}
+				$this->toggleGlide(false);
 				return true;
 			case PlayerActionPacket::ACTION_CRACK_BREAK:
 				$block = $this->level->getBlock($pos);
 				$this->level->broadcastLevelEvent($pos, MCPELevelEventPacket::EVENT_PARTICLE_PUNCH_BLOCK, $block->getId() | ($block->getDamage() << 8) | ($packet->face << 16));
 				break;
+			case PlayerActionPacket::ACTION_INTERACT_BLOCK:
+			case PlayerActionPacket::ACTION_START_ITEM_USE_ON:
+			case PlayerActionPacket::ACTION_STOP_ITEM_USE_ON:
+			case PlayerActionPacket::HANDLED_TELEPORT:
+			case PlayerActionPacket::MISSED_SWING:
+			case PlayerActionPacket::START_CRAWLING:
+			case PlayerActionPacket::STOP_CRAWLING:
 			case PlayerActionPacket::ACTION_CREATIVE_PLAYER_DESTROY_BLOCK:
 				//TODO: do we need to handle this?
 				break;
-            case PlayerActionPacket::ACTION_INTERACT_BLOCK:
-                if($this->lastClickBlockData !== null){ //A hack for right-click spam!
-                    $data = $this->lastClickBlockData;
-                    $this->lastClickBlockData = null;
-
-                    $item = $this->inventory->getItemInHand(); //A hack to fix issues with custom NBT! TODO: don't check that tags in Item::equals
-                    $this->useItem($data->getBlockPos(), $data->getClickPos(), $data->getFace(), $item);
-                }
-                return true;
 			default:
 				$this->server->getLogger()->debug("Unhandled/unknown player action type " . $packet->action . " from " . $this->getName());
 				return false;
@@ -1284,6 +1329,13 @@ class BedrockPlayer extends Player{
 		$this->setUsingItem(false);
 
 		return true;
+	}
+
+	public function setHealth(int|float $health, bool $send = false) : void{
+		if ($send) {
+			$this->sendAttributes();
+		}
+		parent::setHealth($health);
 	}
 
 	public function handleBedrockAnimate(AnimatePacket $packet) : bool{
@@ -1325,6 +1377,17 @@ class BedrockPlayer extends Player{
 
 		return true;
 	}
+
+    public function handleBedrockPlayerInput(PlayerInputPacket $packet) : bool{
+        if($this->spawned === false or !$this->isAlive()){
+            return true;
+        }
+        if ($this->linkedEntity instanceof MinecartEmpty) {
+            $this->linkedEntity->setCurrentSpeed($packet->motionY);
+            return true;
+        }
+        return false;
+    }
 
 	public function handleBedrockSetPlayerGameType(SetPlayerGameTypePacket $packet) : bool{
 		if($packet->gamemode !== $this->gamemode){
@@ -1577,18 +1640,29 @@ class BedrockPlayer extends Player{
 				return false;
 			}
 
-			switch($data->getActionType()){
-				case UseItemOnActorTransactionData::ACTION_ATTACK:
-					$this->attackEntity($target);
-					break;
-				case UseItemOnActorTransactionData::ACTION_INTERACT:
-					$this->interactEntity($target);
-					break;
-				default:
-					$this->server->getLogger()->debug("Unhandled/unknown interaction type " . $data->getActionType() . "received from " . $this->getName());
+			switch($data->getActionType()) {
+                case UseItemOnActorTransactionData::ACTION_ATTACK:
+                    if ($target instanceof MinecartAbstract) { //TODO: Boat
+                        if ($this->linkedEntity === $target) {
+                            $target->setLinked(0, $this);
+                        }
+                        $target->flagForDespawn();
+                    } else {
+                        $this->attackEntity($target);
+                    }
+                    break;
+                case UseItemOnActorTransactionData::ACTION_INTERACT:
+                    if ($target instanceof Rideable) {
+                        $this->linkEntity($target);
+                    } else {
+                        $this->interactEntity($target);
+                    }
+                    break;
+                default:
+                    $this->server->getLogger()->debug("Unhandled/unknown interaction type " . $data->getActionType() . "received from " . $this->getName());
 
-					$result = false;
-			}
+                    $result = false;
+            }
 		}elseif($data instanceof ReleaseItemTransactionData){
 			if($this->inventory->getHeldItemSlot() !== $data->getHotbarSlot()){
 				$this->equipItem($data->getHotbarSlot(), $data->getHotbarSlot());
@@ -1643,8 +1717,8 @@ class BedrockPlayer extends Player{
 		$pk = new EmotePacket();
 		$pk->actorRuntimeId = $this->id;
 		$pk->emoteId = $packet->emoteId;
-        $pk->xboxUserId = $packet->xboxUserId;
-        $pk->platformChatId = $packet->platformChatId;
+		$pk->xboxUserId = $packet->xboxUserId;
+		$pk->platformChatId = $packet->platformChatId;
 		$pk->flags |= EmotePacket::FLAG_SERVER_SIDE;
 
 		BedrockUtils::splitPlayers($this->hasSpawned, $_, $bedrockPlayers);
@@ -1662,12 +1736,7 @@ class BedrockPlayer extends Player{
 			}
 
 			if($entity instanceof Arrow and $entity->canBePickedUp()){
-                $potionId = $entity->getPotionId();
-                if($potionId === 0){
-                    $item = Item::get(Item::ARROW, 0, 1);
-                }else{
-                    $item = Item::get(Item::ARROW, $entity->getPotionId() + 1, 1);
-                }
+				$item = Item::get(Item::ARROW, $entity->getPotionId() + 1, 1);
 
 				$ev = new InventoryPickupArrowEvent($this->inventory, $entity);
 				if(!$this->inventory->canAddItem($item) or ($entity->getBow() !== null and $entity->getBow()->hasEnchantment(Enchantment::INFINITY))){
@@ -1741,7 +1810,7 @@ class BedrockPlayer extends Player{
 					}
 				}
 			}else{ //There can still be a pending request
-				BedrockChunkCache::getInstance($level, $this->getChunkProtocol())->unregister($this, $x, $z);
+				BedrockChunkCache::getInstance($level)->unregister($this, $x, $z);
 			}
 
 			unset($this->usedChunks[$index]);
@@ -1755,7 +1824,7 @@ class BedrockPlayer extends Player{
 		parent::setLevel($level);
 
 		if($this->level !== null){
-			$this->chunkCache = BedrockChunkCache::getInstance($this->level, $this->getChunkProtocol());
+			$this->chunkCache = BedrockChunkCache::getInstance($this->level);
 		}
 		return $this;
 	}
@@ -1875,6 +1944,39 @@ class BedrockPlayer extends Player{
 	}
 
 	/**
+	 * Sends a Form to the player, or queue to send it if a form is already open.
+	 *
+	 * @throws \InvalidArgumentException
+	 */
+	public function sendForm(Form $form) : void{
+		$id = $this->formIdCounter++;
+		$pk = new ModalFormRequestPacket;
+		$pk->formId = $id;
+		$pk->formData = json_encode($form, JSON_THROW_ON_ERROR);
+		if($this->sendDataPacket($pk)){
+			$this->forms[$id] = $form;
+		}
+	}
+
+	public function onFormSubmit(int $formId, mixed $responseData) : bool{
+		if(!isset($this->forms[$formId])){
+			$this->getServer()->getLogger()->debug("Got unexpected response for form $formId");
+			return false;
+		}
+
+		try{
+			$this->forms[$formId]->handleResponse($this, $responseData);
+		}catch(FormValidationException $e){
+			$this->getServer()->getLogger()->critical("Failed to validate form " . get_class($this->forms[$formId]) . ": " . $e->getMessage());
+			$this->getServer()->getLogger()->logException($e);
+		}finally{
+			unset($this->forms[$formId]);
+		}
+
+		return true;
+	}
+
+	/**
 	 * Transfers a player to another server.
 	 *
 	 * @param string $address The IP address or hostname of the destination server
@@ -1901,9 +2003,10 @@ class BedrockPlayer extends Player{
 	}
 
 	public function sendCommandData(){
+		//$isCurrentProtocol = ($this->getProtocolVersion() === ProtocolInfo::CURRENT_PROTOCOL);
 		$pk = new AvailableCommandsPacket();
 		foreach($this->server->getCommandMap()->getCommands() as $name => $command){
-			if(isset($pk->commandData[$command->getName()]) or $command->getName() === "help" or !$command->testPermissionSilent($this) or !$command->isRegistered()){
+			if(isset($pk->commandData[$command->getName()]) or $command->getName() === "help" or !$command->isRegistered()){
 				continue;
 			}
 
@@ -1913,10 +2016,13 @@ class BedrockPlayer extends Player{
 			$data->flags = 0;
 			$data->permission = 0;
 
-			$i = 0;
 			foreach($command->getDefaultCommandData()["overloads"] as $overload){
-				$data->overloads[$i] = [];
-				foreach($overload["input"]["parameters"] as $param){
+				$parameters = [];
+				$params = ($overload instanceof \pocketmine\command\data\CommandOverload) ? $overload->getInput()->parameters : $overload["input"]["parameters"];
+				foreach($params as $param) {
+					if ($param instanceof \pocketmine\command\data\CommandParameter) {
+						$param = $param->toArray();
+					}
 					$parameter = new CommandParameter();
 					$parameter->paramName = $param["name"];
 					$parameter->paramType = AvailableCommandsPacket::ARG_FLAG_VALID | AvailableCommandsPacket::argTypeFromString($param["type"]);
@@ -1926,9 +2032,9 @@ class BedrockPlayer extends Player{
 						$enum->enumValues = $param["enum_values"];
 					}
 					$parameter->isOptional = $param["isOptional"] ?? false;
-					$data->overloads[$i][] = $parameter;
+					$parameters[] = $parameter;
 				}
-				++$i;
+				$data->overloads[] = new CommandOverload(false, $parameters);
 			}
 
 			$aliases = $command->getAliases();
@@ -1962,7 +2068,7 @@ class BedrockPlayer extends Player{
 		$this->sendDataPacket($pk, false, true);
 	}
 
-	public function sendPlayStatus(int $status, bool $immediate = false): void{
+	public function sendPlayStatus(int $status, bool $immediate = false){
 		$pk = new PlayStatusPacket();
 		$pk->status = $status;
 		$this->sendDataPacket($pk, false, $immediate);
@@ -1984,7 +2090,7 @@ class BedrockPlayer extends Player{
 			return true;
 		}
 
-		if(!$packet instanceof BedrockPacket) {
+		if(!$packet instanceof BedrockPacket){
             $packet = PacketTranslator::translate($packet); //try to translate this packet to client, otherwise ignore
             if($packet === null){
                 return false;
@@ -2023,7 +2129,11 @@ class BedrockPlayer extends Player{
 
 		if($immediate){
 			// Skip any queues
-			$this->sendEncoded(ProtocolInfo::MCPE_RAKNET_PACKET_ID . NetworkCompression::compress($stream->buffer, $compressionLevel), false, true);
+			if($this->enableCompression){
+				$this->sendEncoded(ProtocolInfo::MCPE_RAKNET_PACKET_ID . NetworkCompression::compress($stream->buffer, $compressionLevel), false, true);
+			}else{
+				$this->sendEncoded(ProtocolInfo::MCPE_RAKNET_PACKET_ID . $stream->buffer, false, true);
+			}
 			return true;
 		}
 
@@ -2050,11 +2160,15 @@ class BedrockPlayer extends Player{
 			}
 		});
 
-		if(!$forceSync and !$immediate and $this->server->isNetworkCompressionAsync()){
-			$task = new CompressBatchTask($stream->buffer, $compressionLevel, $promise);
-			$this->server->getScheduler()->scheduleAsyncTask($task);
+		if($this->enableCompression){
+			if(!$forceSync and !$immediate and $this->server->isNetworkCompressionAsync()){
+				$task = new CompressBatchTask($stream->buffer, $compressionLevel, $promise);
+				$this->server->getScheduler()->scheduleAsyncTask($task);
+			}else{
+				$promise->resolve(NetworkCompression::compress($stream->buffer, $compressionLevel));
+			}
 		}else{
-			$promise->resolve(NetworkCompression::compress($stream->buffer, $compressionLevel));
+			$promise->resolve($stream->buffer);
 		}
 
 		$timings->stopTiming();
@@ -2165,68 +2279,6 @@ class BedrockPlayer extends Player{
 		$pk->entries = [PlayerListEntry::createRemovalEntry($uuid)];
 		$this->sendDataPacket($pk);
 	}
-
-    /**
-     * Opens the player's sign editor GUI for the sign at the given position.
-     * TODO: add support for editing the rear side of the sign (not currently supported due to technical limitations)
-     */
-    public function openSignEditor(Vector3 $position) : void{
-        $block = $this->getLevel()->getBlock($position);
-        if($block instanceof SignPost){
-            $this->getLevel()->setBlock($position, $block->setEditorEntityRuntimeId($this->getId()));
-
-            $pk = new OpenSignPacket();
-            $pk->blockPosition = $position;
-            $pk->front = true;
-            $this->sendDataPacket($pk);
-        }else{
-            throw new \InvalidArgumentException("Block at this position is not a sign");
-        }
-    }
-
-    public function onFormSent(int $id, Form $form) : bool{
-        $pk = new ModalFormRequestPacket();
-        $pk->formId = $id;
-        $pk->formData = json_encode($form->getData(), JSON_THROW_ON_ERROR);
-        return $this->sendDataPacket($pk);
-    }
-
-    /**
-     * Sends a Form to the player, or queue to send it if a form is already open.
-     *
-     * @throws \InvalidArgumentException
-     */
-    public function sendForm(Form $form) : void{
-        $id = $this->formIdCounter++;
-        if($this->onFormSent($id, $form)){
-            $this->forms[$id] = $form;
-        }
-    }
-
-    public function onFormSubmit(int $formId, mixed $responseData) : bool{
-        if(!isset($this->forms[$formId])){
-            $this->server->getLogger()->debug("Got unexpected response for form $formId from " . $this->getName());
-            return false;
-        }
-
-        try{
-            $this->forms[$formId]->handleResponse($this, $responseData);
-        }catch(FormValidationException $e){
-            $this->server->getLogger()->critical("Failed to validate form " . get_class($this->forms[$formId]) . ": " . $e->getMessage() . " from " . $this->getName());
-            $this->server->getLogger()->logException($e);
-        }finally{
-            unset($this->forms[$formId]);
-        }
-
-        return true;
-    }
-
-    /**
-     * @return Form[]
-     */
-    public function getForms():array{
-        return $this->forms;
-    }
 
 	/**
 	 * @return int

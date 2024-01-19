@@ -1,11 +1,29 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\plugin;
 
-use pocketmine\event\plugin\PluginDisableEvent;
-use pocketmine\event\plugin\PluginEnableEvent;
 use pocketmine\Server;
 
 use function class_exists;
@@ -20,15 +38,12 @@ use const DIRECTORY_SEPARATOR;
  */
 class PharPluginLoader implements PluginLoader{
 
-	/** @var Server */
-	private $server;
-
 	/**
 	 * @param Server $server
 	 */
-	public function __construct(Server $server){
-		$this->server = $server;
-	}
+	public function __construct(
+		private Server $server
+	){}
 
 	/**
 	 * Loads the plugin contained in $file
@@ -37,7 +52,7 @@ class PharPluginLoader implements PluginLoader{
 	 *
 	 * @return Plugin|null
 	 */
-	public function loadPlugin(string $file): ?Plugin{
+	public function loadPlugin(string $file){
 		if(($description = $this->getPluginDescription($file)) instanceof PluginDescription){
 			$this->server->getLogger()->info($this->server->getLanguage()->translateString("pocketmine.plugin.load", [$description->getFullName()]));
 			$dataFolder = dirname($file) . DIRECTORY_SEPARATOR . $description->getName();
@@ -46,11 +61,11 @@ class PharPluginLoader implements PluginLoader{
 			}
 			$file = "phar://$file";
 			$className = $description->getMain();
-			$this->server->getLoader()->addPath("$file/src");
+			$this->server->getLoader()->addPath($description->getSrcNamespacePrefix(), "$file/src");
 
 			if(class_exists($className, true)){
 				$plugin = new $className();
-				$this->initPlugin($plugin, $description, $dataFolder, $file);
+				$this->server->getPluginManager()->initPlugin($this, $plugin, $description, $dataFolder, $file);
 
 				return $plugin;
 			}else{
@@ -68,7 +83,7 @@ class PharPluginLoader implements PluginLoader{
 	 *
 	 * @return null|PluginDescription
 	 */
-	public function getPluginDescription(string $file): ?PluginDescription{
+	public function getPluginDescription(string $file){
 		$phar = new \Phar($file);
 		if(isset($phar["plugin.yml"])){
 			$pluginYml = $phar["plugin.yml"];
@@ -87,42 +102,5 @@ class PharPluginLoader implements PluginLoader{
 	 */
 	public function getPluginFilters() : string{
 		return "/\\.phar$/i";
-	}
-
-	/**
-	 * @param PluginBase        $plugin
-	 * @param PluginDescription $description
-	 * @param string            $dataFolder
-	 * @param string            $file
-	 */
-	private function initPlugin(PluginBase $plugin, PluginDescription $description, string $dataFolder, string $file): void{
-		$plugin->init($this, $this->server, $description, $dataFolder, $file);
-		$plugin->onLoad();
-	}
-
-	/**
-	 * @param Plugin $plugin
-	 */
-	public function enablePlugin(Plugin $plugin): void{
-		if($plugin instanceof PluginBase and !$plugin->isEnabled()){
-			$this->server->getLogger()->info($this->server->getLanguage()->translateString("pocketmine.plugin.enable", [$plugin->getDescription()->getFullName()]));
-
-			$plugin->setEnabled(true);
-
-			(new PluginEnableEvent($plugin))->call();
-		}
-	}
-
-	/**
-	 * @param Plugin $plugin
-	 */
-	public function disablePlugin(Plugin $plugin): void{
-		if($plugin instanceof PluginBase and $plugin->isEnabled()){
-			$this->server->getLogger()->info($this->server->getLanguage()->translateString("pocketmine.plugin.disable", [$plugin->getDescription()->getFullName()]));
-
-			(new PluginDisableEvent($plugin))->call();
-
-			$plugin->setEnabled(false);
-		}
 	}
 }

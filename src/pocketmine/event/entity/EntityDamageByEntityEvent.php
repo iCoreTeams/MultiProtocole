@@ -68,21 +68,26 @@ class EntityDamageByEntityEvent extends EntityDamageEvent{
 		}
 	}
 
-	public function applyPostAttack() : void{
+	public function applyPostAttack(float $damage, float $deltaX, float $deltaY, float $deltaZ) : void{
+		$flag = true;
 		if($this->getCause() === self::CAUSE_ENTITY_ATTACK and $this->damager instanceof Human){
 			$inventory = $this->damager->getInventory();
-
 			if($inventory instanceof PlayerInventory){
 				$item = $inventory->getItemInHand();
 
 				if($this->entity instanceof Living and ($enchantment = $item->getEnchantment(Enchantment::KNOCKBACK)) !== null){
-					$this->entity->knockBack($this->entity->x - $this->damager->x, $this->entity->z - $this->damager->z, $enchantment->getLevel() * 1.25);
+					$flag = false;
+					$this->entity->knockBack($deltaX, $deltaZ, $enchantment->getLevel() * 1.1);
 				}
 
 				if(($enchantment = $item->getEnchantment(Enchantment::FIRE_ASPECT)) !== null){
 					$this->entity->setOnFire(4.0 * $enchantment->getLevel());
 				}
 			}
+		}
+
+		if($flag){
+			$this->entity->knockBack($deltaX, $deltaZ);
 		}
 	}
 

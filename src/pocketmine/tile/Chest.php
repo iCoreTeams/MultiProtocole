@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\tile;
@@ -7,7 +27,6 @@ namespace pocketmine\tile;
 use pocketmine\inventory\ChestInventory;
 use pocketmine\inventory\DoubleChestInventory;
 use pocketmine\inventory\InventoryHolder;
-use pocketmine\item\Item;
 use pocketmine\level\Level;
 use pocketmine\nbt\tag\CompoundTag;
 use pocketmine\nbt\tag\IntTag;
@@ -28,7 +47,7 @@ class Chest extends Spawnable implements InventoryHolder, Container, Nameable{
 		$this->initItems($nbt);
 	}
 
-    public function close(){
+	public function close(){
 		if($this->closed === false){
 			foreach($this->getInventory()->getViewers() as $player){
 				$player->removeWindow($this->getInventory());
@@ -147,6 +166,8 @@ class Chest extends Spawnable implements InventoryHolder, Container, Nameable{
 
 		$this->createPair($tile);
 
+		//$this->spawnToAll();
+		//$tile->spawnToAll();
 		$this->onChanged();
 		$tile->onChanged();
 		$this->checkPairing();

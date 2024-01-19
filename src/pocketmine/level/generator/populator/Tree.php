@@ -2,22 +2,25 @@
 
 /*
  *
- *  ____            _        _   __  __ _                  __  __ ____  
- * |  _ \ ___   ___| | _____| |_|  \/  (_)_ __   ___      |  \/  |  _ \ 
- * | |_) / _ \ / __| |/ / _ \ __| |\/| | | '_ \ / _ \_____| |\/| | |_) |
- * |  __/ (_) | (__|   <  __/ |_| |  | | | | | |  __/_____| |  | |  __/ 
- * |_|   \___/ \___|_|\_\___|\__|_|  |_|_|_| |_|\___|     |_|  |_|_| 
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
  *
- * @author PocketMine Team
- * @link http://www.pocketmine.net/
- * 
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
  *
 */
+
+declare(strict_types=1);
 
 namespace pocketmine\level\generator\populator;
 
@@ -28,65 +31,49 @@ use pocketmine\level\generator\object\Tree as ObjectTree;
 use pocketmine\utils\Random;
 
 class Tree extends Populator{
-	private $randomAmount = 1;
-	private $baseAmount = 0;
+	/** @var ChunkManager */
+	private $level;
+	private $randomAmount;
+	private $baseAmount;
 
 	private $type;
 
-	/**
-	 * Tree constructor.
-	 *
-	 * @param int $type
-	 */
 	public function __construct($type = Sapling::OAK){
 		$this->type = $type;
 	}
 
-	/**
-	 * @param $amount
-	 */
 	public function setRandomAmount($amount){
 		$this->randomAmount = $amount;
 	}
 
-	/**
-	 * @param $amount
-	 */
 	public function setBaseAmount($amount){
 		$this->baseAmount = $amount;
 	}
 
-	/**
-	 * @param ChunkManager $level
-	 * @param              $chunkX
-	 * @param              $chunkZ
-	 * @param Random $random
-	 *
-	 * @return mixed|void
-	 */
-	public function populate(ChunkManager $level, $chunkX, $chunkZ, Random $random){
-		$amount = $random->nextRange(0, $this->randomAmount) + $this->baseAmount;
+	public function populate(ChunkManager $level, int $chunkX, int $chunkZ, Random $random){
+		$this->level = $level;
+		$amount = $random->nextRange(0, $this->randomAmount + 1) + $this->baseAmount;
 		for($i = 0; $i < $amount; ++$i){
 			$x = $random->nextRange($chunkX << 4, ($chunkX << 4) + 15);
 			$z = $random->nextRange($chunkZ << 4, ($chunkZ << 4) + 15);
-			$y = $this->getHighestWorkableBlock($level, $x, $z);
+			$y = $this->getHighestWorkableBlock($x, $z);
 			if($y === -1){
 				continue;
 			}
-			ObjectTree::growTree($level, $x, $y, $z, $random, $this->type);
+			ObjectTree::growTree($this->level, $x, $y, $z, $random, $this->type);
 		}
 	}
 
-	private function getHighestWorkableBlock(ChunkManager $level, int $x, int $z) : int{
-		for($y = 127; $y >= 0; --$y){
-			$b = $level->getBlockIdAt($x, $y, $z);
+	private function getHighestWorkableBlock($x, $z){
+		for($y = 127; $y > 0; --$y){
+			$b = $this->level->getBlockIdAt($x, $y, $z);
 			if($b === Block::DIRT or $b === Block::GRASS){
-				return $y + 1;
+				break;
 			}elseif($b !== 0 and $b !== Block::SNOW_LAYER){
 				return -1;
 			}
 		}
 
-		return -1;
+		return ++$y;
 	}
 }

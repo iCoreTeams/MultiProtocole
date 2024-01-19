@@ -1,60 +1,55 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\command;
 
-use pocketmine\command\defaults\BanCommand;
-use pocketmine\command\defaults\BanIpCommand;
-use pocketmine\command\defaults\BanListCommand;
-use pocketmine\command\defaults\DefaultGamemodeCommand;
-use pocketmine\command\defaults\DeopCommand;
-use pocketmine\command\defaults\DifficultyCommand;
 use pocketmine\command\defaults\DumpMemoryCommand;
-use pocketmine\command\defaults\EffectCommand;
-use pocketmine\command\defaults\EnchantCommand;
-use pocketmine\command\defaults\GamemodeCommand;
 use pocketmine\command\defaults\GarbageCollectorCommand;
 use pocketmine\command\defaults\GiveCommand;
 use pocketmine\command\defaults\HelpCommand;
-use pocketmine\command\defaults\KickCommand;
-use pocketmine\command\defaults\KillCommand;
-use pocketmine\command\defaults\ListCommand;
-use pocketmine\command\defaults\MeCommand;
-use pocketmine\command\defaults\OpCommand;
-use pocketmine\command\defaults\PardonCommand;
-use pocketmine\command\defaults\PardonIpCommand;
-use pocketmine\command\defaults\ParticleCommand;
-use pocketmine\command\defaults\PluginsCommand;
-use pocketmine\command\defaults\ReloadCommand;
 use pocketmine\command\defaults\SaveCommand;
 use pocketmine\command\defaults\SaveOffCommand;
 use pocketmine\command\defaults\SaveOnCommand;
-use pocketmine\command\defaults\SayCommand;
-use pocketmine\command\defaults\SeedCommand;
 use pocketmine\command\defaults\SetWorldSpawnCommand;
-use pocketmine\command\defaults\SpawnpointCommand;
-use pocketmine\command\defaults\StatusCommand;
 use pocketmine\command\defaults\StopCommand;
-use pocketmine\command\defaults\TeleportCommand;
-use pocketmine\command\defaults\TellCommand;
-use pocketmine\command\defaults\TimeCommand;
-use pocketmine\command\defaults\TimingsCommand;
-use pocketmine\command\defaults\TitleCommand;
-use pocketmine\command\defaults\TransferServerCommand;
 use pocketmine\command\defaults\VanillaCommand;
-use pocketmine\command\defaults\VersionCommand;
 use pocketmine\command\defaults\WhitelistCommand;
+use pocketmine\command\defaults\StatusCommand;
+use pocketmine\command\defaults\VersionCommand;
 use pocketmine\command\utils\InvalidCommandSyntaxException;
-use pocketmine\lang\TranslationContainer;
+use pocketmine\event\TranslationContainer;
 use pocketmine\Server;
 use pocketmine\utils\TextFormat;
+
 use function array_map;
+use function array_search;
 use function array_shift;
 use function count;
 use function explode;
 use function file_exists;
 use function file_get_contents;
+use function in_array;
 use function json_decode;
 use function min;
 use function str_getcsv;
@@ -74,7 +69,11 @@ class SimpleCommandMap implements CommandMap{
 	 * @return string[]
 	 */
 	public static function splitCommandLine(string $commandLine) : array{
-		return array_map("stripslashes", str_getcsv($commandLine, " "));
+		try {
+			return array_map("stripslashes", str_getcsv($commandLine, " "));
+		} catch (\Throwable) {
+			return [];
+		}
 	}
 
 	/**
@@ -93,46 +92,18 @@ class SimpleCommandMap implements CommandMap{
 	}
 
 	private function setDefaultCommands(){
-		$this->register("pocketmine", new VersionCommand("version"));
-		$this->register("pocketmine", new PluginsCommand("plugins"));
-		$this->register("pocketmine", new SeedCommand("seed"));
 		$this->register("pocketmine", new HelpCommand("help"));
 		$this->register("pocketmine", new StopCommand("stop"));
-		$this->register("pocketmine", new TellCommand("tell"));
-		$this->register("pocketmine", new DefaultGamemodeCommand("defaultgamemode"));
-		$this->register("pocketmine", new BanCommand("ban"));
-		$this->register("pocketmine", new BanIpCommand("ban-ip"));
-		$this->register("pocketmine", new BanListCommand("banlist"));
-		$this->register("pocketmine", new PardonCommand("pardon"));
-		$this->register("pocketmine", new PardonIpCommand("pardon-ip"));
-		$this->register("pocketmine", new SayCommand("say"));
-		$this->register("pocketmine", new MeCommand("me"));
-		$this->register("pocketmine", new ListCommand("list"));
-		$this->register("pocketmine", new DifficultyCommand("difficulty"));
-		$this->register("pocketmine", new KickCommand("kick"));
-		$this->register("pocketmine", new OpCommand("op"));
-		$this->register("pocketmine", new DeopCommand("deop"));
 		$this->register("pocketmine", new WhitelistCommand("whitelist"));
 		$this->register("pocketmine", new SaveOnCommand("save-on"));
 		$this->register("pocketmine", new SaveOffCommand("save-off"));
 		$this->register("pocketmine", new SaveCommand("save-all"));
 		$this->register("pocketmine", new GiveCommand("give"));
-		$this->register("pocketmine", new EffectCommand("effect"));
-		$this->register("pocketmine", new EnchantCommand("enchant"));
-		$this->register("pocketmine", new ParticleCommand("particle"));
-		$this->register("pocketmine", new GamemodeCommand("gamemode"));
-		$this->register("pocketmine", new KillCommand("kill"));
-		$this->register("pocketmine", new SpawnpointCommand("spawnpoint"));
 		$this->register("pocketmine", new SetWorldSpawnCommand("setworldspawn"));
-		$this->register("pocketmine", new TeleportCommand("tp"));
-		$this->register("pocketmine", new TimeCommand("time"));
-		$this->register("pocketmine", new TimingsCommand("timings"));
-		$this->register("pocketmine", new TitleCommand("title"));
-		$this->register("pocketmine", new ReloadCommand("reload"));
-		$this->register("pocketmine", new TransferServerCommand("transferserver"));
+		$this->register("pocketmine", new StatusCommand("status"));
+		$this->register("pocketmine", new VersionCommand("ver"));
 
 		if($this->server->getProperty("debug.commands", false)){
-			$this->register("pocketmine", new StatusCommand("status"));
 			$this->register("pocketmine", new GarbageCollectorCommand("gc"));
 			$this->register("pocketmine", new DumpMemoryCommand("dumpmemory"));
 		}

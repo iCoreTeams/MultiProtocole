@@ -10,8 +10,6 @@ settings:
   #Whether to send all strings translated to server locale or let the device handle them
   force-language: false
   shutdown-message: "Server closed"
-  #Allow listing plugins via Query
-  query-plugins: true
   #Show a console message when a plugin uses deprecated API methods
   deprecated-verbose: true
   #Enable plugin and core profiling by default

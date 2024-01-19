@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\plugin;
@@ -22,35 +42,36 @@ use function substr;
 use function version_compare;
 
 class PluginDescription{
-	private string $name;
-	private string $main;
-	private array $api;
-	private array $extensions = [];
-	private array $depend = [];
-	private array $softDepend = [];
-	private array $loadBefore = [];
+	private $name;
+	private $srcNamespacePrefix;
+	private $main;
+	private $api;
+	private $extensions = [];
+	private $depend = [];
+	private $softDepend = [];
+	private $loadBefore = [];
 	/** @var string */
-	private string $version;
-	private array $commands = [];
+	private $version;
+	private $commands = [];
 	/** @var string */
-	private string $description = "";
+	private $description = "";
 	/** @var string[] */
-	private array $authors = [];
+	private $authors = [];
 	/** @var string */
-	private string $website = "";
+	private $website = "";
 	/** @var string */
-	private string $prefix = "";
-	private int $order = PluginLoadOrder::POSTWORLD;
+	private $prefix = "";
+	private $order = PluginLoadOrder::POSTWORLD;
 
 	/**
 	 * @var Permission[]
 	 */
-	private array $permissions = [];
+	private $permissions = [];
 
 	/**
 	 * @param string|array $yamlString
 	 */
-	public function __construct(string|array $yamlString){
+	public function __construct($yamlString){
 		$this->loadMap(!is_array($yamlString) ? \yaml_parse($yamlString) : $yamlString);
 	}
 
@@ -59,7 +80,7 @@ class PluginDescription{
 	 *
 	 * @throws PluginException
 	 */
-	private function loadMap(array $plugin): void{
+	private function loadMap(array $plugin){
 		$this->name = preg_replace("[^A-Za-z0-9 _.-]", "", $plugin["name"]);
 		if($this->name === ""){
 			throw new PluginException("Invalid PluginDescription name");
@@ -67,6 +88,7 @@ class PluginDescription{
 		$this->name = str_replace(" ", "_", $this->name);
 		$this->version = (string) $plugin["version"];
 		$this->main = $plugin["main"];
+		$this->srcNamespacePrefix = $plugin["src-namespace-prefix"] ?? "";
 		$this->api = array_map(function($v){ return (string) $v; }, !is_array($plugin["api"]) ? [$plugin["api"]] : $plugin["api"]);
 		if(stripos($this->main, "pocketmine\\") === 0){
 			throw new PluginException("Invalid PluginDescription main, cannot start within the PocketMine namespace");
@@ -137,6 +159,13 @@ class PluginDescription{
 	}
 
 	/**
+	 * @return string
+	 */
+	public function getSrcNamespacePrefix() : string{
+		return $this->srcNamespacePrefix;
+	}
+
+	/**
 	 * @return array
 	 */
 	public function getCompatibleApis() : array{
@@ -176,7 +205,7 @@ class PluginDescription{
 	 *
 	 * @throws PluginException if there are required extensions missing or have incompatible version, or if the version constraint cannot be parsed
 	 */
-	public function checkRequiredExtensions(): void{
+	public function checkRequiredExtensions(){
 		foreach($this->extensions as $name => $versionConstrs){
 			if(!extension_loaded($name)){
 				throw new PluginException("Required extension $name not loaded");

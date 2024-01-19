@@ -2,74 +2,60 @@
 
 /*
  *
- *  ____            _        _   __  __ _                  __  __ ____  
- * |  _ \ ___   ___| | _____| |_|  \/  (_)_ __   ___      |  \/  |  _ \ 
- * | |_) / _ \ / __| |/ / _ \ __| |\/| | | '_ \ / _ \_____| |\/| | |_) |
- * |  __/ (_) | (__|   <  __/ |_| |  | | | | | |  __/_____| |  | |  __/ 
- * |_|   \___/ \___|_|\_\___|\__|_|  |_|_|_| |_|\___|     |_|  |_|_| 
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
  *
- * @author PocketMine Team
- * @link http://www.pocketmine.net/
- * 
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
  *
 */
 
+declare(strict_types=1);
+
 namespace pocketmine\level\generator\object;
 
-use pocketmine\block\BlockIds;
+use pocketmine\block\Block;
 use pocketmine\level\ChunkManager;
 use pocketmine\math\VectorMath;
 use pocketmine\utils\Random;
 
+use function sin;
+
+use const M_PI;
+
 class Ore{
+	/** @var Random */
 	private $random;
+	/** @var OreType */
 	public $type;
 
-	/**
-	 * Ore constructor.
-	 *
-	 * @param Random $random
-	 * @param OreType $type
-	 */
 	public function __construct(Random $random, OreType $type){
 		$this->type = $type;
 		$this->random = $random;
 	}
 
-	/**
-	 * @return OreType
-	 */
-	public function getType(){
+	public function getType() : OreType{
 		return $this->type;
 	}
 
-	/**
-	 * @param ChunkManager $level
-	 * @param              $x
-	 * @param              $y
-	 * @param              $z
-	 *
-	 * @return bool
-	 */
-	public function canPlaceObject(ChunkManager $level, $x, $y, $z){
-		return (($level->getBlockIdAt($x, $y, $z) === BlockIds::STONE) or ($level->getBlockIdAt($x, $y, $z) === 87));
+	public function canPlaceObject(ChunkManager $level, int $x, int $y, int $z) : bool{
+		return $level->getBlockIdAt($x, $y, $z) === Block::STONE;
 	}
 
-	/**
-	 * @param ChunkManager $level
-	 * @param              $x
-	 * @param              $y
-	 * @param              $z
-	 */
-	public function placeObject(ChunkManager $level, $x, $y, $z){
-		$clusterSize = (int) $this->type->clusterSize;
+	public function placeObject(ChunkManager $level, int $x, int $y, int $z){
+		$clusterSize = $this->type->clusterSize;
 		$angle = $this->random->nextFloat() * M_PI;
-		$offset = VectorMath::getDirection2D($angle)->multiply($clusterSize / 8);
+		$offset = VectorMath::getDirection2D($angle)->multiply($clusterSize)->divide(8);
 		$x1 = $x + 8 + $offset->x;
 		$x2 = $x + 8 - $offset->x;
 		$z1 = $z + 8 + $offset->y;
@@ -103,7 +89,7 @@ class Ore{
 								$sizeZ = ($z + 0.5 - $seedZ) / $size;
 								$sizeZ *= $sizeZ;
 
-								if(($sizeX + $sizeY + $sizeZ) < 1 and (($level->getBlockIdAt($x, $y, $z) === BlockIds::STONE) or ($level->getBlockIdAt($x, $y, $z) === 87))){
+								if(($sizeX + $sizeY + $sizeZ) < 1 and $level->getBlockIdAt($x, $y, $z) === 1){
 									$level->setBlockIdAt($x, $y, $z, $this->type->material->getId());
 									if($this->type->material->getDamage() !== 0){
 										$level->setBlockDataAt($x, $y, $z, $this->type->material->getDamage());

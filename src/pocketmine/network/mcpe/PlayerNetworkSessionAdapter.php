@@ -1,17 +1,45 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\network\mcpe;
 
+
+use pocketmine\entity\feature\Interactive;
+use pocketmine\entity\object\MinecartAbstract;
+use pocketmine\entity\Rideable;
 use pocketmine\event\server\DataPacketReceiveEvent;
+use pocketmine\event\Timings;
+use pocketmine\item\Item;
 use pocketmine\math\Vector3;
 use pocketmine\network\mcpe\protocol\AdventureSettingsPacket;
 use pocketmine\network\mcpe\protocol\AnimatePacket;
 use pocketmine\network\mcpe\protocol\BatchPacket;
 use pocketmine\network\mcpe\protocol\BlockEntityDataPacket;
 use pocketmine\network\mcpe\protocol\BlockPickRequestPacket;
+use pocketmine\network\mcpe\protocol\BossEventPacket;
 use pocketmine\network\mcpe\protocol\ClientToServerHandshakePacket;
+use pocketmine\network\mcpe\protocol\CommandBlockUpdatePacket;
 use pocketmine\network\mcpe\protocol\CommandStepPacket;
 use pocketmine\network\mcpe\protocol\ContainerClosePacket;
 use pocketmine\network\mcpe\protocol\ContainerSetSlotPacket;
@@ -28,6 +56,7 @@ use pocketmine\network\mcpe\protocol\MapInfoRequestPacket;
 use pocketmine\network\mcpe\protocol\MobArmorEquipmentPacket;
 use pocketmine\network\mcpe\protocol\MobEquipmentPacket;
 use pocketmine\network\mcpe\protocol\MovePlayerPacket;
+use pocketmine\network\mcpe\protocol\PacketPool;
 use pocketmine\network\mcpe\protocol\PlayerActionPacket;
 use pocketmine\network\mcpe\protocol\PlayerInputPacket;
 use pocketmine\network\mcpe\protocol\RemoveBlockPacket;
@@ -39,9 +68,11 @@ use pocketmine\network\mcpe\protocol\SpawnExperienceOrbPacket;
 use pocketmine\network\mcpe\protocol\TextPacket;
 use pocketmine\network\mcpe\protocol\types\InputModeIds;
 use pocketmine\network\mcpe\protocol\UseItemPacket;
+use pocketmine\command\data\CommandParameter;
+use pocketmine\command\data\CommandOverload;
 use pocketmine\Player;
 use pocketmine\Server;
-use pocketmine\timings\Timings;
+
 use function bin2hex;
 use function strlen;
 use function substr;
@@ -192,14 +223,36 @@ class PlayerNetworkSessionAdapter extends MCPENetworkSession{
 
 		switch($packet->action){
 			case InteractPacket::ACTION_LEFT_CLICK: //Attack
-				$this->player->attackEntity($target);
+                $target = $this->player->level->getEntity($packet->target);
+                if ($target instanceof MinecartAbstract) { //TODO: Boat
+                    if ($this->player->linkedEntity === $target) {
+                        $target->setLinked(0, $this->player);
+                    }
+                    $target->flagForDespawn();
+                }else{
+                    $this->player->attackEntity($target);
+                }
 				break;
 			case InteractPacket::ACTION_RIGHT_CLICK:
-				$this->player->interactEntity($target);
+                if ($target instanceof Rideable) {
+                        $this->player->linkEntity($target);
+                }else{
+                    $this->player->interactEntity($target);
+                }
 				break;
 			case InteractPacket::ACTION_LEAVE_VEHICLE:
+                if ($target instanceof MinecartAbstract) { //TODO: Boat
+                    $target->setLinked(0, $this->player);
+                    return true;
+                }
+                break;
 			case InteractPacket::ACTION_MOUSEOVER:
-				break; //TODO: handle these
+                if ($target instanceof Interactive) {
+                    $this->player->setInteractiveTag($target->getInteractButtonText());
+                } else {
+                    $this->player->removeInteractiveTag();
+                }
+				break;
 			default:
 				$this->server->getLogger()->debug("Unhandled/unknown interaction type " . $packet->action . "received from " . $this->player->getName());
 
@@ -228,11 +281,11 @@ class PlayerNetworkSessionAdapter extends MCPENetworkSession{
 		}
 
 		if($packet->face === -1){
-            if(hrtime(true) - $this->lastRightClickBlock > 5000000){
+			if(microtime(true) - $this->lastRightClickBlock > 0.005){
 				$this->player->useItem($blockVector, $fVector, $packet->face, $packet->item);
 			}
 		}else{
-            $this->lastRightClickBlock = hrtime(true);
+			$this->lastRightClickBlock = microtime(true);
 			$this->player->useItem($blockVector, $fVector, $packet->face, $packet->item);
 			
 			if($this->player->getCurrentInputMode() !== InputModeIds::TOUCHSCREEN){ //this is a very nasty hack
@@ -324,9 +377,12 @@ class PlayerNetworkSessionAdapter extends MCPENetworkSession{
 
 		$message = $packet->command;
 		$command = $this->server->getCommandMap()->getCommand($message);
-		if($packet->inputJson !== null and $command !== null and isset($command->getOverloads()[$packet->overload])){
-			foreach($command->getOverloads()[$packet->overload]["input"]["parameters"] as $arg_data){
-				if(isset($packet->inputJson[$arg_data["name"]])){
+		if($packet->inputJson !== null and $command !== null and isset($command->getOverloads()[$packet->overload])) {
+			$overload = $command->getOverloads()[$packet->overload];
+			$parameters = ($overload instanceof CommandOverload) ? $overload->getInput()->parameters : $overload["input"]["parameters"];
+			foreach($parameters as $arg_data){
+				if ($arg_data instanceof CommandParameter) $arg_data = $arg_data->toArray();
+				if(isset($packet->inputJson[$arg_data["name"]])) {
 					$arg = $packet->inputJson[$arg_data["name"]];
 					switch($arg_data["type"]){
 						case "target":
@@ -352,7 +408,8 @@ class PlayerNetworkSessionAdapter extends MCPENetworkSession{
 		return true;
 	}
 
-	public function handleResourcePackChunkRequest(ResourcePackChunkRequestPacket $packet) : bool{
-		return $this->player->handleResourcePackChunkRequest($packet);
-	}
+	public function handleResourcePackChunkRequest(ResourcePackChunkRequestPacket $packet) : bool
+    {
+        return $this->player->handleResourcePackChunkRequest($packet);
+    }
 }

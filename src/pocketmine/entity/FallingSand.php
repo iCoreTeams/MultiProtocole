@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\entity;
@@ -14,7 +34,6 @@ use pocketmine\nbt\tag\IntTag;
 use pocketmine\network\bedrock\PacketTranslator;
 use pocketmine\network\bedrock\palette\BlockPalette;
 use pocketmine\network\bedrock\protocol\SetActorDataPacket as BedrockSetActorDataPacket;
-use pocketmine\network\bedrock\protocol\types\actor\PropertySyncData;
 use pocketmine\network\mcpe\protocol\AddEntityPacket;
 use pocketmine\network\mcpe\protocol\SetEntityDataPacket;
 use pocketmine\Player;
@@ -126,9 +145,9 @@ class FallingSand extends Entity{
 		$pk->yaw = $this->yaw;
 		$pk->pitch = $this->pitch;
 		$pk->metadata = $this->dataProperties;
-		if($player instanceof BedrockPlayer and isset($pk->metadata[self::DATA_VARIANT])) {
+		if($player instanceof BedrockPlayer and isset($pk->metadata[self::DATA_VARIANT])){
             $pk->metadata[self::DATA_VARIANT][1] = BlockPalette::getRuntimeFromLegacyId($this->blockId, $this->damage);
-        }
+		}
 
 		$player->sendDataPacket($pk);
 	}
@@ -158,15 +177,14 @@ class FallingSand extends Entity{
 
 		$bk = new BedrockSetActorDataPacket();
 		$bk->actorRuntimeId = $this->getId();
-        $bk->metadata = PacketTranslator::translateMetadata($pk->metadata);
-        $bk->syncedProperties = new PropertySyncData([], []);
+		$bk->metadata = PacketTranslator::translateMetadata($pk->metadata);
 
-		foreach($bedrockPackets as $protocol => &$bbk) {
-            $bbk = clone $bk;
-            if (isset($bk->metadata[self::DATA_VARIANT])) {
+		foreach($bedrockPackets as $protocol => &$bbk){
+			$bbk = clone $bk;
+			if(isset($bk->metadata[self::DATA_VARIANT])){
                 $bbk->metadata[self::DATA_VARIANT][1] = BlockPalette::getRuntimeFromLegacyId($this->blockId, $this->damage);
-            }
-        }
+			}
+		}
 
 		foreach($player as $p){
 			if($p === $this){

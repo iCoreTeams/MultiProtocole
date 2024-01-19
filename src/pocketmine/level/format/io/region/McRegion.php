@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\level\format\io\region;
@@ -10,7 +30,6 @@ use pocketmine\level\format\io\BaseLevelProvider;
 use pocketmine\level\format\io\ChunkUtils;
 use pocketmine\level\format\SubChunk;
 use pocketmine\level\generator\Generator;
-use pocketmine\level\generator\GeneratorManager;
 use pocketmine\level\Level;
 use pocketmine\level\LevelException;
 use pocketmine\nbt\BigEndianNbtSerializer;
@@ -271,7 +290,7 @@ class McRegion extends BaseLevelProvider{
 			->setLong("RandomSeed", $seed)
 			->setLong("SizeOnDisk", 0)
 			->setLong("Time", 0)
-			->setString("generatorName", GeneratorManager::getGeneratorName($generator))
+			->setString("generatorName", Generator::getGeneratorName($generator))
 			->setString("generatorOptions", $options["preset"] ?? "")
 			->setString("LevelName", $name)
 			->setTag("GameRules", new CompoundTag());

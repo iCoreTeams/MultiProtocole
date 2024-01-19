@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\level\format\io\leveldb;
@@ -12,7 +32,6 @@ use pocketmine\level\format\io\exception\UnsupportedChunkFormatException;
 use pocketmine\level\format\SubChunk;
 use pocketmine\level\generator\Flat;
 use pocketmine\level\generator\Generator;
-use pocketmine\level\generator\GeneratorManager;
 use pocketmine\level\Level;
 use pocketmine\level\LevelException;
 use pocketmine\nbt\LittleEndianNbtSerializer;
@@ -27,6 +46,7 @@ use pocketmine\tile\Tile;
 use pocketmine\utils\Binary;
 use pocketmine\utils\BinaryStream;
 use pocketmine\utils\MainLogger;
+use Webmozart\PathUtil\Path;
 use function array_map;
 use function array_values;
 use function chr;
@@ -105,19 +125,20 @@ class LevelDB extends BaseLevelProvider{
 			throw new LevelException($e->getMessage(), 0, $e);
 		}
 
-		$this->db = new \LevelDB($this->path . "/db", [
-			"compression" => LEVELDB_ZLIB_COMPRESSION
+		$this->db = new \LevelDB(Path::join($path, "db"), [
+			"compression" => LEVELDB_ZLIB_RAW_COMPRESSION,
+			"block_size" => 64 * 1024 //64KB, big enough for most chunks
 		]);
 
-		if($this->levelData->getInt("StorageVersion", INT32_MAX) > self::CURRENT_STORAGE_VERSION){
+		/*if($this->levelData->getInt("StorageVersion", INT32_MAX) > self::CURRENT_STORAGE_VERSION){
 			throw new LevelException("Specified LevelDB world format version is newer than the version supported by the server");
-		}
+		}*/
 
 		if(!$this->levelData->hasTag("generatorName", StringTag::class)){
 			if($this->levelData->hasTag("Generator", IntTag::class)){
 				switch($this->levelData->getInt("Generator")){ //Detect correct generator from MCPE data
 					case self::GENERATOR_FLAT:
-						$this->levelData->setString("generatorName", (string) GeneratorManager::getGenerator("FLAT"));
+						$this->levelData->setString("generatorName", (string) Generator::getGenerator("FLAT"));
 						if(($layers = $this->db->get(self::ENTRY_FLAT_WORLD_LAYERS)) !== false){ //Detect existing custom flat layers
 							$layers = trim($layers, "[]");
 						}else{
@@ -127,7 +148,7 @@ class LevelDB extends BaseLevelProvider{
 						break;
 					case self::GENERATOR_INFINITE:
 						//TODO: add a null generator which does not generate missing chunks (to allow importing back to MCPE and generating more normal terrain without PocketMine messing things up)
-						$this->levelData->setString("generatorName", (string) GeneratorManager::getGenerator("DEFAULT"));
+						$this->levelData->setString("generatorName", (string) Generator::getGenerator("DEFAULT"));
 						$this->levelData->setString("generatorOptions", "");
 						break;
 					case self::GENERATOR_LIMITED:
@@ -136,7 +157,7 @@ class LevelDB extends BaseLevelProvider{
 						throw new LevelException("Unknown LevelDB world format type, this level cannot be loaded");
 				}
 			}else{
-				$this->levelData->setString("generatorName", (string) GeneratorManager::getGenerator("DEFAULT"));
+				$this->levelData->setString("generatorName", (string) Generator::getGenerator("DEFAULT"));
 			}
 		}
 
@@ -208,7 +229,7 @@ class LevelDB extends BaseLevelProvider{
 			//Additional PocketMine-MP fields
 			->setTag("GameRules", new CompoundTag())
 			->setByte("hardcore", 0)
-			->setString("generatorName", GeneratorManager::getGeneratorName($generator))
+			->setString("generatorName", Generator::getGeneratorName($generator))
 			->setString("generatorOptions", $options["preset"] ?? "");
 
 		$buffer = (new LittleEndianNbtSerializer())->write(new TreeRoot($levelData));

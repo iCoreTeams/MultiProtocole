@@ -1,11 +1,31 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\block;
 
+use pocketmine\event\TranslationContainer;
 use pocketmine\item\Item;
-use pocketmine\lang\TranslationContainer;
 use pocketmine\level\Level;
 use pocketmine\math\AxisAlignedBB;
 use pocketmine\math\Vector3;
@@ -186,18 +206,6 @@ class Bed extends Transparent{
 		return false;
 	}
 
-    public function hasEntityCollision() : bool{
-        return true;
-    }
-
-    public function getBounceMotionMultiplier() : float{
-        return 0.66;
-    }
-
-    public function getBounceFallDistanceMultiplier() : float{
-        return 0.5;
-    }
-
 	public function getDrops(Item $item){
 		if($this->isHeadPart()){
 			$tile = $this->getLevel()->getTileAt($this->x, $this->y, $this->z);
@@ -230,5 +238,17 @@ class Bed extends Transparent{
 		}
 
 		return parent::getAffectedBlocks();
+	}
+
+	public function hasEntityCollision(){
+		return true;
+	}
+
+	public function getBounceMotionMultiplier() : float{
+		return 0.66;
+	}
+
+	public function getBounceFallDistanceMultiplier() : float{
+		return 0.5;
 	}
 }

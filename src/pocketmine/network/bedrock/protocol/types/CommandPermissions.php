@@ -15,6 +15,7 @@ declare(strict_types=1);
 namespace pocketmine\network\bedrock\protocol\types;
 
 final class CommandPermissions{
+
 	private function __construct(){
 		//NOOP
 	}

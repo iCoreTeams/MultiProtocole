@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\network\bedrock\protocol\types\skin;
@@ -7,6 +27,7 @@ namespace pocketmine\network\bedrock\protocol\types\skin;
 use Ahc\Json\Comment as CommentedJsonDecoder;
 use pocketmine\network\mcpe\protocol\ProtocolInfo;
 use pocketmine\utils\UUID;
+use function file_get_contents;
 use function str_repeat;
 
 class Skin{
@@ -18,11 +39,11 @@ class Skin{
 		return self::$cachedEmpty = self::$cachedEmpty ?? (new Skin(
 			UUID::fromRandom()->toString(),
 			"",
-			'{"geometry":{"default":"geometry.humanoid.custom"}}',
+			'{"geometry":{"default":"geometry.empty"}}',
 			SerializedSkinImage::fromLegacyImageData(str_repeat("\x00", 8192)),
 			[],
 			SerializedSkinImage::empty(),
-			""
+			file_get_contents(\pocketmine\PATH . "src/pocketmine/resources/bedrock/geometry_empty.json")
 		));
 	}
 
@@ -66,7 +87,8 @@ class Skin{
     protected $isCapeOnClassic;
     /** @var bool */
     protected $isPrimaryUser;
-    private bool $override;
+	/** @var bool */
+	protected $isOverride;
 
 	/**
 	 * @param string $skinId
@@ -86,8 +108,9 @@ class Skin{
 	 * @param PersonaPiece[] $personaPieces
 	 * @param PieceTintColor[] $pieceTintColors
 	 * @param bool $isVerified
+	 * @param bool $isOverride
 	 */
-	public function __construct(string $skinId, string $playFabId, string $skinResourcePatch, SerializedSkinImage $skinImage, array $animations = [], ?SerializedSkinImage $capeImage = null, string $geometryData = "", string $animationData = "", bool $isPremium = false, bool $isPersona = false, bool $isCapeOnClassic = false, string $capeId = "", ?string $fullSkinId = null, string $armSize = "wide", string $skinColor = "#0", array $personaPieces = [], array $pieceTintColors = [], bool $isVerified = true, string $geometryDataEngineVersion = ProtocolInfo::MINECRAFT_VERSION_NETWORK, bool $isPrimaryUser = true, bool $override = true){
+	public function __construct(string $skinId, string $playFabId, string $skinResourcePatch, SerializedSkinImage $skinImage, array $animations = [], ?SerializedSkinImage $capeImage = null, string $geometryData = "", string $animationData = "", bool $isPremium = false, bool $isPersona = false, bool $isCapeOnClassic = false, string $capeId = "", ?string $fullSkinId = null, string $armSize = "wide", string $skinColor = "#0", array $personaPieces = [], array $pieceTintColors = [], bool $isVerified = true, string $geometryDataEngineVersion = ProtocolInfo::MINECRAFT_VERSION_NETWORK, bool $isPrimaryUser = true, bool $isOverride = true){
 		(static function(SkinAnimation ...$_) : void{})(...$animations); // Type check
 		(static function(PersonaPiece ...$_) : void{})(...$personaPieces); // Type check
 		(static function(PieceTintColor ...$_) : void{})(...$pieceTintColors); // Type check
@@ -112,7 +135,7 @@ class Skin{
 		$this->isVerified = $isVerified;
         $this->geometryDataEngineVersion = $geometryDataEngineVersion;
         $this->isPrimaryUser = $isPrimaryUser;
-        $this->override = $override;
+		$this->isOverride = true; // TODO: $isOverride = false makes skins buggy
 
 		$this->debloatGeometryData();
 		$this->generateFullSkinId();
@@ -218,13 +241,6 @@ class Skin{
 		return $this->isPrimaryUser;
 	}
 
-    /**
-     * @return bool
-     */
-    public function isOverride() : bool{
-        return $this->override;
-    }
-
 	/**
 	 * @return string
 	 */
@@ -281,6 +297,13 @@ class Skin{
 		return $this->isPrimaryUser;
 	}
 
+	/**
+	 * @return bool
+	 */
+	public function isOverride() : bool{
+		return $this->isOverride;
+	}
+
     /**
      * @return string
      */
@@ -315,7 +338,9 @@ class Skin{
 	 * Full skin ID must be unique for any set of data.
 	 */
 	public function generateFullSkinId() : void{
-		$this->fullSkinId = UUID::fromData(
+		$this->fullSkinId = UUID::fromRandom()->toString();
+
+		/*UUID::fromData(
 			$this->skinId,
 			$this->skinResourcePatch,
 			$this->skinImage->getData(),
@@ -325,6 +350,6 @@ class Skin{
 			(string) $this->isPersona,
 			(string) $this->isCapeOnClassic,
 			$this->capeId
-		)->toString();
+		)->toString();*/
 	}
 }

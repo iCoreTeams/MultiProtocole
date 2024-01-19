@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\network\bedrock\protocol;
@@ -42,6 +62,10 @@ class PlayerActionPacket extends DataPacket{
 	public const ACTION_CONTINUE_DESTROY_BLOCK = 27;
 	public const ACTION_START_ITEM_USE_ON = 28;
 	public const ACTION_STOP_ITEM_USE_ON = 29;
+	public const HANDLED_TELEPORT = 30;
+	public const MISSED_SWING = 31;
+	public const START_CRAWLING = 32;
+	public const STOP_CRAWLING = 33;
 
 	/** @var int */
 	public $actorRuntimeId;

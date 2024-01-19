@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 namespace pocketmine\inventory;
 
 use pocketmine\event\inventory\InventoryClickEvent;
@@ -16,6 +36,9 @@ class SimpleTransactionQueue implements TransactionQueue{
 	protected $transactionQueue;
 	/** @var \SplQueue */
 	protected $transactionsToRetry;
+
+	/** @var float */
+	protected $lastUpdate = -1;
 
 	/** @var int */
 	protected $transactionCount = 0;
@@ -54,6 +77,7 @@ class SimpleTransactionQueue implements TransactionQueue{
 	 */
 	public function addTransaction(Transaction $transaction){
 		$this->transactionQueue->enqueue($transaction);
+		$this->lastUpdate = microtime(true);
 		$this->transactionCount += 1;
 	}
 

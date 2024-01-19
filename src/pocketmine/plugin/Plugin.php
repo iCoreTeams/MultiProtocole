@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 /**
@@ -22,12 +42,12 @@ interface Plugin extends CommandExecutor{
 	/**
 	 * Called when the plugin is loaded, before calling onEnable()
 	 */
-	public function onLoad(): void;
+	public function onLoad();
 
 	/**
 	 * Called when the plugin is enabled
 	 */
-	public function onEnable(): void;
+	public function onEnable();
 
 	/**
 	 * @return bool
@@ -38,7 +58,7 @@ interface Plugin extends CommandExecutor{
 	 * Called when the plugin is disabled
 	 * Use this to free open things and finish actions
 	 */
-	public function onDisable(): void;
+	public function onDisable();
 
 	/**
 	 * @return bool
@@ -96,7 +116,7 @@ interface Plugin extends CommandExecutor{
 	 */
 	public function saveDefaultConfig() : bool;
 
-	public function reloadConfig(): void;
+	public function reloadConfig();
 
 	/**
 	 * @return Server
@@ -116,7 +136,7 @@ interface Plugin extends CommandExecutor{
 	/**
 	 * @return PluginLoader
 	 */
-	public function getPluginLoader(): PluginLoader;
+	public function getPluginLoader();
 
 	public function registerEvents(Listener $listener) : void;
 

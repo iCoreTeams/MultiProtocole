@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\network\bedrock;
@@ -29,9 +49,9 @@ class BedrockPacketBatch extends NetworkBinaryStream{
 	/**
 	 * Constructs a packet batch from the given list of packets.
 	 *
-	 * @param Packet ...$packets
+	 * @param DataPacket ...$packets
 	 *
-	 * @return PacketBatch
+	 * @return BedrockPacketBatch
 	 */
 	public static function fromPackets(DataPacket ...$packets) : BedrockPacketBatch{
 		$result = new BedrockPacketBatch();

@@ -1,9 +1,30 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\inventory;
 
+use pocketmine\event\Timings;
 use pocketmine\item\Item;
 use pocketmine\network\bedrock\BedrockPacketBatch;
 use pocketmine\network\bedrock\NetworkCompression as BedrockNetworkCompression;
@@ -13,10 +34,9 @@ use pocketmine\network\mcpe\NetworkCompression as Pw10NetworkCompression;
 use pocketmine\network\mcpe\protocol\CraftingDataPacket as Pw10CraftingData;
 use pocketmine\network\mcpe\protocol\ProtocolInfo;
 use pocketmine\Server;
-use pocketmine\timings\Timings;
 use pocketmine\utils\Config;
-use pocketmine\utils\MainLogger;
 use pocketmine\utils\UUID;
+
 use function array_chunk;
 use function array_key_exists;
 use function array_values;
@@ -46,7 +66,7 @@ class CraftingManager{
 		// load recipes from src/pocketmine/resources/recipes.json
 		$recipes = new Config(Server::getInstance()->getFilePath() . "src/pocketmine/resources/recipes.json", Config::JSON, []);
 
-		MainLogger::getLogger()->info("Loading recipes...");
+		\GlobalLogger::get()->info("Loading recipes...");
 		foreach($recipes->getAll() as $recipe){
 			switch($recipe["type"]){
 				case 0:

@@ -1,74 +1,64 @@
 <?php
 
 /*
- * This file is part of BedrockProtocol.
- * Copyright (C) 2014-2022 PocketMine Team <https://github.com/pmmp/BedrockProtocol>
  *
- * BedrockProtocol is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- */
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
 
 declare(strict_types=1);
 
 namespace pocketmine\network\bedrock\protocol\types\actor;
 
-use pocketmine\network\mcpe\NetworkBinaryStream;
-use function count;
+use pocketmine\network\bedrock\protocol\DataPacket;
 
-final class PropertySyncData{
-    /**
-     * @param int[] $intProperties
-     * @param float[] $floatProperties
-     * @phpstan-param array<int, int> $intProperties
-     * @phpstan-param array<int, float> $floatProperties
-     */
-    public function __construct(
-        private array $intProperties,
-        private array $floatProperties,
-    ){}
+class PropertySyncData{
 
-    /**
-     * @return int[]
-     * @phpstan-return array<int, int>
-     */
-    public function getIntProperties() : array{
-        return $this->intProperties;
-    }
+	/** @var int */
+	public $intProperties = [];
+	/** @var float */
+	public $floatProperties = [];
 
-    /**
-     * @return float[]
-     * @phpstan-return array<int, float>
-     */
-    public function getFloatProperties() : array{
-        return $this->floatProperties;
-    }
+	public function __construct(array $intProperties = [], array $floatProperties = []){
+		$this->intProperties = $intProperties;
+		$this->floatProperties = $floatProperties;
+	}
 
-    public static function read(NetworkBinaryStream $in) : self{
-        $intProperties = [];
-        $floatProperties = [];
+	public static function read(DataPacket $pk) : self{
+		$result = new self;
+		for($i = 0, $count = $pk->getUnsignedVarInt(); $i < $count; ++$i){
+			$result->intProperties[$pk->getUnsignedVarInt()] = $pk->getVarInt();
+		}
+		for($i = 0, $count = $pk->getUnsignedVarInt(); $i < $count; ++$i){
+			$result->floatProperties[$pk->getUnsignedVarInt()] = $pk->getLFloat();
+		}
+		return $result;
+	}
 
-        for($i = 0, $count = $in->getUnsignedVarInt(); $i < $count; ++$i){
-            $intProperties[$in->getUnsignedVarInt()] = $in->getVarInt();
-        }
-        for($i = 0, $count = $in->getUnsignedVarInt(); $i < $count; ++$i){
-            $floatProperties[$in->getUnsignedVarInt()] = $in->getLFloat();
-        }
-
-        return new self($intProperties, $floatProperties);
-    }
-
-    public function write(NetworkBinaryStream $out) : void{
-        $out->putUnsignedVarInt(count($this->intProperties));
-        foreach($this->intProperties as $key => $value){
-            $out->putUnsignedVarInt($key);
-            $out->putVarInt($value);
-        }
-        $out->putUnsignedVarInt(count($this->floatProperties));
-        foreach($this->floatProperties as $key => $value){
-            $out->putUnsignedVarInt($key);
-            $out->putLFloat($value);
-        }
-    }
+	public function write(DataPacket $pk) : void{
+		$pk->putUnsignedVarInt(count($this->intProperties));
+		foreach($this->intProperties as $key => $value){
+			$pk->putUnsignedVarInt($key);
+			$pk->putVarInt($value);
+		}
+		$pk->putUnsignedVarInt(count($this->floatProperties));
+		foreach($this->floatProperties as $key => $value){
+			$pk->putUnsignedVarInt($key);
+			$pk->putLFloat($value);
+		}
+	}
 }

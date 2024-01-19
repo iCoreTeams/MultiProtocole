@@ -1,12 +1,32 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\network\bedrock\protocol;
 
 #include <rules/DataPacket.h>
 
-use pocketmine\network\bedrock\protocol\types\ChunkPosition;
+use pocketmine\level\Level;
 use pocketmine\network\NetworkSession;
 
 class NetworkChunkPublisherUpdatePacket extends DataPacket{
@@ -20,26 +40,32 @@ class NetworkChunkPublisherUpdatePacket extends DataPacket{
 	public $z;
 	/** @var int */
 	public $radius;
-    /** @var ChunkPosition[] */
-    public array $savedChunks = [];
+	/** @var int[] */
+	public $savedChunks = [];
 
 	public function decodePayload(){
 		$this->getSignedBlockPosition($this->x, $this->y, $this->z);
 		$this->radius = $this->getUnsignedVarInt();
 
-        for($i = 0, $this->savedChunks = [], $count = $this->getLInt(); $i < $count; $i++){
-            $this->savedChunks[] = ChunkPosition::read($this);
-        }
+		for($i = 0, $this->savedChunks = [], $count = $this->getLInt(); $i < $count; $i++){
+			$x = $this->getVarInt();
+			$z = $this->getVarInt();
+
+			$this->savedChunks[] = Level::chunkHash($x, $z);
+		}
 	}
 
 	public function encodePayload(){
 		$this->putSignedBlockPosition($this->x, $this->y, $this->z);
 		$this->putUnsignedVarInt($this->radius);
 
-        $this->putLInt(count($this->savedChunks));
-        foreach($this->savedChunks as $chunk){
-            $chunk->write($this);
-        }
+		$this->putLInt(count($this->savedChunks));
+		foreach($this->savedChunks as $chunkHash){
+			Level::getXZ($chunkHash, $x, $z);
+
+			$this->putVarInt($x);
+			$this->putVarInt($z);
+		}
 	}
 
 	public function mustBeDecoded() : bool{

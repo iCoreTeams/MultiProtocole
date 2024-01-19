@@ -19,6 +19,7 @@ namespace raklib\server;
 
 use pocketmine\snooze\SleeperHandler;
 use pocketmine\snooze\SleeperNotifier;
+use pocketmine\thread\log\ThreadSafeLogger;
 use pocketmine\utils\Binary;
 use pocketmine\utils\BinaryDataException;
 use raklib\generic\Socket;
@@ -145,19 +146,15 @@ class SessionManager{
 		return $this->maxMtuSize;
 	}
 
-	public function getProtocolVersions() : \Volatile{
+	public function getProtocolVersions() : array{
 		return $this->server->getProtocolVersions();
 	}
 
-	public function getLogger() : \ThreadedLogger{
+	public function getLogger() : ThreadSafeLogger{
 		return $this->server->getLogger();
 	}
 
-	public function run() : void{
-		$this->tickProcessor();
-	}
-
-	private function tickProcessor() : void{
+	public function tickProcessor() : void{
 		$nextTick = $this->lastMeasure = microtime(true);
 
 		while(!$this->shutdown){
@@ -184,9 +181,11 @@ class SessionManager{
 					$this->tickSleeper->processNotifications();
 
 					$r = [$this->socket->getSocket()];
-					if(@socket_select($r, $w, $e, 0, (int) (($nextTick - $now) * 1000000)) === 1){
-						while($this->receivePacket()){}
-					}
+					try {
+						if(socket_select($r, $w, $e, 0, (int) (($nextTick - $now) * 1000000)) === 1){
+							while($this->receivePacket()){}
+						}
+					} catch (\Throwable) {}
 				}
 			}else{
 				$nextTick = $now;
@@ -228,6 +227,21 @@ class SessionManager{
 		}
 
 		++$this->ticks;
+	}
+
+	/**
+	 * Disconnects all sessions and blocks until everything has been shut down properly.
+	 */
+	public function waitShutdown() : void{
+		if (!$this->shutdown) {
+			$this->shutdown = true;
+
+			foreach($this->sessions as $session){
+				$this->removeSession($session);
+			}
+	
+			$this->socket->close();
+		}
 	}
 
 	public function storeProtocol(int $protocol, InternetAddress $address) : void{
@@ -291,18 +305,19 @@ class SessionManager{
 					$this->server->getLogger()->debug("Ignored unconnected packet from $address due to session already opened (0x" . bin2hex($buffer[0]) . ")");
 				}
 			}elseif(!$this->offlineMessageHandler->handleRaw($buffer, $address)){
-				$handled = false;
+				/*$handled = false;
 				foreach($this->rawPacketFilters as $pattern){
 					if(preg_match($pattern, $buffer) > 0){
 						$handled = true;
 						$this->streamRaw($address, $buffer);
 						break;
 					}
-				}
+				}*/
 
-				if(!$handled){
-					$this->server->getLogger()->debug("Ignored packet from $address due to no session opened (0x" . bin2hex($buffer[0]) . ")");
-				}
+				//if(!$handled){
+					//$this->server->getLogger()->debug("Ignored packet from $address due to no session opened (0x" . bin2hex($buffer[0]) . ")");
+				//}
+				$this->streamRaw($address, $buffer);
 			}
 		}catch(BinaryDataException $e){
 			$logger = $this->getLogger();
@@ -351,7 +366,7 @@ class SessionManager{
 
 	protected function streamOpen(Session $session) : void{
 		$address = $session->getAddress();
-		$buffer = chr(ITCProtocol::PACKET_OPEN_SESSION) . Binary::writeInt($session->getInternalId()) . chr(strlen($address->ip)) . $address->ip . Binary::writeShort($address->port) . chr($session->getProtocol()) . Binary::writeLong($session->getID());
+		$buffer = chr(ITCProtocol::PACKET_OPEN_SESSION) . Binary::writeInt($session->getInternalId()) . chr(strlen($address->ip)) . $address->ip . Binary::writeShort($address->port) . chr($session->getProtocol()) . Binary::writeLong($session->getID()) . Binary::writeBool($session->isValid());
 		$this->server->pushThreadToMainPacket($buffer);
 	}
 
@@ -449,12 +464,7 @@ class SessionManager{
 				$address = substr($packet, $offset, $len);
 				$this->unlimitAddress($address);
 			}elseif($id === ITCProtocol::PACKET_SHUTDOWN){
-				foreach($this->sessions as $session){
-					$this->removeSession($session);
-				}
-
-				$this->socket->close();
-				$this->shutdown = true;
+				$this->waitShutdown();
 			}elseif($id === ITCProtocol::PACKET_EMERGENCY_SHUTDOWN){
 				$this->shutdown = true;
 			}else{

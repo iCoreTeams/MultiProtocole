@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\event\entity;
@@ -20,8 +40,6 @@ class EntityShootBowEvent extends EntityEvent implements Cancellable{
 	private $projectile;
 	/** @var float */
 	private $force;
-    /** @var float */
-    private $inaccuracy;
 
 	/**
 	 * @param Living     $shooter
@@ -29,12 +47,11 @@ class EntityShootBowEvent extends EntityEvent implements Cancellable{
 	 * @param Projectile $projectile
 	 * @param float      $force
 	 */
-    public function __construct(Living $shooter, Item $bow, Projectile $projectile, float $force, float $inaccuracy){
+	public function __construct(Living $shooter, Item $bow, Projectile $projectile, $force){
 		$this->entity = $shooter;
 		$this->bow = $bow;
 		$this->projectile = $projectile;
 		$this->force = $force;
-        $this->inaccuracy = $inaccuracy;
 	}
 
 	/**
@@ -85,17 +102,5 @@ class EntityShootBowEvent extends EntityEvent implements Cancellable{
 		$this->force = $force;
 	}
 
-    /**
-     * @return float
-     */
-    public function getInaccuracy() : float{
-        return $this->inaccuracy;
-    }
 
-    /**
-     * @param float $inaccuracy
-     */
-    public function setInaccuracy(float $inaccuracy) : void{
-        $this->inaccuracy = $inaccuracy;
-    }
 }

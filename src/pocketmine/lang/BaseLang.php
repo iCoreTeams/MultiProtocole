@@ -1,10 +1,33 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\lang;
 
+use pocketmine\event\TextContainer;
+use pocketmine\event\TranslationContainer;
 use pocketmine\utils\MainLogger;
+
 use function array_filter;
 use function file_exists;
 use function is_dir;
@@ -16,6 +39,7 @@ use function strlen;
 use function strpos;
 use function strtolower;
 use function substr;
+
 use const INI_SCANNER_RAW;
 use const SCANDIR_SORT_NONE;
 

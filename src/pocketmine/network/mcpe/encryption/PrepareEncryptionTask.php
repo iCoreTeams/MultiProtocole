@@ -2,19 +2,20 @@
 
 /*
  *
- *  ____            _        _   __  __ _                  __  __ ____
- * |  _ \ ___   ___| | _____| |_|  \/  (_)_ __   ___      |  \/  |  _ \
- * | |_) / _ \ / __| |/ / _ \ __| |\/| | | '_ \ / _ \_____| |\/| | |_) |
- * |  __/ (_) | (__|   <  __/ |_| |  | | | | | |  __/_____| |  | |  __/
- * |_|   \___/ \___|_|\_\___|\__|_|  |_|_|_| |_|\___|     |_|  |_|_|
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
  *
- * @author PocketMine Team
- * @link http://www.pocketmine.net/
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
  *
  *
 */
@@ -27,11 +28,9 @@ use pocketmine\network\mcpe\JwtUtils;
 use pocketmine\scheduler\AsyncTask;
 use pocketmine\Server;
 
-use pocketmine\utils\Utils;
 use function igbinary_serialize;
 use function igbinary_unserialize;
 use function openssl_error_string;
-use function openssl_free_key;
 use function openssl_pkey_get_details;
 use function openssl_pkey_new;
 use function random_bytes;
@@ -69,12 +68,12 @@ class PrepareEncryptionTask extends AsyncTask{
 		$this->serverPrivateKey = igbinary_serialize(openssl_pkey_get_details(self::$SERVER_PRIVATE_KEY));
 		$this->clientPub = $clientPub;
 
-		$this->storeLocal($onCompletion);
+		Server::getInstance()->getScheduler()->storeLocalComplex($this, $onCompletion);
 	}
 
-	/**
-	 * @throws \JsonException
-	 */
+    /**
+     * @throws \Exception
+     */
 	public function onRun() : void{
 		/** @var mixed[] $serverPrivDetails */
 		$serverPrivDetails = igbinary_unserialize($this->serverPrivateKey);
@@ -84,8 +83,7 @@ class PrepareEncryptionTask extends AsyncTask{
 
 		$clientPub = JwtUtils::parseDerPublicKey($this->clientPub);
 		$sharedSecret = EncryptionUtils::generateSharedSecret($serverPriv, $clientPub);
-
-		$salt = random_bytes(16);
+        $salt = random_bytes(16);
 		$this->aesKey = EncryptionUtils::generateKey($sharedSecret, $salt);
 
 		$derServPublicKey = JwtUtils::emitDerPublicKey($serverPriv);
@@ -94,9 +92,6 @@ class PrepareEncryptionTask extends AsyncTask{
 		$this->handshakeJwt = EncryptionUtils::generateServerHandshakeJwt($derServPublicKey, $serverPriv, $salt);
 
 		$this->serverTokenRandom = $salt;
-
-		@openssl_free_key($serverPriv);
-		@openssl_free_key($clientPub);
 	}
 
 	public function onCompletion(Server $server) : void{
@@ -106,7 +101,7 @@ class PrepareEncryptionTask extends AsyncTask{
 		 */
 		$callback = $this->fetchLocal();
 		if($this->aesKey === null || $this->handshakeJwt === null){
-			throw new  \InvalidArgumentException("Something strange happened here ...");
+			throw new \InvalidArgumentException("Something strange happened here ...");
 		}
 		$callback($this->aesKey, $this->handshakeJwt, $this->serverPublickey, $this->serverTokenRandom);
 	}

@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 /**
@@ -7,12 +27,15 @@ declare(strict_types=1);
  */
 namespace pocketmine\command;
 
-use pocketmine\lang\TextContainer;
-use pocketmine\lang\TranslationContainer;
+use pocketmine\event\TextContainer;
+use pocketmine\event\TimingsHandler;
+use pocketmine\event\TranslationContainer;
+use pocketmine\command\data\CommandParameter;
+use pocketmine\command\data\CommandOverload;
 use pocketmine\Player;
 use pocketmine\Server;
-use pocketmine\timings\TimingsHandler;
 use pocketmine\utils\TextFormat;
+
 use function explode;
 use function file_get_contents;
 use function json_decode;
@@ -67,6 +90,35 @@ abstract class Command{
 		$this->usageMessage = $usageMessage ?? ("/" . $name);
 		$this->setAliases($aliases);
 	}
+
+	public function addParameter(CommandParameter $parameter, int|string $columnId = "default") : void{
+		$overload = $this->commandData["overloads"][$columnId] ?? new CommandOverload();
+
+		if (!$overload instanceof CommandOverload) {
+			unset($this->commandData["overloads"][$columnId]);
+			$overload = new CommandOverload();
+		}
+
+		$overload->getInput()->addParameter($parameter);
+
+		if (!isset($this->commandData["overloads"][$columnId])) {
+			$this->commandData["overloads"][$columnId] = $overload;
+		}
+	}
+
+	/*public function addSubCommand(string $name, CommandParameter ...$parameters) : void{
+		$enumParameter = new CommandParameterEnum($name, false, [$name]);
+		$overload = [
+			"input" => [
+				"parameters" => [
+					$enumParameter,
+					$parameters
+				]
+			],
+			"output" => []
+		];
+		$this->commandData["overloads"][$name] = $overload;
+	}*/
 
 	/**
 	 * Returns an array containing command data

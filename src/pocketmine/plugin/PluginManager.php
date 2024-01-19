@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\plugin;
@@ -11,13 +31,13 @@ use pocketmine\event\Event;
 use pocketmine\event\EventPriority;
 use pocketmine\event\HandlerList;
 use pocketmine\event\Listener;
+use pocketmine\event\Timings;
+use pocketmine\event\TimingsHandler;
+use pocketmine\event\plugin\{PluginEnableEvent, PluginDisableEvent};
 use pocketmine\permission\Permissible;
 use pocketmine\permission\Permission;
 use pocketmine\Server;
-use pocketmine\timings\Timings;
-use pocketmine\timings\TimingsHandler;
-use pocketmine\utils\AssumptionFailedError;
-use pocketmine\utils\Utils;
+
 use function array_map;
 use function array_pad;
 use function basename;
@@ -93,8 +113,6 @@ class PluginManager{
 
 	/** @var TimingsHandler */
 	public static $pluginParentTimer;
-
-	public static $useTimings = false;
 
 	/**
 	 * @param Server           $server
@@ -181,6 +199,62 @@ class PluginManager{
 		}
 
 		return null;
+	}
+
+	/**
+	 * @param PluginLoader      $loader
+	 * @param PluginBase        $plugin
+	 * @param PluginDescription $description
+	 * @param string            $dataFolder
+	 * @param string            $file
+	 */
+	public function initPlugin(PluginLoader $loader, PluginBase $plugin, PluginDescription $description, $dataFolder, $file) : void{
+		$plugin->init($loader, $this->server, $description, $dataFolder, $file);
+		$plugin->onLoad();
+	}
+
+	
+	/**
+	 * @param Plugin $plugin
+	 */
+	public function enablePlugin(Plugin $plugin){
+		try {
+			if($plugin instanceof PluginBase and !$plugin->isEnabled()){
+				$this->server->getLogger()->info($this->server->getLanguage()->translateString("pocketmine.plugin.enable", [$plugin->getDescription()->getFullName()]));
+	
+				$plugin->setEnabled(true);
+	
+				(new PluginEnableEvent($plugin))->call();
+			}
+			foreach($plugin->getDescription()->getPermissions() as $perm){
+				$this->addPermission($perm);
+			}
+		}catch(\Throwable $e){
+			$this->server->getLogger()->logException($e);
+			$this->disablePlugin($plugin);
+		}
+	}
+
+	/**
+	 * @param Plugin $plugin
+	 */
+	public function disablePlugin(Plugin $plugin){
+		if($plugin instanceof PluginBase and $plugin->isEnabled()){
+			$plugin->setEnabled(false);
+			try{
+				$this->server->getLogger()->info($this->server->getLanguage()->translateString("pocketmine.plugin.disable", [$plugin->getDescription()->getFullName()]));
+
+				$this->server->getPluginManager()->callEvent(new PluginDisableEvent($plugin));
+			}catch(\Throwable $e){
+				$this->server->getLogger()->logException($e);
+			}
+
+			$this->server->getScheduler()->cancelTasks($plugin);
+			HandlerList::unregisterAll($plugin);
+			foreach($plugin->getDescription()->getPermissions() as $perm){
+				$this->removePermission($perm);
+			}
+		}
 	}
 
 	/**
@@ -536,23 +610,6 @@ class PluginManager{
 
 	/**
 	 * @param Plugin $plugin
-	 */
-	public function enablePlugin(Plugin $plugin){
-		if(!$plugin->isEnabled()){
-			try{
-				foreach($plugin->getDescription()->getPermissions() as $perm){
-					$this->addPermission($perm);
-				}
-				$plugin->getPluginLoader()->enablePlugin($plugin);
-			}catch(\Throwable $e){
-				$this->server->getLogger()->logException($e);
-				$this->disablePlugin($plugin);
-			}
-		}
-	}
-
-	/**
-	 * @param Plugin $plugin
 	 *
 	 * @return PluginCommand[]
 	 */
@@ -614,25 +671,6 @@ class PluginManager{
 		}
 	}
 
-	/**
-	 * @param Plugin $plugin
-	 */
-	public function disablePlugin(Plugin $plugin){
-		if($plugin->isEnabled()){
-			try{
-				$plugin->getPluginLoader()->disablePlugin($plugin);
-			}catch(\Throwable $e){
-				$this->server->getLogger()->logException($e);
-			}
-
-			$this->server->getScheduler()->cancelTasks($plugin);
-			HandlerList::unregisterAll($plugin);
-			foreach($plugin->getDescription()->getPermissions() as $perm){
-				$this->removePermission($perm);
-			}
-		}
-	}
-
 	public function clearPlugins(){
 		$this->disablePlugins();
 		$this->plugins = [];
@@ -642,24 +680,36 @@ class PluginManager{
 		$this->defaultPermsOp = [];
 	}
 
+	/**
+	 * Calls an event
+	 * Use Event::call instead
+	 * 
+	 * @deprecated
+	 *
+	 * @param Event $event
+	 */
+	public function callEvent(Event $event){
+		$event->call();
+	}
+
     /**
-     * Calls an event
+     * Extracts one-line tags from the doc-comment
      *
-     * @deprecated
-     * @see Event::call()
-     *
-     * @return void
+     * @param string $docComment
+     * @return string[] an array of tagName => tag value. If the tag has no value, an empty string is used as the value.
      */
-    public function callEvent(Event $event){
-        $event->call();
+    public static function parseDocComment(string $docComment) : array{
+        preg_match_all('/^[\t ]*\* @([a-zA-Z]+)(?:[\t ]+(.+))?[\t ]*$/m', $docComment, $matches);
+        return array_combine($matches[1], array_map("trim", $matches[2]));
     }
 
     /**
-     * Registers all the events in the given Listener class
-     *
-     * @throws PluginException
+     * @param Listener $listener
+     * @param Plugin $plugin
+     * @return void
+     * @throws \ReflectionException
      */
-    public function registerEvents(Listener $listener, Plugin $plugin) : void{
+    public function registerEvents(Listener $listener, Plugin $plugin){
         if(!$plugin->isEnabled()){
             throw new PluginException("Plugin attempted to register " . get_class($listener) . " while not enabled");
         }
@@ -667,7 +717,7 @@ class PluginManager{
         $reflection = new \ReflectionClass(get_class($listener));
         foreach($reflection->getMethods(\ReflectionMethod::IS_PUBLIC) as $method){
             if(!$method->isStatic() and $method->getDeclaringClass()->implementsInterface(Listener::class)){
-                $tags = Utils::parseDocComment((string) $method->getDocComment());
+                $tags = self::parseDocComment((string) $method->getDocComment());
                 if(isset($tags["notHandler"])){
                     continue;
                 }
@@ -676,10 +726,6 @@ class PluginManager{
                 if(count($parameters) !== 1){
                     continue;
                 }
-
-                $handlerClosure = $method->getClosure($listener);
-                if($handlerClosure === null) throw new AssumptionFailedError("This should never happen");
-
                 try{
                     $paramType = $parameters[0]->getType();
                     //isBuiltin() returns false for builtin classes ..................
@@ -692,7 +738,7 @@ class PluginManager{
                     }
                 }catch(\ReflectionException $e){ //class doesn't exist
                     if(isset($tags["softDepend"]) && !isset($this->plugins[$tags["softDepend"]])){
-                        $this->server->getLogger()->debug("Not registering @softDepend listener " . Utils::getNiceClosureName($handlerClosure) . "() because plugin \"" . $tags["softDepend"] . "\" not found");
+                        $this->server->getLogger()->debug("Not registering @softDepend listener " . get_class($listener) . "::" . $method->getName() . "(" . $parameters[0]->getType()->getName() . ") because plugin \"" . $tags["softDepend"] . "\" not found");
                         continue;
                     }
 
@@ -705,7 +751,7 @@ class PluginManager{
                 try{
                     $priority = isset($tags["priority"]) ? EventPriority::fromString($tags["priority"]) : EventPriority::NORMAL;
                 }catch(\InvalidArgumentException $e){
-                    throw new PluginException("Event handler " . Utils::getNiceClosureName($handlerClosure) . "() declares invalid/unknown priority \"" . $tags["priority"] . "\"");
+                    throw new PluginException("Event handler " . get_class($listener) . "->" . $method->getName() . "() declares invalid/unknown priority \"" . $tags["priority"] . "\"");
                 }
 
                 $ignoreCancelled = false;
@@ -719,7 +765,7 @@ class PluginManager{
                             $ignoreCancelled = false;
                             break;
                         default:
-                            throw new PluginException("Event handler " . Utils::getNiceClosureName($handlerClosure) . "() declares invalid @ignoreCancelled value \"" . $tags["ignoreCancelled"] . "\"");
+                            throw new PluginException("Event handler " . get_class($listener) . "->" . $method->getName() . "() declares invalid @ignoreCancelled value \"" . $tags["ignoreCancelled"] . "\"");
                     }
                 }
 
@@ -728,46 +774,73 @@ class PluginManager{
         }
     }
 
-    /**
-     * @param string $event Class name that extends Event
-     * @phpstan-param class-string<Event> $event
-     *
-     * @throws PluginException
-     */
-    public function registerEvent(string $event, Listener $listener, int $priority, EventExecutor $executor, Plugin $plugin, bool $ignoreCancelled = false) : void{
-        if(!is_subclass_of($event, Event::class)){
-            throw new PluginException($event . " is not an Event");
-        }
-
-        if(!$plugin->isEnabled()){
-            throw new PluginException("Plugin attempted to register " . $event . " while not enabled");
-        }
-
-        $timings = new TimingsHandler("Plugin: " . $plugin->getDescription()->getFullName() . " Event: " . get_class($listener) . "::" . ($executor instanceof MethodEventExecutor ? $executor->getMethod() : "???") . "(" . (new \ReflectionClass($event))->getShortName() . ")");
-
-        $this->getEventListeners($event)->register(new RegisteredListener($listener, $executor, $priority, $plugin, $ignoreCancelled, $timings));
-    }
-
-    private function getEventListeners(string $event) : HandlerList{
-        $list = HandlerList::getHandlerListFor($event);
-        if($list === null){
-            throw new PluginException("Abstract events not declaring @allowHandle cannot be handled (tried to register listener for $event)");
-        }
-        return $list;
-    }
-
 	/**
-	 * @return bool
+	 * @param string        $event Class name that extends Event
+	 * @param Listener      $listener
+	 * @param int           $priority
+	 * @param EventExecutor $executor
+	 * @param Plugin        $plugin
+	 * @param bool          $ignoreCancelled
+	 *
+	 * @throws PluginException
 	 */
-	public function useTimings() : bool{
-		return self::$useTimings;
+	public function registerEvent(string $event, Listener $listener, int $priority, EventExecutor $executor, Plugin $plugin, bool $ignoreCancelled = false){
+		if(!is_subclass_of($event, Event::class)){
+			throw new PluginException($event . " is not an Event");
+		}
+		$class = new \ReflectionClass($event);
+		if($class->isAbstract()){
+			throw new PluginException($event . " is an abstract Event");
+		}
+
+		if(!$class->hasProperty("handlerList") or ($property = $class->getProperty("handlerList"))->getDeclaringClass()->getName() !== $event){
+			throw new PluginException($event . " does not have a valid handler list");
+		}
+		if(!$property->isStatic()){
+			throw new PluginException($event . " handlerList property is not static");
+		}
+		if(!$property->isPublic()){
+			throw new PluginException($event . " handlerList property is not public");
+		}
+
+		if(!$plugin->isEnabled()){
+			throw new PluginException("Plugin attempted to register " . $event . " while not enabled");
+		}
+
+		$timings = new TimingsHandler("Plugin: " . $plugin->getDescription()->getFullName() . " Event: " . get_class($listener) . "::" . ($executor instanceof MethodEventExecutor ? $executor->getMethod() : "???") . "(" . (new \ReflectionClass($event))->getShortName() . ")", self::$pluginParentTimer);
+
+		$this->getEventListeners($event)->register(new RegisteredListener($listener, $executor, $priority, $plugin, $ignoreCancelled, $timings));
 	}
 
 	/**
-	 * @param bool $use
+	 * @param string $event
+	 *
+	 * @return HandlerList
+	 */
+	private function getEventListeners(string $event) : HandlerList{
+		if($event::$handlerList === null){
+			$event::$handlerList = new HandlerList();
+		}
+
+		return $event::$handlerList;
+	}
+
+	/**
+     * @deprecated
+     *
+	 * @return bool
+	 */
+	public function useTimings() : bool{
+		return TimingsHandler::isEnabled();
+	}
+
+	/**
+     * @deprecated
+     *
+     * @param bool $use
 	 */
 	public function setUseTimings(bool $use){
-		self::$useTimings = $use;
+        TimingsHandler::setEnabled($use);
 	}
 
 }

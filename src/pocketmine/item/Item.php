@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 /**
@@ -226,13 +246,6 @@ class Item implements ItemIds, \JsonSerializable{
 
 			self::$list[self::TOTEM] = Totem::class;
 
-            self::$list[self::NETHERITE_SWORD] = NetheriteSword::class;
-            self::$list[self::NETHERITE_HELMET] = NetheriteHelmet::class;
-            self::$list[self::NETHERITE_CHESTPLATE] = NetheriteChestplate::class;
-            self::$list[self::NETHERITE_LEGGINS] = NetheriteLeggins::class;
-            self::$list[self::NETHERITE_BOOTS] = NetheriteBoots::class;
-            self::$list[self::NETHERITE_SCRAP] = NetheriteScrap::class;
-
 			self::$list[self::ENCHANTED_GOLDEN_APPLE] = GoldenAppleEnchanted::class;
 		}
 
@@ -318,7 +331,11 @@ class Item implements ItemIds, \JsonSerializable{
 			if($id < 256){
 				return (new ItemBlock(Block::get($id, $meta), $meta, $count))->setCompoundTag($tags);
 			}else{
-                $class = self::$list[$id];
+				if(isset(self::$list[$id])) {
+					$class = self::$list[$id];
+				} else {
+					$class = null;
+				}
 				if($class === null){
 					return (new Item($id, $meta, $count))->setCompoundTag($tags);
 				}else{
@@ -471,10 +488,6 @@ class Item implements ItemIds, \JsonSerializable{
 	public function hasEnchantments() : bool{
 		return $this->getNamedTag()->hasTag("ench", ListTag::class);
 	}
-
-    public function getItemPocket():Item{
-        return $this;
-    }
 
 	/**
 	 * @param int $id
@@ -916,10 +929,6 @@ class Item implements ItemIds, \JsonSerializable{
         return 0;
     }
 
-    public function getArmorHash() : int{
-        return 0;
-    }
-
     /**
      * Returns what type of block-breaking tool this is. Blocks requiring the same tool type as the item will break
      * faster (except for blocks requiring no tool, which break at the same speed regardless of the tool used)
@@ -1128,7 +1137,7 @@ class Item implements ItemIds, \JsonSerializable{
 	 *
 	 * @return array
 	 */
-	final public function jsonSerialize(){
+	final public function jsonSerialize() : mixed{
 		return [
 			"id" => $this->getId(),
 			"damage" => $this->getDamage(),

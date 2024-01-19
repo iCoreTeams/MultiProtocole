@@ -1,11 +1,29 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\network\bedrock\chunk;
 
-use InvalidArgumentException;
-use pocketmine\BedrockPlayer;
 use pocketmine\level\ChunkListener;
 use pocketmine\level\format\Chunk;
 use pocketmine\level\Level;
@@ -39,9 +57,9 @@ class BedrockChunkCache implements NetworkChunkCache, LevelListener, ChunkListen
 	 *
 	 * @return BedrockChunkCache
 	 */
-	public static function getInstance(Level $level, int $protocol) : BedrockChunkCache{
+	public static function getInstance(Level $level) : BedrockChunkCache{
 		$idx = spl_object_id($level);
-		return self::$instances[$idx][$protocol] ?? (self::$instances[$idx][$protocol] = new BedrockChunkCache($level, $protocol));
+		return self::$instances[$idx] ?? (self::$instances[$idx] = new BedrockChunkCache($level));
 	}
 	
 	/**
@@ -55,9 +73,6 @@ class BedrockChunkCache implements NetworkChunkCache, LevelListener, ChunkListen
 
 	/** @var Level */
 	private $level;
-
-	/** @var int */
-	private $protocol;
 
 	/** @var string[] */
 	private $caches = [];
@@ -77,11 +92,9 @@ class BedrockChunkCache implements NetworkChunkCache, LevelListener, ChunkListen
 	/**
 	 * @param Level $level
 	 */
-	private function __construct(Level $level, int $protocol){
+	private function __construct(Level $level){
 		$this->level = $level;
 		$this->level->registerLevelListener($this);
-
-		$this->protocol = $protocol;
 	}
 
 	public function __destruct(){
@@ -107,7 +120,7 @@ class BedrockChunkCache implements NetworkChunkCache, LevelListener, ChunkListen
 			return;
 		}
 
-		$this->tasks[$chunkHash] = $task = new BedrockChunkRequestTask($this->level, $this->level->getChunk($chunkX, $chunkZ), $this->protocol);
+		$this->tasks[$chunkHash] = $task = new BedrockChunkRequestTask($this->level, $this->level->getChunk($chunkX, $chunkZ));
 		$this->level->getServer()->getScheduler()->scheduleAsyncTask($task);
 	}
 
@@ -201,7 +214,7 @@ class BedrockChunkCache implements NetworkChunkCache, LevelListener, ChunkListen
 
 		$this->destroy($chunkX, $chunkZ);
 
-		$this->tasks[$chunkHash] = $task = new BedrockChunkRequestTask($this->level, $this->level->getChunk($chunkX, $chunkZ), $this->protocol);
+		$this->tasks[$chunkHash] = $task = new BedrockChunkRequestTask($this->level, $this->level->getChunk($chunkX, $chunkZ));
 		$this->level->getServer()->getScheduler()->scheduleAsyncTask($task);
 	}
 

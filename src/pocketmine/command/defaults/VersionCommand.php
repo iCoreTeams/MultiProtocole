@@ -1,14 +1,36 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\command\defaults;
 
 use pocketmine\command\CommandSender;
-use pocketmine\lang\TranslationContainer;
-use pocketmine\network\mcpe\protocol\ProtocolInfo;
+use pocketmine\event\TranslationContainer;
+use pocketmine\network\mcpe\protocol\ProtocolInfo as MCPEProtocol;
+use pocketmine\network\bedrock\protocol\ProtocolInfo as MCBEProtocol;
 use pocketmine\plugin\Plugin;
 use pocketmine\utils\TextFormat;
+
 use function count;
 use function implode;
 use function stripos;
@@ -32,14 +54,19 @@ class VersionCommand extends VanillaCommand{
 		}
 
 		if(count($args) === 0){
-			$sender->sendMessage(new TranslationContainer("pocketmine.server.info.extended", [
-				$sender->getServer()->getName(),
-				$sender->getServer()->getPocketMineVersion(),
-				$sender->getServer()->getCodename(),
-				$sender->getServer()->getApiVersion(),
-				$sender->getServer()->getVersion(),
-				ProtocolInfo::CURRENT_PROTOCOL
-			]));
+			$server = $sender->getServer();
+			$messages = [
+				new TranslationContainer('pocketmine.server.info.extended.title', []),
+				new TranslationContainer('pocketmine.server.info.extended.main', [TextFormat::GREEN . $server->getName(), TextFormat::GREEN . $server->getPocketMineVersion(), TextFormat::GREEN . $server->getCodename()]),
+				new TranslationContainer('pocketmine.server.info.extended.php', [TextFormat::GREEN . phpversion(), TextFormat::GREEN . phpversion('pmmpthread')]),
+				new TranslationContainer('pocketmine.server.info.extended.api', [TextFormat::GREEN . $server->getApiVersion()]),
+				new TranslationContainer('pocketmine.server.info.extended.version', [TextFormat::GREEN . $server->getVersion() . " - " . $server->getBedrockVersion()]),
+				new TranslationContainer('pocketmine.server.info.extended.protocols', [TextFormat::GREEN . MCPEProtocol::CURRENT_PROTOCOL, TextFormat::GREEN . MCBEProtocol::CURRENT_PROTOCOL]),
+			];
+
+			foreach ($messages as $message) {
+				$sender->sendMessage($message);
+			}
 		}else{
 			$pluginName = implode(" ", $args);
 			$exactPlugin = $sender->getServer()->getPluginManager()->getPlugin($pluginName);

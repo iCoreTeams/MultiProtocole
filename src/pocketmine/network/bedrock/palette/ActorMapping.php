@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\network\bedrock\palette;
@@ -21,13 +41,13 @@ final class ActorMapping{
 	private static $encodedActorIdentifiers;
 
 	public static function init() : void{
-		self::$stringToLegacyIdMap = json_decode(file_get_contents(\pocketmine\PATH . "src/pocketmine/resources/bedrock/entity_id_map.json"), true);
+		self::$stringToLegacyIdMap = json_decode(file_get_contents(\pocketmine\PATH . "src/pocketmine/resources/bedrock/actor_id_map.json"), true);
 		self::$stringToLegacyIdMap[":"] = 1; //empty id
 
 		self::$legacyToStringIdMap = array_flip(self::$stringToLegacyIdMap);
 		self::$stringToLegacyIdMap[""] = 1; //another empty id
 
-		self::$encodedActorIdentifiers = file_get_contents(\pocketmine\PATH . "src/pocketmine/resources/bedrock/entity_identifiers.nbt");
+		self::$encodedActorIdentifiers = file_get_contents(\pocketmine\PATH . "src/pocketmine/resources/bedrock/actor_identifiers.nbt");
 	}
 
 	/**

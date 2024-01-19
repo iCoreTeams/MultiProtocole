@@ -21,6 +21,13 @@ use pocketmine\snooze\SleeperNotifier;
 use raklib\generic\Socket;
 use raklib\RakLib;
 use raklib\utils\InternetAddress;
+use pocketmine\thread\log\ThreadSafeLogger;
+use pocketmine\thread\NonThreadSafeValue;
+use pocketmine\thread\Thread;
+//use pmmp\thread\Thread as NativeThread;
+use pmmp\thread\ThreadSafeArray;
+use pocketmine\thread\ThreadSafeClassLoader;
+use pocketmine\thread\ThreadCrashException;
 use function array_reverse;
 use function error_get_last;
 use function error_reporting;
@@ -43,54 +50,51 @@ use const DIRECTORY_SEPARATOR;
 use const PHP_INT_MAX;
 use const PTHREADS_INHERIT_NONE;
 
-class RakLibServer extends \Thread{
-	/** @var InternetAddress */
-	private $address;
+class RakLibServer extends Thread{
+	/** @var NonThreadSafeValue */
+	private NonThreadSafeValue $address;
 
-	/** @var \ThreadedLogger */
-	protected $logger;
+	/** @var ThreadSafeLogger */
+	protected ThreadSafeLogger $logger;
 
-	/** @var \ClassLoader */
-	protected $classLoader;
+	/** @var ThreadSafeClassLoader */
+	protected ThreadSafeClassLoader $classLoader;
 
 	/** @var bool */
-	protected $shutdown = false;
+	protected bool $shutdown = false;
 	/** @var bool */
-	protected $ready = false;
+	protected bool $ready = false;
 
-	/** @var \Threaded */
-	protected $externalQueue;
-	/** @var \Threaded */
-	protected $internalQueue;
+	/** @var ThreadSafeArray */
+	protected ThreadSafeArray $externalQueue;
+	/** @var ThreadSafeArray */
+	protected ThreadSafeArray $internalQueue;
 
 	/** @var string */
-	protected $mainPath;
+	protected string $mainPath;
 
 	/** @var int */
-	protected $serverId = 0;
+	protected int $serverId = 0;
 	/** @var int */
-	protected $maxMtuSize;
+	protected int $maxMtuSize;
 	/** @var \Volatile|int[] */
-	private $protocolVersions;
+	private NonThreadSafeValue $protocolVersions;
 
 	/** @var SleeperNotifier|null */
 	protected $mainThreadNotifier;
 	/** @var SleeperNotifier|null */
 	protected $internalThreadNotifier;
 
-	/** @var \Throwable|null */
-	public $crashInfo = null;
-
 	/**
-	 * @param \ThreadedLogger      $logger
-	 * @param \ClassLoader         $classLoader
-	 * @param InternetAddress      $address
-	 * @param int                  $maxMtuSize
-	 * @param int[]                $protocolVersions
-	 * @param SleeperNotifier|null $sleeper
+	 * @param ThreadSafeLogger             $logger
+	 * @param ThreadSafeClassLoader        $classLoader
+	 * @param InternetAddress              $address
+	 * @param int                          $maxMtuSize
+	 * @param int[]                        $protocolVersions
+	 * @param SleeperNotifier|null         $sleeper
 	 */
-	public function __construct(\ThreadedLogger $logger, \ClassLoader $classLoader, InternetAddress $address, int $maxMtuSize = 1492, array $protocolVersions = [], ?SleeperNotifier $sleeper = null){
-		$this->address = $address;
+	public function __construct(ThreadSafeLogger $logger, ThreadSafeClassLoader $classLoader, InternetAddress $address, int $maxMtuSize = 1492, array $protocolVersions = [], ?SleeperNotifier $sleeper = null){
+		$this->address = new NonThreadSafeValue($address);
 
 		$this->serverId = mt_rand(0, PHP_INT_MAX);
 		$this->maxMtuSize = $maxMtuSize;
@@ -98,8 +102,8 @@ class RakLibServer extends \Thread{
 		$this->logger = $logger;
 		$this->classLoader = $classLoader;
 
-		$this->externalQueue = new \Threaded;
-		$this->internalQueue = new \Threaded;
+		$this->externalQueue = new ThreadSafeArray;
+		$this->internalQueue = new ThreadSafeArray;
 
 		if(\Phar::running(true) !== ""){
 			$this->mainPath = \Phar::running(true);
@@ -107,7 +111,7 @@ class RakLibServer extends \Thread{
 			$this->mainPath = realpath(getcwd()) . DIRECTORY_SEPARATOR;
 		}
 
-		$this->protocolVersions = count($protocolVersions) === 0 ? [RakLib::DEFAULT_PROTOCOL_VERSION] : $protocolVersions;
+		$this->protocolVersions = new NonThreadSafeValue(count($protocolVersions) === 0 ? [RakLib::DEFAULT_PROTOCOL_VERSION] : $protocolVersions);
 
 		$this->mainThreadNotifier = $sleeper;
 	}
@@ -128,28 +132,28 @@ class RakLibServer extends \Thread{
 		return $this->serverId;
 	}
 
-	public function getProtocolVersions() : \Volatile{
-		return $this->protocolVersions;
+	public function getProtocolVersions() : array{
+		return $this->protocolVersions->deserialize();
 	}
 
 	/**
-	 * @return \ThreadedLogger
+	 * @return ThreadSafeLogger
 	 */
-	public function getLogger() : \ThreadedLogger{
+	public function getLogger() : ThreadSafeLogger{
 		return $this->logger;
 	}
 
 	/**
-	 * @return \Threaded
+	 * @return ThreadSafeArray
 	 */
-	public function getExternalQueue() : \Threaded{
+	public function getExternalQueue() : ThreadSafeArray{
 		return $this->externalQueue;
 	}
 
 	/**
-	 * @return \Threaded
+	 * @return ThreadSafeArray
 	 */
-	public function getInternalQueue() : \Threaded{
+	public function getInternalQueue() : ThreadSafeArray{
 		return $this->internalQueue;
 	}
 
@@ -173,27 +177,6 @@ class RakLibServer extends \Thread{
 
 	public function readThreadToMainPacket() : ?string{
 		return $this->externalQueue->shift();
-	}
-
-	public function shutdownHandler(){
-		if($this->shutdown !== true){
-			$error = error_get_last();
-			if($error !== null){ //fatal error
-				$this->setCrashInfo(new \ErrorException($error['message'], 0, $error['type'], $error['file'], $error['line']));
-			}
-
-		}
-	}
-
-	public function getCrashInfo() : ?\Throwable{
-		return $this->crashInfo;
-	}
-
-	private function setCrashInfo(\Throwable $e){
-		$this->synchronized(function($e){
-			$this->crashInfo = $e;
-			$this->notify();
-		}, $e);
 	}
 
 	public function getTrace($start = 0, $trace = null){
@@ -236,42 +219,42 @@ class RakLibServer extends \Thread{
 			while(!$this->ready and $this->crashInfo === null){
 				$this->wait();
 			}
-			if($this->crashInfo !== null){
-				throw $this->crashInfo;
+			$crashInfo = $this->getCrashInfo();
+			if($crashInfo !== null){
+				if ($crashInfo->getType() === SocketException::class) {
+					throw new SocketException($crashInfo->getMessage());
+				}
+				throw new ThreadCrashException("RakLib failed to start", $crashInfo);
 			}
 		});
 	}
 
-	public function run() : void{
-		try{
-			if($this->classLoader !== null){
-				$this->classLoader->register(true);
-			}
-
-			gc_enable();
-			ini_set("memory_limit", '-1');
-
-			error_reporting(-1);
-			ini_set("display_errors", '1');
-			ini_set("display_startup_errors", '1');
-
-			\ErrorUtils::setErrorExceptionHandler();
-			register_shutdown_function([$this, "shutdownHandler"]);
-
-			$socket = new Socket($this->address);
-
-			$internalThreadNotifier = new SleeperNotifier();
-			$manager = new SessionManager($this, $socket, $this->maxMtuSize, $internalThreadNotifier);
-			$this->internalThreadNotifier = $internalThreadNotifier;
-			$this->synchronized(function(){
-				$this->ready = true;
-				$this->notify();
-			});
-			$manager->run();
-		}catch(\Throwable $e){
-			$this->setCrashInfo($e);
-			$this->logger->logException($e);
+	public function onRun() : void{
+		if($this->classLoader !== null){
+			$this->classLoader->register(true);
 		}
-	}
 
+		gc_enable();
+		ini_set("memory_limit", '-1');
+
+		error_reporting(-1);
+		ini_set("display_errors", '1');
+		ini_set("display_startup_errors", '1');
+		\GlobalLogger::set($this->logger);
+
+		$socket = new Socket($this->address->deserialize());
+
+		$internalThreadNotifier = new SleeperNotifier();
+		$manager = new SessionManager($this, $socket, $this->maxMtuSize, $internalThreadNotifier);
+		$this->internalThreadNotifier = $internalThreadNotifier;
+		$this->synchronized(function(){
+			$this->ready = true;
+			$this->notify();
+		});
+		
+		while(!$this->isShutdown()) {
+			$manager->tickProcessor();
+		}
+		$manager->waitShutdown();
+	}
 }

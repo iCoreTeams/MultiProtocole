@@ -1,10 +1,30 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\command;
 
-use pocketmine\lang\TextContainer;
+use pocketmine\event\TextContainer;
 use pocketmine\permission\PermissibleBase;
 use pocketmine\permission\Permission;
 use pocketmine\permission\PermissionAttachment;
@@ -12,8 +32,10 @@ use pocketmine\permission\PermissionAttachmentInfo;
 use pocketmine\plugin\Plugin;
 use pocketmine\Server;
 use pocketmine\utils\MainLogger;
+
 use function explode;
 use function trim;
+
 use const PHP_INT_MAX;
 
 class ConsoleCommandSender implements CommandSender{
@@ -101,7 +123,7 @@ class ConsoleCommandSender implements CommandSender{
 		}
 
 		foreach(explode("\n", trim($message)) as $line){
-			MainLogger::getLogger()->info($line);
+			\GlobalLogger::get()->info($line);
 		}
 	}
 

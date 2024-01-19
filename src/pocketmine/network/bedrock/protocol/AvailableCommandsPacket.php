@@ -1,16 +1,39 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\network\bedrock\protocol;
 
 #include <rules/DataPacket.h>
 
+use pocketmine\network\bedrock\protocol\types\ChainedSubCommandData;
+use pocketmine\network\bedrock\protocol\types\ChainedSubCommandValue;
 use pocketmine\network\bedrock\protocol\types\CommandEnumConstraint;
 use pocketmine\network\NetworkSession;
 use pocketmine\network\bedrock\protocol\types\CommandData;
 use pocketmine\network\bedrock\protocol\types\CommandEnum;
 use pocketmine\network\bedrock\protocol\types\CommandParameter;
+use pocketmine\network\bedrock\protocol\types\CommandOverload;
 use function array_flip;
 use function array_keys;
 use function array_map;
@@ -22,7 +45,6 @@ use function dechex;
 class AvailableCommandsPacket extends DataPacket{
 	public const NETWORK_ID = ProtocolInfo::AVAILABLE_COMMANDS_PACKET;
 
-
 	/**
 	 * This flag is set on all types EXCEPT the POSTFIX type. Not completely sure what this is for, but it is required
 	 * for the argtype to work correctly. VALID seems as good a name as any.
@@ -33,36 +55,35 @@ class AvailableCommandsPacket extends DataPacket{
 	 * Basic parameter types. These must be combined with the ARG_FLAG_VALID constant.
 	 * ARG_FLAG_VALID | (type const)
 	 */
+	public const ARG_TYPE_INT = 1;
+	public const ARG_TYPE_FLOAT = 3;
+	public const ARG_TYPE_VALUE = 4;
+	public const ARG_TYPE_WILDCARD_INT = 5;
+	public const ARG_TYPE_OPERATOR = 6;
+	public const ARG_TYPE_COMPARE_OPERATOR = 7;
+	public const ARG_TYPE_TARGET = 8;
 
-    public const ARG_TYPE_INT = 1;
-    public const ARG_TYPE_FLOAT = 3;
-    public const ARG_TYPE_VALUE = 4;
-    public const ARG_TYPE_WILDCARD_INT = 5;
-    public const ARG_TYPE_OPERATOR = 6;
-    public const ARG_TYPE_COMPARE_OPERATOR = 7;
-    public const ARG_TYPE_TARGET = 8;
+	public const ARG_TYPE_WILDCARD_TARGET = 10;
 
-    public const ARG_TYPE_WILDCARD_TARGET = 10;
+	public const ARG_TYPE_FILEPATH = 17;
 
-    public const ARG_TYPE_FILEPATH = 17;
+	public const ARG_TYPE_FULL_INTEGER_RANGE = 23;
 
-    public const ARG_TYPE_FULL_INTEGER_RANGE = 23;
+	public const ARG_TYPE_EQUIPMENT_SLOT = 43;
+	public const ARG_TYPE_STRING = 44;
 
-    public const ARG_TYPE_EQUIPMENT_SLOT = 43;
-    public const ARG_TYPE_STRING = 44;
+	public const ARG_TYPE_INT_POSITION = 52;
+	public const ARG_TYPE_POSITION = 53;
 
-    public const ARG_TYPE_INT_POSITION = 52;
-    public const ARG_TYPE_POSITION = 53;
+	public const ARG_TYPE_MESSAGE = 55;
 
-    public const ARG_TYPE_MESSAGE = 55;
+	public const ARG_TYPE_RAWTEXT = 58;
 
-    public const ARG_TYPE_RAWTEXT = 58;
+	public const ARG_TYPE_JSON = 62;
 
-    public const ARG_TYPE_JSON = 62;
+	public const ARG_TYPE_BLOCK_STATES = 71;
 
-    public const ARG_TYPE_BLOCK_STATES = 71;
-
-    public const ARG_TYPE_COMMAND = 74;
+	public const ARG_TYPE_COMMAND = 74;
 
 	/**
 	 * Enums are a little different: they are composed as follows:
@@ -70,10 +91,10 @@ class AvailableCommandsPacket extends DataPacket{
 	 */
 	public const ARG_FLAG_ENUM = 0x200000;
 
-	/**
-	 * This is used for /xp <level: int>L. It can only be applied to integer parameters.
-	 */
+	/** This is used for /xp <level: int>L. It can only be applied to integer parameters. */
 	public const ARG_FLAG_POSTFIX = 0x1000000;
+
+	public const ARG_FLAG_SOFT_ENUM = 0x4000000;
 
 	public const HARDCODED_ENUM_NAMES = [
 		"CommandName" => true
@@ -166,14 +187,20 @@ class AvailableCommandsPacket extends DataPacket{
 	 */
 	public $enumConstraints = [];
 
+	public $allChainedSubCommandData = [];
+
+	public $chainedSubCommandDataIndexes = [];
+
 	public function decodePayload(){
 		for($i = 0, $this->enumValuesCount = $this->getUnsignedVarInt(); $i < $this->enumValuesCount; ++$i){
 			$this->enumValues[] = $this->getString();
 		}
 
-        for($i = 0, $count = $this->getUnsignedVarInt(); $i < $count; ++$i){
-            $this->getString();
-        }
+		/** @var string[] $chainedSubcommandValueNames */
+		$chainedSubcommandValueNames = [];
+		for($i = 0, $count = $this->getUnsignedVarInt(); $i < $count; ++$i){
+			$chainedSubcommandValueNames[] = $this->getString();
+		}
 
 		for($i = 0, $count = $this->getUnsignedVarInt(); $i < $count; ++$i){
 			$this->postfixes[] = $this->getString();
@@ -188,13 +215,16 @@ class AvailableCommandsPacket extends DataPacket{
 			}
 		}
 
-        for($i = 0, $count = $this->getUnsignedVarInt(); $i < $count; ++$i){
-            $this->getString();
-            for($j = 0, $valueCount = $this->getUnsignedVarInt(); $j < $valueCount; ++$j){
-                $this->getLShort();
-                $this->getLShort();
-            }
-        }
+		for($i = 0, $count = $this->getUnsignedVarInt(); $i < $count; ++$i){
+			$name = $this->getString();
+			$values = [];
+			for($j = 0, $valueCount = $this->getUnsignedVarInt(); $j < $valueCount; ++$j){
+				$valueName = $chainedSubcommandValueNames[$this->getLShort()];
+				$valueType = $this->getLShort();
+				$values[] = new ChainedSubCommandValue($valueName, $valueType);
+			}
+			$this->allChainedSubCommandData[] = new ChainedSubCommandData($name, $values);
+		}
 
 		for($i = 0, $count = $this->getUnsignedVarInt(); $i < $count; ++$i){
 			$this->commandData[] = $this->getCommandData();
@@ -332,12 +362,14 @@ class AvailableCommandsPacket extends DataPacket{
 		$retval->flags = $this->getLShort();
 		$retval->permission = $this->getByte();
 		$retval->aliases = $this->enums[$this->getLInt()] ?? null;
-        for($i = 0, $count = $this->getUnsignedVarInt(); $i < $count; ++$i){
-            $this->getLShort();
-        }
+		for($i = 0, $count = $this->getUnsignedVarInt(); $i < $count; ++$i){
+			$index = $this->getLShort();
+			$retval->chainedSubCommandData[] = $this->allChainedSubCommandData[$index] ?? throw new PacketDecodeException("Unknown chained subcommand data index $index");
+		}
 
 		for($overloadIndex = 0, $overloadCount = $this->getUnsignedVarInt(); $overloadIndex < $overloadCount; ++$overloadIndex){
-            $this->getBool();
+			$parameters = [];
+			$isChaining = $this->getBool();
 			for($paramIndex = 0, $paramCount = $this->getUnsignedVarInt(); $paramIndex < $paramCount; ++$paramIndex){
 				$parameter = new CommandParameter();
 				$parameter->paramName = $this->getString();
@@ -360,8 +392,9 @@ class AvailableCommandsPacket extends DataPacket{
 					throw new \UnexpectedValueException("Invalid parameter type 0x" . dechex($parameter->paramType));
 				}
 
-				$retval->overloads[$overloadIndex][$paramIndex] = $parameter;
+				$parameters[$paramIndex] = $parameter;
 			}
+			$retval->overloads[$overloadIndex] = new CommandOverload($isChaining, $parameters);
 		}
 
 		return $retval;
@@ -379,14 +412,19 @@ class AvailableCommandsPacket extends DataPacket{
 			$this->putLInt(-1);
 		}
 
-        $this->putUnsignedVarInt(0);
+		$this->putUnsignedVarInt(count($data->chainedSubCommandData));
+		foreach ($data->chainedSubCommandData as $chainedSubCommandData) {
+			$index = $this->chainedSubCommandDataIndexes[$chainedSubCommandData->getName()] ??
+			throw new \LogicException("Chained subcommand data {$chainedSubCommandData->getName()} does not have an index (this should be impossible)");
+			$this->putLShort($index);
+		}
 
 		$this->putUnsignedVarInt(count($data->overloads));
 		foreach($data->overloads as $overload){
-			/** @var CommandParameter[] $overload */
-            $this->putBool(false);
-			$this->putUnsignedVarInt(count($overload));
-			foreach($overload as $parameter){
+			/** @var CommandOverload[] $overload */
+			$this->putBool($overload->isChaining());
+			$this->putUnsignedVarInt(count($overload->getParameters()));
+			foreach($overload->getParameters() as $parameter){
 				$this->putString($parameter->paramName);
 
 				if($parameter->enum !== null){
@@ -451,6 +489,9 @@ class AvailableCommandsPacket extends DataPacket{
 		$enumValuesMap = [];
 		$postfixesMap = [];
 		$enumMap = [];
+		$allChainedSubCommandData = [];
+		$chainedSubCommandDataIndexes = [];
+		$chainedSubCommandValueNameIndexes = [];
 
 		$addEnumFn = static function(CommandEnum $enum) use (&$enumMap, &$enumValuesMap){
 			$enumMap[$enum->enumName] = $enum;
@@ -468,17 +509,24 @@ class AvailableCommandsPacket extends DataPacket{
 			}
 
 			foreach($commandData->overloads as $overload){
-				/**
-				 * @var CommandParameter[] $overload
-				 * @var CommandParameter   $parameter
-				 */
-				foreach($overload as $parameter){
+				foreach($overload->getParameters() as $parameter){
 					if($parameter->enum !== null){
 						$addEnumFn($parameter->enum);
 					}
 
 					if($parameter->postfix !== null){
 						$postfixesMap[$parameter->postfix] = true;
+					}
+				}
+			}
+
+			foreach($commandData->chainedSubCommandData as $chainedSubCommandData){
+				if(!isset($allChainedSubCommandData[$chainedSubCommandData->getName()])){
+					$allChainedSubCommandData[$chainedSubCommandData->getName()] = $chainedSubCommandData;
+					$this->chainedSubCommandDataIndexes[$chainedSubCommandData->getName()] = count($chainedSubCommandDataIndexes);
+
+					foreach($chainedSubCommandData->getValues() as $value){
+						$chainedSubCommandValueNameIndexes[$value->getName()] ??= count($chainedSubCommandValueNameIndexes);
 					}
 				}
 			}
@@ -490,7 +538,10 @@ class AvailableCommandsPacket extends DataPacket{
 			$this->putString($enumValue);
 		}
 
-        $this->putUnsignedVarInt(0);
+		$this->putUnsignedVarInt(count($chainedSubCommandValueNameIndexes));
+		foreach($chainedSubCommandValueNameIndexes as $chainedSubCommandValueName => $index){
+			$this->putString((string) $chainedSubCommandValueName); //stupid PHP key casting D:
+		}
 
 		$this->postfixes = array_map('\strval', array_keys($postfixesMap));
 		$this->putUnsignedVarInt(count($this->postfixes));
@@ -505,7 +556,17 @@ class AvailableCommandsPacket extends DataPacket{
 			$this->putEnum($enum);
 		}
 
-        $this->putUnsignedVarInt(0);
+		$this->putUnsignedVarInt(count($allChainedSubCommandData));
+		foreach($allChainedSubCommandData as $chainedSubCommandData){
+			$this->putString($chainedSubCommandData->getName());
+			$this->putUnsignedVarInt(count($chainedSubCommandData->getValues()));
+			foreach($chainedSubCommandData->getValues() as $value){
+				$valueNameIndex = $chainedSubCommandValueNameIndexes[$value->getName()] ??
+					throw new \LogicException("Chained subcommand value name index for \"" . $value->getName() . "\" not found (this should never happen)");
+				$this->putLShort($valueNameIndex);
+				$this->putLShort($value->getType());
+			}
+		}
 
 		$this->putUnsignedVarInt(count($this->commandData));
 		foreach($this->commandData as $data){

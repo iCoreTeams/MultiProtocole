@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\network\bedrock\protocol;
@@ -7,6 +27,7 @@ namespace pocketmine\network\bedrock\protocol;
 #include <rules/DataPacket.h>
 
 
+use LogicException;
 use pocketmine\inventory\FurnaceRecipe;
 use pocketmine\inventory\ShapedRecipe;
 use pocketmine\inventory\ShapelessRecipe;
@@ -31,8 +52,7 @@ class CraftingDataPacket extends DataPacket{
 	public const ENTRY_SHULKER_BOX = 5; //TODO
 	public const ENTRY_SHAPELESS_CHEMISTRY = 6; //TODO
 	public const ENTRY_SHAPED_CHEMISTRY = 7; //TODO
-    public const ENTRY_SMITHING_TRANSFORM = 8; //TODO
-    public const ENTRY_SMITHING_TRIM = 9; //TODO
+	public const ENTRY_SMITHING_TRANSFORM = 8; // TODO
 
 	public const CRAFTING_TAG_CRAFTING_TABLE = "crafting_table";
 	public const CRAFTING_TAG_CARTOGRAPHY_TABLE = "cartography_table";
@@ -68,7 +88,7 @@ class CraftingDataPacket extends DataPacket{
 					/** @var Item */
 					$entry["input"] = [];
 					for($j = 0; $j < $ingredientCount; ++$j){
-						$entry["input"][] = $this->readRecipeIngredient();
+						$entry["input"][] = $this->getRecipeIngredient();
 					}
 					$resultCount = $this->getUnsignedVarInt();
 					$entry["output"] = [];
@@ -87,7 +107,7 @@ class CraftingDataPacket extends DataPacket{
 					$count = $entry["width"] * $entry["height"];
 					$entry["input"] = [];
 					for($j = 0; $j < $count; ++$j){
-						$entry["input"][] = $this->readRecipeIngredient();
+						$entry["input"][] = $this->getRecipeIngredient();
 					}
 					$resultCount = $this->getUnsignedVarInt();
 					$entry["output"] = [];
@@ -182,7 +202,7 @@ class CraftingDataPacket extends DataPacket{
 		$this->putString($recipe->getId()->toString());
 		$this->putUnsignedVarInt(count($recipe->getIngredientList()));
 		foreach($recipe->getIngredientList() as $item){
-			$this->writeRecipeIngredient($item);
+			$this->putRecipeIngredient($item);
 		}
 
 		$this->putUnsignedVarInt(1);
@@ -201,7 +221,7 @@ class CraftingDataPacket extends DataPacket{
 
 		for($z = 0; $z < $recipe->getHeight(); ++$z){
 			for($x = 0; $x < $recipe->getWidth(); ++$x){
-				$this->writeRecipeIngredient($recipe->getIngredient($x, $z));
+				$this->putRecipeIngredient($recipe->getIngredient($x, $z));
 			}
 		}
 
@@ -226,39 +246,6 @@ class CraftingDataPacket extends DataPacket{
 		$this->putVarInt($netData);
 		$this->putItemStackWithoutStackId($recipe->getResult());
 		$this->putString(self::CRAFTING_TAG_FURNACE); //TODO: blocktype (no prefix) (this might require internal API breaks)
-	}
-
-	protected function writeRecipeIngredient(Item $item) : void{
-        if($item->getId() === 0){
-            $this->putByte(0);
-            $this->putVarInt(0);
-            return;
-        }
-
-        $this->putByte(1);
-
-        if($item->hasAnyDamageValue()){
-            [$netId, ] = ItemPalette::getRuntimeFromLegacyId($item->getId(), 0);
-            $netData = 0x7fff;
-        }else{
-            [$netId, $netData] = ItemPalette::getRuntimeFromLegacyId($item->getId(), $item->getDamage());
-        }
-
-        $this->putLShort($netId);
-        $this->putLShort($netData);
-        $this->putVarInt($item->getCount());
-	}
-
-	protected function readRecipeIngredient() : Item{
-		$netId = $this->getVarInt();
-		if($netId === 0){
-			return Item::air();
-		}
-
-		$netData = $this->getVarInt();
-		[$id, $meta] = ItemPalette::getLegacyFromRuntimeId($netId, $netData);
-		$cnt = $this->getVarInt();
-		return Item::get($id, $meta, $cnt);
 	}
 
 	public function addShapelessRecipe(ShapelessRecipe $recipe){

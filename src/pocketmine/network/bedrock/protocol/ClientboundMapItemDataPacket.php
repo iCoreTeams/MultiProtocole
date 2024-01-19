@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 
@@ -29,6 +49,8 @@ class ClientboundMapItemDataPacket extends DataPacket{
 	public $dimensionId = DimensionIds::OVERWORLD;
 	/** @var bool */
 	public $isLocked = false;
+	/** @var int */
+	public $originX = 0, $originY = 0, $originZ = 0;
 
 	/** @var int[] */
 	public $actorUniqueIds = [];
@@ -56,9 +78,7 @@ class ClientboundMapItemDataPacket extends DataPacket{
 		$this->type = $this->getUnsignedVarInt();
 		$this->dimensionId = $this->getByte();
 		$this->isLocked = $this->getBool();
-        $this->getVarInt();
-        $this->getVarInt();
-        $this->getVarInt();
+		$this->getSignedBlockPosition($this->originX, $this->originY, $this->originZ);
 
 		if(($this->type & 0x08) !== 0){
 			$count = $this->getUnsignedVarInt();
@@ -132,9 +152,7 @@ class ClientboundMapItemDataPacket extends DataPacket{
 		$this->putUnsignedVarInt($type);
 		$this->putByte($this->dimensionId);
 		$this->putBool($this->isLocked);
-        $this->putVarInt(0);
-        $this->putVarInt(0);
-        $this->putVarInt(0);
+		$this->putSignedBlockPosition($this->originX, $this->originY, $this->originZ);
 
 		if(($type & 0x08) !== 0){ //TODO: find out what these are for
 			$this->putUnsignedVarInt($eidsCount);

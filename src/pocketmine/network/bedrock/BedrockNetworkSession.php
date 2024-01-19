@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\network\bedrock;
@@ -43,6 +63,7 @@ use pocketmine\network\bedrock\protocol\ContainerOpenPacket;
 use pocketmine\network\bedrock\protocol\ContainerSetDataPacket;
 use pocketmine\network\bedrock\protocol\CorrectPlayerMovePredictionPacket;
 use pocketmine\network\bedrock\protocol\CraftingDataPacket;
+use pocketmine\network\bedrock\protocol\CraftingEventPacket;
 use pocketmine\network\bedrock\protocol\CreativeContentPacket;
 use pocketmine\network\bedrock\protocol\DataPacket;
 use pocketmine\network\bedrock\protocol\DebugInfoPacket;
@@ -110,6 +131,7 @@ use pocketmine\network\bedrock\protocol\PurchaseReceiptPacket;
 use pocketmine\network\bedrock\protocol\RemoveActorPacket;
 use pocketmine\network\bedrock\protocol\RemoveEntityPacket;
 use pocketmine\network\bedrock\protocol\RemoveObjectivePacket;
+use pocketmine\network\bedrock\protocol\RequestAbilityPacket;
 use pocketmine\network\bedrock\protocol\RequestChunkRadiusPacket;
 use pocketmine\network\bedrock\protocol\RequestNetworkSettingsPacket;
 use pocketmine\network\bedrock\protocol\ResourcePackChunkDataPacket;
@@ -120,6 +142,7 @@ use pocketmine\network\bedrock\protocol\ResourcePacksInfoPacket;
 use pocketmine\network\bedrock\protocol\ResourcePackStackPacket;
 use pocketmine\network\bedrock\protocol\RespawnPacket;
 use pocketmine\network\bedrock\protocol\RiderJumpPacket;
+use pocketmine\network\bedrock\protocol\ScriptCustomEventPacket;
 use pocketmine\network\bedrock\protocol\ServerSettingsRequestPacket;
 use pocketmine\network\bedrock\protocol\ServerSettingsResponsePacket;
 use pocketmine\network\bedrock\protocol\ServerToClientHandshakePacket;
@@ -168,6 +191,9 @@ use pocketmine\network\bedrock\protocol\UpdatePlayerGameTypePacket;
 use pocketmine\network\bedrock\protocol\UpdateSoftEnumPacket;
 use pocketmine\network\bedrock\protocol\UpdateTradePacket;
 use pocketmine\network\bedrock\protocol\AutomationClientConnectPacket;
+use pocketmine\network\bedrock\protocol\RefreshEntitlementsPacket;
+use pocketmine\network\bedrock\protocol\SetPlayerInventoryOptionsPacket;
+use pocketmine\network\bedrock\protocol\PlayerToggleCrafterSlotRequestPacket;
 use pocketmine\network\NetworkSession;
 
 abstract class BedrockNetworkSession implements NetworkSession{
@@ -378,21 +404,13 @@ abstract class BedrockNetworkSession implements NetworkSession{
 		return false;
 	}
 
-	public function handleGuiDataPickItem(GuiDataPickItemPacket $packet) : bool{
+	public function handleCraftingEvent(CraftingEventPacket $packet) : bool{
 		return false;
 	}
 
-    public function handleAgentAnimation(AgentAnimationPacket $packet) : bool{
-        return false;
-    }
-
-    public function handleUpdateAbilities(UpdateAbilitiesPacket $packet) : bool{
-        return false;
-    }
-
-    public function handleUpdateAdventureSettings(UpdateAdventureSettingsPacket $packet) : bool{
-        return false;
-    }
+	public function handleGuiDataPickItem(GuiDataPickItemPacket $packet) : bool{
+		return false;
+	}
 
 	public function handleBlockActorData(BlockActorDataPacket $packet) : bool{
 		return false;
@@ -449,10 +467,6 @@ abstract class BedrockNetworkSession implements NetworkSession{
 	public function handleRequestChunkRadius(RequestChunkRadiusPacket $packet) : bool{
 		return false;
 	}
-
-    public function handleOpenSign(OpenSignPacket $packet) : bool{
-        return false;
-    }
 
 	public function handleChunkRadiusUpdated(ChunkRadiusUpdatedPacket $packet) : bool{
 		return false;
@@ -638,6 +652,10 @@ abstract class BedrockNetworkSession implements NetworkSession{
 		return false;
 	}
 
+	public function handleScriptCustomEvent(ScriptCustomEventPacket $packet) : bool{
+		return false;
+	}
+
 	public function handleSpawnParticleEffect(SpawnParticleEffectPacket $packet) : bool{
 		return false;
 	}
@@ -730,10 +748,6 @@ abstract class BedrockNetworkSession implements NetworkSession{
 		return false;
 	}
 
-    public function handleRequestNetworkSettings(RequestNetworkSettingsPacket $packet) : bool{
-        return false;
-    }
-
 	public function handlePlayerAuthInput(PlayerAuthInputPacket $packet) : bool{
 		return false;
 	}
@@ -822,7 +836,43 @@ abstract class BedrockNetworkSession implements NetworkSession{
 	    return false;
     }
 
+	public function handleRequestAbility(RequestAbilityPacket $packet) : bool{
+		return false;
+	}
+
 	public function handleToastRequest(ToastRequestPacket $packet) : bool{
+		return false;
+	}
+
+	public function handleUpdateAbilities(UpdateAbilitiesPacket $packet) : bool{
+		return false;
+	}
+
+	public function handleUpdateAdventureSettings(UpdateAdventureSettingsPacket $packet) : bool{
+		return false;
+	}
+
+	public function handleRequestNetworkSettings(RequestNetworkSettingsPacket $packet) : bool{
+		return false;
+	}
+
+	public function handleOpenSign(OpenSignPacket $packet) : bool{
+		return false;
+	}
+
+	public function handleAgentAnimation(AgentAnimationPacket $packet) : bool{
+		return false;
+	}
+
+	public function handleRefreshEntitlements(RefreshEntitlementsPacket $packet) : bool{
+		return false;
+	}
+
+	public function handleSetPlayerInventoryOptions(SetPlayerInventoryOptionsPacket $packet) : bool{
+		return false;
+	}
+
+	public function handlePlayerToggleCrafterSlotRequest(PlayerToggleCrafterSlotRequestPacket $packet) : bool{
 		return false;
 	}
 }

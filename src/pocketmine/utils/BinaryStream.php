@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\utils;
@@ -289,14 +309,4 @@ class BinaryStream{
 	public function feof() : bool{
 		return !isset($this->buffer[$this->offset]);
 	}
-
-    public function getSignedVarInt() {
-        $result = $this->getVarInt();
-        if ($result % 2 == 0) {
-            $result = $result / 2;
-        } else {
-            $result = (-1) * ($result + 1) / 2;
-        }
-        return $result;
-    }
 }

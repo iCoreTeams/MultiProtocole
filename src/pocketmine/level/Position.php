@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\level;
@@ -48,7 +68,7 @@ class Position extends Vector3{
 	 */
 	public function getLevel(){
 		if($this->level !== null and $this->level->isClosed()){
-			MainLogger::getLogger()->debug("Position was holding a reference to an unloaded Level");
+			\GlobalLogger::get()->debug("Position was holding a reference to an unloaded Level");
 			$this->level = null;
 		}
 

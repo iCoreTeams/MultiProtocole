@@ -1,8 +1,30 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\event;
+
+use function mb_strtoupper;
 
 /**
  * List of event priorities
@@ -12,7 +34,12 @@ namespace pocketmine\event;
  *
  * MONITOR events should not change the event outcome or contents
  */
-abstract class EventPriority{
+final class EventPriority{
+
+    private function __construct(){
+        //NOOP
+    }
+
     public const ALL = [
         self::LOWEST,
         self::LOW,
@@ -56,10 +83,16 @@ abstract class EventPriority{
      * @throws \InvalidArgumentException
      */
     public static function fromString(string $name) : int{
-        $name = mb_strtoupper($name);
-        $const = self::class . "::" . $name;
-        if($name !== "ALL" and defined($const)){
-            return constant($const);
+        $value = [
+            "LOWEST" => self::LOWEST,
+            "LOW" => self::LOW,
+            "NORMAL" => self::NORMAL,
+            "HIGH" => self::HIGH,
+            "HIGHEST" => self::HIGHEST,
+            "MONITOR" => self::MONITOR
+        ][mb_strtoupper($name)] ?? null;
+        if($value !== null){
+            return $value;
         }
 
         throw new \InvalidArgumentException("Unable to resolve priority \"$name\"");

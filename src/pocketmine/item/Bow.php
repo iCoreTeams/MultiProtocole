@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\item;
@@ -53,7 +73,11 @@ class Bow extends Tool{
 			}
 		}
 
-        $motion = $player->getDirectionVector();
+		$motion = new Vector3(
+			-sin($player->yaw / 180 * M_PI) * cos($player->pitch / 180 * M_PI),
+			-sin($player->pitch / 180 * M_PI),
+			cos($player->yaw / 180 * M_PI) * cos($player->pitch / 180 * M_PI)
+		);
 		$yaw = ($player->yaw > 180 ? 360 : 0) - $player->yaw;
 		$pitch = -$player->pitch;
 		$nbt = EntityDataHelper::createBaseNBT($player->add(0, $player->getEyeHeight(), 0), $motion, $yaw, $pitch)
@@ -69,7 +93,7 @@ class Bow extends Tool{
 			$entity->setOnFire(intdiv($entity->getFireTicks(), 20) + 100);
 		}
 
-        $ev = new EntityShootBowEvent($player, $this, $entity, $baseForce * 3.0, 1.0);
+		$ev = new EntityShootBowEvent($player, $this, $entity, $baseForce * 3.0);
 
 		if($baseForce < 0.1 or $diff < 5){
 			$ev->setCancelled();
@@ -83,7 +107,7 @@ class Bow extends Tool{
 			$player->getInventory()->sendOffHand($player);
 		}else{
 			$ev->getProjectile()->setBow(clone $this);
-            $ev->getProjectile()->entityShoot($player, 0.0, $ev->getForce(), $ev->getInaccuracy());
+			$ev->getProjectile()->setMotion($ev->getProjectile()->getMotion()->multiply($ev->getForce()));
 			if($player->isSurvival()){
 				if(!$this->hasEnchantment(Enchantment::INFINITY)){
 					$offhand = $player->getInventory()->getOffHand();
@@ -104,7 +128,7 @@ class Bow extends Tool{
 				$projectileEv = new ProjectileLaunchEvent($ev->getProjectile());
 				$projectileEv->call();
 				if($projectileEv->isCancelled()){
-                    $ev->getProjectile()->flagForDespawn();
+					$ev->getProjectile()->kill();
 				}else{
 					$ev->getProjectile()->spawnToAll();
 					$player->level->broadcastLevelSoundEvent($player, LevelSoundEventPacket::SOUND_BOW);

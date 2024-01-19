@@ -1,14 +1,35 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\network\bedrock;
 
-use pocketmine\BedrockPlayer;
-use pocketmine\event\form\ServerSettingsRequestEvent;
+use pocketmine\entity\feature\Interactive;
+use pocketmine\entity\object\MinecartAbstract;
+use pocketmine\entity\Rideable;
 use pocketmine\event\server\DataPacketReceiveEvent;
-use pocketmine\form\ServerSettingsForm;
-use pocketmine\network\bedrock\protocol\ActorEventPacket;
+use pocketmine\event\Timings;
+use pocketmine\level\Position;
 use pocketmine\network\bedrock\protocol\AnimatePacket;
 use pocketmine\network\bedrock\protocol\BlockActorDataPacket;
 use pocketmine\network\bedrock\protocol\BlockPickRequestPacket;
@@ -17,6 +38,7 @@ use pocketmine\network\bedrock\protocol\CommandRequestPacket;
 use pocketmine\network\bedrock\protocol\ContainerClosePacket;
 use pocketmine\network\bedrock\protocol\ContainerOpenPacket;
 use pocketmine\network\bedrock\protocol\DataPacket;
+use pocketmine\network\bedrock\protocol\ActorEventPacket;
 use pocketmine\network\bedrock\protocol\EmotePacket;
 use pocketmine\network\bedrock\protocol\InteractPacket;
 use pocketmine\network\bedrock\protocol\InventoryTransactionPacket;
@@ -24,47 +46,53 @@ use pocketmine\network\bedrock\protocol\ItemFrameDropItemPacket;
 use pocketmine\network\bedrock\protocol\LevelSoundEventPacket;
 use pocketmine\network\bedrock\protocol\LoginPacket;
 use pocketmine\network\bedrock\protocol\MobEquipmentPacket;
-use pocketmine\network\bedrock\protocol\ModalFormResponsePacket;
 use pocketmine\network\bedrock\protocol\MovePlayerPacket;
 use pocketmine\network\bedrock\protocol\PacketViolationWarningPacket;
 use pocketmine\network\bedrock\protocol\PlayerActionPacket;
+use pocketmine\network\bedrock\protocol\PlayerInputPacket;
 use pocketmine\network\bedrock\protocol\PlayerSkinPacket;
-use pocketmine\network\bedrock\protocol\ProtocolInfo;
 use pocketmine\network\bedrock\protocol\RequestAbilityPacket;
-use pocketmine\network\bedrock\protocol\RequestChunkRadiusPacket;
 use pocketmine\network\bedrock\protocol\RequestNetworkSettingsPacket;
 use pocketmine\network\bedrock\protocol\ResourcePackChunkRequestPacket;
 use pocketmine\network\bedrock\protocol\ResourcePackClientResponsePacket;
+use pocketmine\network\bedrock\protocol\RequestChunkRadiusPacket;
+use pocketmine\network\bedrock\protocol\ModalFormResponsePacket;
 use pocketmine\network\bedrock\protocol\RespawnPacket;
-use pocketmine\network\bedrock\protocol\ServerSettingsRequestPacket;
 use pocketmine\network\bedrock\protocol\SetLocalPlayerAsInitializedPacket;
 use pocketmine\network\bedrock\protocol\SetPlayerGameTypePacket;
+use pocketmine\network\bedrock\protocol\PlayerAuthInputPacket;
 use pocketmine\network\bedrock\protocol\TextPacket;
+use pocketmine\BedrockPlayer;
 use pocketmine\network\bedrock\protocol\types\inventory\ContainerIds;
 use pocketmine\network\bedrock\protocol\types\inventory\WindowTypes;
 use pocketmine\Server;
-use pocketmine\timings\Timings;
-use pocketmine\utils\Utils;
+
 use UnexpectedValueException;
 use function bin2hex;
+use function is_bool;
 use function strlen;
 use function substr;
 
 class PlayerNetworkSessionAdapter extends BedrockNetworkSession{
 
-	/** @var Server */
-	private $server;
-	/** @var BedrockPlayer */
-	private $player;
+	private const MAX_FORM_RESPONSE_DEPTH = 2;
 
     private $lastTextPacket = 0;
     private $textPacketCnt = 0;
     private $textPacketExceed = 0;
+	/** @var ?int */
+	private $lastPlayerAuthInputFlags = null;
+	/** @var ?float */
+	private $lastPlayerAuthInputPitch = null;
+	/** @var ?float */
+	private $lastPlayerAuthInputYaw = null;
+	/** @var ?Position */
+	private $lastPlayerAuthInputPosition = null;
 
-	public function __construct(Server $server, BedrockPlayer $player){
-		$this->server = $server;
-		$this->player = $player;
-	}
+	public function __construct(
+		private Server $server,
+		private BedrockPlayer $player
+	){}
 
 	public function handleDataPacket(DataPacket $packet){
 		//TODO: Remove this hack once InteractPacket spam issue is fixed
@@ -72,13 +100,13 @@ class PlayerNetworkSessionAdapter extends BedrockNetworkSession{
 			return;
 		}
 
-        if(
-            !$this->player->loggedIn and
-            !$this->player->awaitingEncryptionHandshake and
-            !($packet instanceof LoginPacket or $packet instanceof RequestNetworkSettingsPacket)
-        ){ //Ignore any packets before login and network settings
-            return;
-        }
+		if(
+			!$this->player->loggedIn and
+			!$this->player->awaitingEncryptionHandshake and
+			!($packet instanceof LoginPacket or $packet instanceof RequestNetworkSettingsPacket)
+		){ //Ignore any packets before login and network settings
+			return;
+		}
 
 		$timings = Timings::getReceiveDataPacketTimings($packet);
 		$timings->startTiming();
@@ -102,27 +130,100 @@ class PlayerNetworkSessionAdapter extends BedrockNetworkSession{
 		return;
 	}
 
+	public function handleModalFormResponse(ModalFormResponsePacket $packet) : bool{
+		if ($packet->cancelReason !== NULL) {
+			return $this->player->onFormSubmit($packet->formId, null);
+		} elseif ($packet->formData !== null){
+			try{
+				$responseData = json_decode($packet->formData, true, self::MAX_FORM_RESPONSE_DEPTH, JSON_THROW_ON_ERROR);
+			}catch(\JsonException $e){
+				$this->server->getLogger()->logException($e);
+				return false;
+			}
+			return $this->player->onFormSubmit($packet->formId, $responseData);
+		}else{
+			$this->server->getLogger()->logException(throw new \RuntimeException("Expected either formData or cancelReason to be set in ModalFormResponsePacket"));
+			return false;
+		}
+	}
+
+	private function resolveOnOffInputFlags(int $inputFlags, int $startFlag, int $stopFlag) : ?bool{
+		$enabled = ($inputFlags & (1 << $startFlag)) !== 0;
+		$disabled = ($inputFlags & (1 << $stopFlag)) !== 0;
+		if($enabled !== $disabled){
+			return $enabled;
+		}
+		//neither flag was set, or both were set
+		return null;
+	}
+
+	public function handlePlayerAuthInput(PlayerAuthInputPacket $packet) : bool{
+		$rawPos = $packet->playerMovePosition;
+		$rawYaw = $packet->yaw;
+		$rawPitch = $packet->pitch;
+
+		if ($rawYaw !== $this->lastPlayerAuthInputYaw || $rawPitch !== $this->lastPlayerAuthInputPitch) {
+			$this->lastPlayerAuthInputYaw = $rawYaw;
+			$this->lastPlayerAuthInputPitch = $rawPitch;
+
+			$yaw = fmod($rawYaw, 360);
+			$pitch = fmod($rawPitch, 360);
+			if($yaw < 0){
+				$yaw += 360;
+			}
+			$this->player->setRotation($yaw, $pitch);
+		}
+
+		$hasMoved = $this->lastPlayerAuthInputPosition === null || !$this->lastPlayerAuthInputPosition->equals($rawPos);
+		$newPos = $rawPos->round(4)->subtract(0, 1.62, 0);
+
+		if ($hasMoved) {
+			$this->player->updateNextPosition($newPos);
+		}
+
+		$inputFlags = $packet->inputFlags;
+		if ($inputFlags !== $this->lastPlayerAuthInputFlags) {
+			$this->lastPlayerAuthInputFlags = $inputFlags;
+
+			$sneaking = $this->resolveOnOffInputFlags($inputFlags, PlayerAuthInputPacket::INPUT_START_SNEAKING, PlayerAuthInputPacket::INPUT_STOP_SNEAKING);
+			//$swimming = $this->resolveOnOffInputFlags($inputFlags, PlayerAuthInputPacket::START_SWIMMING, PlayerAuthInputPacket::STOP_SWIMMING);
+			$sprinting = $this->resolveOnOffInputFlags($inputFlags, PlayerAuthInputPacket::INPUT_START_SPRINTING, PlayerAuthInputPacket::INPUT_STOP_SPRINTING);
+			$gliding = $this->resolveOnOffInputFlags($inputFlags, PlayerAuthInputPacket::INPUT_START_GLIDING, PlayerAuthInputPacket::INPUT_STOP_GLIDING);
+			
+			$mismatch = 
+			($gliding !== null && !$this->player->toggleGlide($gliding)) |
+			($sneaking !== null && !$this->player->toggleSneak($sneaking)) |
+			//($swimming !== null && !$this->player->toggleSwin($swimming)) |
+			($sprinting !== null && !$this->player->toggleSprint($sprinting));
+
+			if ((bool)$mismatch) {
+				$this->player->sendData($this->player);
+			}
+
+			if ($packet->getInputFlag(PlayerAuthInputPacket::INPUT_START_JUMPING)) {
+				$this->player->toggleGlide(false);
+				$this->player->jump();
+			}
+
+			//TODO: block actions
+			$blockActions = $packet->blockActions;
+
+			if ($blockActions !== null) {
+				if (count($blockActions) > 100) {
+					return false;
+				}
+
+				foreach ($blockActions as $k => $blockAction) {
+					var_dump($k, $blockAction);
+				}
+			}
+		}
+		return true;
+	}
+
 	public function handleLogin(LoginPacket $packet) : bool{
-        return $this->player->handleBedrockLogin($packet);
-    }
-
-    public function handleModalFormResponse(ModalFormResponsePacket $packet) : bool{
-        $packet->decode();
-        $forms = $this->player->getForms();
-        if (isset($p->forms[$packet->formId])) {
-            $p->forms[$packet->formId]->handleResponse($p, Utils::stupid_json_decode($packet->formData ?? "NULL", true));
-            unset($p->forms[$packet->formId]);
-        }
-        return true;
-    }
-
-    public function handleServerSettingsRequest(ServerSettingsRequestPacket $packet) : bool{
-        ($ev = new ServerSettingsRequestEvent($this->player))->call();
-        if (($form = $ev->getForm()) instanceof ServerSettingsForm) {
-            $form->sendToPlayer($this->player);
-        }
-        return true;
-    }
+		return $this->player->handleBedrockLogin($packet);
+	}
 
 	public function handleClientToServerHandshake(ClientToServerHandshakePacket $packet) : bool{
 		return $this->player->onEncryptionHandshake();
@@ -209,9 +310,33 @@ class PlayerNetworkSessionAdapter extends BedrockNetworkSession{
 		return true;
 	}
 
+	public function handleRequestAbility(RequestAbilityPacket $packet) : bool{
+		if($packet->abilityId === RequestAbilityPacket::ABILITY_FLYING){
+			if(!is_bool($packet->abilityValue)){
+				throw new UnexpectedValueException("Flying ability value should always be bool");
+			}
+			$this->player->toggleFlight($packet->abilityValue);
+			return true;
+		}
+
+		if($packet->abilityId === RequestAbilityPacket::ABILITY_NOCLIP){
+			if(!is_bool($packet->abilityValue)){
+				throw new UnexpectedValueException("No-clip ability value should always be bool");
+			}
+			$this->player->toggleNoClip($packet->abilityValue);
+			return true;
+		}
+
+		return false;
+	}
+
 	public function handleBlockActorData(BlockActorDataPacket $packet) : bool{
 		return $this->player->handleBedrockBlockActorData($packet);
 	}
+
+    public function handlePlayerInput(PlayerInputPacket $packet) : bool{
+        return $this->player->handleBedrockPlayerInput($packet);
+    }
 
 	public function handleSetPlayerGameType(SetPlayerGameTypePacket $packet) : bool{
 		return $this->player->handleBedrockSetPlayerGameType($packet);
@@ -276,19 +401,35 @@ class PlayerNetworkSessionAdapter extends BedrockNetworkSession{
 		return $this->player->handleBedrockRespawn($packet);
 	}
 
-	public function handleInteract(InteractPacket $packet) : bool{
-		if($packet->action === InteractPacket::ACTION_OPEN_INVENTORY and $packet->actorRuntimeId === $this->player->getId()){
-			if($this->player->newInventoryOpen(ContainerIds::INVENTORY)){
-				$pk = new ContainerOpenPacket();
-				$pk->windowId = ContainerIds::INVENTORY;
-				$pk->type = WindowTypes::INVENTORY;
-				$pk->x = $pk->y = $pk->z = 0;
-				$this->player->sendDataPacket($pk);
-			}
-		}
-
-		return true;
-	}
+	public function handleInteract(InteractPacket $packet) : bool
+    {
+        $target = $this->player->level->getEntity($packet->actorRuntimeId);
+        if ($packet->action === InteractPacket::ACTION_OPEN_INVENTORY and $packet->actorRuntimeId === $this->player->getId()) {
+            if ($this->player->newInventoryOpen(ContainerIds::INVENTORY)) {
+                $pk = new ContainerOpenPacket();
+                $pk->windowId = ContainerIds::INVENTORY;
+                $pk->type = WindowTypes::INVENTORY;
+                $pk->x = $pk->y = $pk->z = 0;
+                $this->player->sendDataPacket($pk);
+            }
+        } elseif ($packet->action === InteractPacket::ACTION_MOUSEOVER) {
+            if ($target instanceof Interactive) {
+                $this->player->setInteractiveTag($target->getInteractButtonText());
+            } else {
+                $this->player->removeInteractiveTag();
+            }
+        } elseif ($packet->action === InteractPacket::ACTION_LEAVE_VEHICLE) {
+            if ($target instanceof MinecartAbstract) { //TODO: Boat
+                $target->setLinked(0, $this->player);
+                return true;
+            }
+        } elseif ($packet->action === InteractPacket::ACTION_RIGHT_CLICK) {
+            if ($target instanceof Rideable) {
+                $this->player->linkEntity($target);
+            }
+        }
+        return true;
+    }
 
 	public function handlePacketViolationWarning(PacketViolationWarningPacket $packet) : bool{
 		$this->player->getServer()->getLogger()->notice("PacketViolationWarning from {$this->player->getName()}: (type={$packet->type},severity={$packet->severity},packetId={$packet->packetId},violationContext={$packet->violationContext})");
@@ -299,27 +440,7 @@ class PlayerNetworkSessionAdapter extends BedrockNetworkSession{
 		return $this->player->handleEmote($packet);
 	}
 
-    public function handleRequestNetworkSettings(RequestNetworkSettingsPacket $packet):bool{
-        return $this->player->handleRequestNetworkSettings($packet);
-    }
-
-    public function handleRequestAbility(RequestAbilityPacket $packet) : bool{
-        if($packet->abilityId === RequestAbilityPacket::ABILITY_FLYING){
-            if(!is_bool($packet->abilityValue)){
-                throw new UnexpectedValueException("Flying ability value should always be bool");
-            }
-            $this->player->toggleFlight($packet->abilityValue);
-            return true;
-        }
-
-        if($packet->abilityId === RequestAbilityPacket::ABILITY_NOCLIP){
-            if(!is_bool($packet->abilityValue)){
-                throw new UnexpectedValueException("No-clip ability value should always be bool");
-            }
-            $this->player->toggleNoClip($packet->abilityValue);
-            return true;
-        }
-
-        return false;
-    }
+	public function handleRequestNetworkSettings(RequestNetworkSettingsPacket $packet) : bool{
+		return $this->player->handleRequestNetworkSettings($packet);
+	}
 }

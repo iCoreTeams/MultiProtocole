@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\network\mcpe\protocol;
@@ -87,7 +107,7 @@ class BatchPacket extends DataPacket{
 
 		$count = 0;
 		foreach($this->getPackets() as $buf){
-            if(++$count > 4096){
+			if(++$count > 1024){
 				throw new \UnexpectedValueException("Too many packets in a single batch!");
 			}
 			$pk = PacketPool::getPacketById(ord($buf[0]));

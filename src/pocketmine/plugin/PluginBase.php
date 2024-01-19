@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\plugin;
@@ -29,47 +49,47 @@ use function yaml_parse;
 abstract class PluginBase implements Plugin{
 
 	/** @var PluginLoader */
-	private PluginLoader $loader;
+	private $loader;
 
 	/** @var Server */
-	private Server $server;
+	private $server;
 
 	/** @var PluginManager */
-	private PluginManager $pluginManager;
+	private $pluginManager;
 
 	/** @var bool */
-	private bool $isEnabled = false;
+	private $isEnabled = false;
 
 	/** @var bool */
-	private bool $initialized = false;
+	private $initialized = false;
 
 	/** @var PluginDescription */
-	private PluginDescription $description;
+	private $description;
 
 	/** @var string */
-	private string $dataFolder;
+	private $dataFolder;
 	/** @var Config|null */
-	private ?Config $config = null;
+	private $config = null;
 	/** @var string */
-	private string $configFile;
+	private $configFile;
 	/** @var string */
-	private string $file;
+	private $file;
 
 	/** @var PluginLogger */
-	private PluginLogger $logger;
+	private $logger;
 
 	/**
 	 * Called when the plugin is loaded, before calling onEnable()
 	 */
-	public function onLoad(): void{
+	public function onLoad(){
 
 	}
 
-	public function onEnable(): void{
+	public function onEnable(){
 
 	}
 
-	public function onDisable(): void{
+	public function onDisable(){
 
 	}
 
@@ -83,7 +103,7 @@ abstract class PluginBase implements Plugin{
 	/**
 	 * @param bool $boolean
 	 */
-	final public function setEnabled(bool $boolean = true): void{
+	final public function setEnabled(bool $boolean = true){
 		if($this->isEnabled !== $boolean){
 			$this->isEnabled = $boolean;
 			if($this->isEnabled === true){
@@ -109,7 +129,7 @@ abstract class PluginBase implements Plugin{
 		return $this->description;
 	}
 
-	final public function init(PluginLoader $loader, Server $server, PluginDescription $description, string $dataFolder, string $file): void{
+	final public function init(PluginLoader $loader, Server $server, PluginDescription $description, $dataFolder, $file){
 		if($this->initialized === false){
 			$this->initialized = true;
 			$this->loader = $loader;
@@ -119,7 +139,8 @@ abstract class PluginBase implements Plugin{
 			$this->dataFolder = rtrim($dataFolder, "\\/") . "/";
 			$this->file = rtrim($file, "\\/") . "/";
 			$this->configFile = $this->dataFolder . "config.yml";
-			$this->logger = new PluginLogger($this);
+			$prefix = $this->getDescription()->getPrefix();
+			$this->logger = new PluginLogger($server->getLogger(), $prefix !== "" ? $prefix : $this->getName());
 		}
 	}
 
@@ -142,7 +163,7 @@ abstract class PluginBase implements Plugin{
 	 *
 	 * @return Command|PluginIdentifiableCommand|null
 	 */
-	public function getCommand(string $name): Command|PluginIdentifiableCommand|null{
+	public function getCommand(string $name){
 		$command = $this->getServer()->getPluginCommand($name);
 		if($command === null or $command->getPlugin() !== $this){
 			$command = $this->getServer()->getPluginCommand(strtolower($this->description->getName()) . ":" . $name);
@@ -248,7 +269,7 @@ abstract class PluginBase implements Plugin{
 		return $this->config;
 	}
 
-	public function saveConfig(): void{
+	public function saveConfig(){
 		if($this->getConfig()->save() === false){
 			$this->getLogger()->critical("Could not save config to " . $this->configFile);
 		}
@@ -261,7 +282,7 @@ abstract class PluginBase implements Plugin{
 		return false;
 	}
 
-	public function reloadConfig(): void{
+	public function reloadConfig(){
 		$this->config = new Config($this->configFile);
 		if(($configStream = $this->getResource("config.yml")) !== null){
 			$this->config->setDefaults(yaml_parse(Config::fixYAMLIndexes(stream_get_contents($configStream))));
@@ -300,14 +321,9 @@ abstract class PluginBase implements Plugin{
 	/**
 	 * @return PluginLoader
 	 */
-	public function getPluginLoader(): PluginLoader{
+	public function getPluginLoader(){
 		return $this->loader;
 	}
-
-       public function getScheduler(): ?\pocketmine\scheduler\ServerScheduler
-       {
-        return $this->getServer()->getScheduler();
-       }
 
 	public function registerEvents(Listener $listener) : void{
 		$this->pluginManager->registerEvents($listener, $this);

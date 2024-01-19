@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\level\format\io\region;
@@ -123,17 +143,17 @@ class RegionLoader{
 			if($length >= self::MAX_SECTOR_LENGTH){
 				$this->locationTable[$index][0] = ++$this->lastSector;
 				$this->locationTable[$index][1] = 1;
-				MainLogger::getLogger()->error("Corrupted chunk header detected");
+				\GlobalLogger::get()->error("Corrupted chunk header detected");
 			}
 			return null;
 		}
 
 		if($length > ($this->locationTable[$index][1] << 12)){ //Invalid chunk, bigger than defined number of sectors
-			MainLogger::getLogger()->error("Corrupted bigger chunk detected");
+			\GlobalLogger::get()->error("Corrupted bigger chunk detected");
 			$this->locationTable[$index][1] = $length >> 12;
 			$this->writeLocationIndex($index);
 		}elseif($compression !== self::COMPRESSION_ZLIB and $compression !== self::COMPRESSION_GZIP){
-			MainLogger::getLogger()->error("Invalid compression type");
+			\GlobalLogger::get()->error("Invalid compression type");
 			return null;
 		}
 
@@ -141,7 +161,7 @@ class RegionLoader{
 		if($chunk instanceof Chunk){
 			return $chunk;
 		}else{
-			MainLogger::getLogger()->error("Corrupted chunk detected");
+			\GlobalLogger::get()->error("Corrupted chunk detected");
 			return null;
 		}
 	}

@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine;
@@ -11,7 +31,9 @@ use pocketmine\plugin\PluginManager;
 use pocketmine\utils\Utils;
 use pocketmine\utils\VersionString;
 use pocketmine\utils\Zlib;
+use pocketmine\thread\ThreadCrashInfoFrame;
 use raklib\RakLib;
+use function array_map;
 use function base64_encode;
 use function date;
 use function error_get_last;
@@ -175,7 +197,7 @@ class CrashDump{
 			$error = $lastExceptionError;
 		}else{
 			$error = (array) error_get_last();
-			$error["trace"] = getTrace(4); //Skipping CrashDump->baseCrash, CrashDump->construct, Server->crashDump
+			$error["trace"] = Utils::printableTrace(getTrace(4));
 			$errorConversion = [
 				E_ERROR => "E_ERROR",
 				E_WARNING => "E_WARNING",
@@ -209,6 +231,7 @@ class CrashDump{
 		unset($this->data["error"]["fullFile"]);
 		unset($this->data["error"]["trace"]);
 		$this->addLine("Error: " . $error["message"]);
+		$this->addLine("Thread: " . $this->data["thread"]);
 		$this->addLine("File: " . $error["file"]);
 		$this->addLine("Line: " . $error["line"]);
 		$this->addLine("Type: " . $error["type"]);
@@ -247,8 +270,14 @@ class CrashDump{
 
 		$this->addLine();
 		$this->addLine("Backtrace:");
-		foreach(($this->data["trace"] = $error["trace"]) as $line){
-			$this->addLine($line);
+		$this->data["trace"] = array_map(
+			array: $error["trace"],
+			callback: fn (ThreadCrashInfoFrame $frame) => $frame->getPrintableFrame()
+		);
+		foreach(($this->data["trace"] = $error["trace"]) as $line) {
+			$this->addLine(
+				$line instanceof ThreadCrashInfoFrame ? $line->getLine() : $line
+			);
 		}
 		$this->addLine();
 	}
@@ -267,13 +296,13 @@ class CrashDump{
 		$this->data["general"]["php"] = phpversion();
 		$this->data["general"]["zend"] = zend_version();
 		$this->data["general"]["php_os"] = PHP_OS;
-		$this->data["general"]["os"] = Utils::getOS();
+		$this->data["general"]["os"] = (Utils::getOS())->value;
 		$this->addLine($this->server->getName() . " version: " . $version->get(false) . " #" . $version->getBuild() . " [Protocol " . ProtocolInfo::CURRENT_PROTOCOL . "; API " . API_VERSION . "]");
 		$this->addLine("Git commit: " . GIT_COMMIT);
 		$this->addLine("uname -a: " . php_uname("a"));
 		$this->addLine("PHP Version: " . phpversion());
 		$this->addLine("Zend version: " . zend_version());
-		$this->addLine("OS : " . PHP_OS . ", " . Utils::getOS());
+		$this->addLine("OS : " . PHP_OS . ", " . Utils::getOS()->value);
 	}
 
 	public function addLine($line = ""){

@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\network\mcpe;
@@ -16,6 +36,7 @@ use pocketmine\network\mcpe\encryption\DecryptionException;
 use pocketmine\network\mcpe\protocol\BatchPacket;
 use pocketmine\network\mcpe\protocol\DataPacket;
 use pocketmine\network\mcpe\protocol\PacketPool;
+use pocketmine\thread\ThreadCrashException;
 use pocketmine\network\Network;
 use pocketmine\Player;
 use pocketmine\Server;
@@ -27,6 +48,7 @@ use raklib\server\RakLibServer;
 use raklib\server\ServerHandler;
 use raklib\server\ServerInstance;
 use raklib\utils\InternetAddress;
+use pmmp\thread\Thread as NativeThread;
 use function bin2hex;
 use function get_class;
 use function igbinary_unserialize;
@@ -34,7 +56,6 @@ use function microtime;
 use function ord;
 use function spl_object_id;
 use function substr;
-use const PTHREADS_INHERIT_CONSTANTS;
 
 class RakLibInterface implements ServerInstance, AdvancedNetworkInterface{
 
@@ -42,8 +63,8 @@ class RakLibInterface implements ServerInstance, AdvancedNetworkInterface{
 	 * Sometimes this gets changed when the MCPE-layer protocol gets broken to the point where old and new can't
 	 * communicate. It's important that we check this to avoid catastrophes.
 	 */
-	private const MCPE_RAKNET_PROTOCOL_VERSION = 8;
-	private const BEDROCK_RAKNET_PROTOCOL_VERSION = 11;
+	public const MCPE_RAKNET_PROTOCOL_VERSION = 8;
+	public const BEDROCK_RAKNET_PROTOCOL_VERSION = 11;
 
 	private const MCPE_RAKNET_PACKET_ID = "\xfe";
 
@@ -90,7 +111,12 @@ class RakLibInterface implements ServerInstance, AdvancedNetworkInterface{
 		$this->port = $port ?? $server->getPort();
 
 		$this->sleeper = new SleeperNotifier();
-		$this->rakLib = new RakLibServer($server->getLogger(), $server->getLoader(), new InternetAddress($server->getIp() === "" ? "0.0.0.0" : $server->getIp(), $this->port, 4), (int) $server->getProperty("network.max-mtu-size", 1492), [self::MCPE_RAKNET_PROTOCOL_VERSION, self::BEDROCK_RAKNET_PROTOCOL_VERSION], $this->sleeper);
+
+		$rakNetProtocols = [
+			self::MCPE_RAKNET_PROTOCOL_VERSION => true,
+			self::BEDROCK_RAKNET_PROTOCOL_VERSION => true
+		];
+		$this->rakLib = new RakLibServer($server->getLogger(), $server->getLoader(), new InternetAddress($server->getIp() === "" ? "0.0.0.0" : $server->getIp(), $this->port, 4), (int) $server->getProperty("network.max-mtu-size", 1492), array_keys($rakNetProtocols), $this->sleeper);
 		$this->interface = new ServerHandler($this->rakLib, $this);
 
 		$this->setPongData(new McpePong());
@@ -101,7 +127,7 @@ class RakLibInterface implements ServerInstance, AdvancedNetworkInterface{
 			$this->process();
 		});
 		$this->server->getLogger()->debug("Waiting for RakLib to start...");
-		$this->rakLib->startAndWait(PTHREADS_INHERIT_CONSTANTS); //HACK: MainLogger needs constants for exception logging
+		$this->rakLib->startAndWait(NativeThread::INHERIT_CONSTANTS); //HACK: MainLogger needs constants for exception logging
 		$this->server->getLogger()->debug("RakLib booted successfully");
 
 		$this->setPortChecking($this->server->getAdvancedProperty("network.port-checking", true));
@@ -116,20 +142,19 @@ class RakLibInterface implements ServerInstance, AdvancedNetworkInterface{
 		$work = false;
 		if($this->interface->handlePacket()){
 			$work = true;
-			while($this->interface->handlePacket()){
-			}
+			while($this->interface->handlePacket()){}
 		}
 
 		if(microtime(true) - $this->lastPongDataUpdate > self::PONG_DATA_UPDATE_RATE){
 			$this->updatePongData();
 		}
 
-		if(!$this->rakLib->isRunning() and !$this->rakLib->isShutdown()){
+		if($this->rakLib->isTerminated()){
 			$this->network->unregisterInterface($this);
 
 			$e = $this->rakLib->getCrashInfo();
 			if($e !== null){
-				throw $e;
+				throw new ThreadCrashException("RakLib crashed", $e);
 			}
 			throw new \Exception("RakLib Thread crashed without crash information");
 		}
@@ -168,13 +193,20 @@ class RakLibInterface implements ServerInstance, AdvancedNetworkInterface{
 		$this->interface->emergencyShutdown();
 	}
 
-	public function openSession(int $sessionId, string $address, int $port, int $clientID, int $protocolVersion) : void{
-		$cl = $protocolVersion === self::BEDROCK_RAKNET_PROTOCOL_VERSION ? BedrockPlayer::class : Player::class;
-		$ev = new PlayerCreationEvent($this, $cl, $cl, null, $address, $port);
+	public function openSession(int $sessionId, string $address, int $port, int $clientID, int $protocolVersion, bool $isValid) : void{
+		if($protocolVersion === self::MCPE_RAKNET_PROTOCOL_VERSION){
+			$class = Player::class;
+		}elsE{
+			$class = BedrockPlayer::class;
+		}
+		$ev = new PlayerCreationEvent($this, $class, $class, null, $address, $port);
 		$ev->call();
 		$class = $ev->getPlayerClass();
 
-		$player = new $class($this, $ev->getClientId(), $ev->getAddress(), $ev->getPort());
+		$player = new $class($this, $ev->getClientId(), $ev->getAddress(), $ev->getPort(), $isValid);
+		if($player instanceof BedrockPlayer){
+			$player->setEnableCompression(false); // TODO
+		}
 		$this->players[$sessionId] = $player;
 		$this->identifiersACK[$sessionId] = 0;
 		$this->identifiers[spl_object_id($player)] = $sessionId;
@@ -192,15 +224,30 @@ class RakLibInterface implements ServerInstance, AdvancedNetworkInterface{
 					}
 					$cipher = $player->getCipher();
 					$buffer = substr($packet->buffer, 1);
-					try {
-						if($cipher !== null) {
-							$buffer = $cipher->decrypt($buffer);
-						}
-					} catch (DecryptionException $e) {}
+
+                    if($cipher != null) {
+                        try {
+                            if($player instanceof BedrockPlayer) {
+                                $buffer = $cipher->decrypt($buffer, true);
+                            } else {
+                                $buffer = $cipher->decrypt($buffer);
+                            }
+                        } catch (DecryptionException $e) {
+                            logger()->debug("Encrypted packet: " . base64_encode($buffer));
+                            logger()->logException($e);
+                        }
+                    }
+
 					if($player instanceof BedrockPlayer){
 						if($packet->buffer[0] === BedrockProtocolInfo::MCPE_RAKNET_PACKET_ID){
 
-							$stream = new BedrockPacketBatch(BedrockNetworkCompression::decompress($buffer));
+							if($player->hasNetworkCompression()){
+								$decompressed = BedrockNetworkCompression::decompress($buffer);
+							}else{
+								$decompressed = $buffer;
+							}
+
+							$stream = new BedrockPacketBatch($decompressed);
 							$count = 0;
 							while(!$stream->feof()){
 								if(++$count > 1024){
@@ -209,10 +256,7 @@ class RakLibInterface implements ServerInstance, AdvancedNetworkInterface{
 
 								$buf = $stream->getString();
                                 $pk = BedrockPacketPool::getPacket($buf);
-
-								if($pk !== null){
-									$player->handleDataPacket($pk);
-								}
+                                $player->handleDataPacket($pk);
 							}
 						}
 					} else {

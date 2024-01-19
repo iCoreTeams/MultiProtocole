@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\math;
@@ -121,6 +141,13 @@ class AxisAlignedBB{
 
 	public function getOffsetBoundingBox($x, $y, $z) : AxisAlignedBB{
 		return new AxisAlignedBB($this->minX + $x, $this->minY + $y, $this->minZ + $z, $this->maxX + $x, $this->maxY + $y, $this->maxZ + $z);
+	}
+
+	/**
+	 * Returns an offset clone of this AxisAlignedBB.
+	 */
+	public function offsetCopy(float $x, float $y, float $z) : AxisAlignedBB{
+		return (clone $this)->offset($x, $y, $z);
 	}
 
 	public function calculateXOffset(AxisAlignedBB $bb, float $x) : float{

@@ -2,49 +2,38 @@
 
 /*
  *
- *  ____            _        _   __  __ _                  __  __ ____
- * |  _ \ ___   ___| | _____| |_|  \/  (_)_ __   ___      |  \/  |  _ \
- * | |_) / _ \ / __| |/ / _ \ __| |\/| | | '_ \ / _ \_____| |\/| | |_) |
- * |  __/ (_) | (__|   <  __/ |_| |  | | | | | |  __/_____| |  | |  __/
- * |_|   \___/ \___|_|\_\___|\__|_|  |_|_|_| |_|\___|     |_|  |_|_|
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
  *
- * @author PocketMine Team
- * @link http://www.pocketmine.net/
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
  *
  *
 */
 
+declare(strict_types=1);
+
 namespace pocketmine\level\generator\normal\biome;
 
-use pocketmine\block\Block;
-use pocketmine\level\generator\populator\Sugarcane;
 use pocketmine\level\generator\populator\TallGrass;
 
-class OceanBiome extends NormalBiome{
+class OceanBiome extends GrassyBiome{
 
-	/**
-	 * OceanBiome constructor.
-	 */
 	public function __construct(){
-		$this->setGroundCover([
-			Block::get(Block::GRAVEL),
-			Block::get(Block::GRAVEL),
-			Block::get(Block::GRAVEL),
-			Block::get(Block::GRAVEL),
-			Block::get(Block::GRAVEL)
-		]);
+		parent::__construct();
 
-		$sugarcane = new Sugarcane();
-		$sugarcane->setBaseAmount(6);
 		$tallGrass = new TallGrass();
 		$tallGrass->setBaseAmount(5);
 
-		$this->addPopulator($sugarcane);
 		$this->addPopulator($tallGrass);
 
 		$this->setElevation(46, 58);
@@ -53,9 +42,6 @@ class OceanBiome extends NormalBiome{
 		$this->rainfall = 0.5;
 	}
 
-	/**
-	 * @return string
-	 */
 	public function getName() : string{
 		return "Ocean";
 	}

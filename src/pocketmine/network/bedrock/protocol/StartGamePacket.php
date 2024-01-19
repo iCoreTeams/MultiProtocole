@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\network\bedrock\protocol;
@@ -11,6 +31,7 @@ use pocketmine\math\Vector3;
 use pocketmine\nbt\tag\CompoundTag;
 use pocketmine\nbt\TreeRoot;
 use pocketmine\network\bedrock\palette\ItemPalette;
+use pocketmine\network\bedrock\protocol\types\ChatRestrictionLevel;
 use pocketmine\network\bedrock\protocol\types\EducationUriResource;
 use pocketmine\network\bedrock\protocol\types\Experiments;
 use pocketmine\network\bedrock\protocol\types\PlayerMovementSettings;
@@ -31,10 +52,6 @@ class StartGamePacket extends DataPacket{
 
 	public const SPAWN_BIOME_TYPE_DEFAULT = 0;
 	public const SPAWN_BIOME_TYPE_USER_DEFINED = 1;
-
-    public const NON_EDITOR = 0;
-    public const PROJECT = 1;
-    public const TEST_LEVEL = 2;
 
 	/** @var int */
 	public $actorUniqueId;
@@ -73,9 +90,12 @@ class StartGamePacket extends DataPacket{
 	public $spawnZ;
 	/** @var bool */
 	public $hasAchievementsDisabled = true;
-    public int $editorMode = self::NON_EDITOR;
-    public bool $createdInEditorMode = false;
-    public bool $exportedFromEditorMode = false;
+	/** @var bool */
+	public $isEditorMode = false;
+	/** @var bool */
+	public $createdInEditorMode = false;
+	/** @var bool */
+	public $exportedFromEditorMode = false;
 	/** @var int */
 	public $time = -1;
 	/** @var int */
@@ -130,9 +150,12 @@ class StartGamePacket extends DataPacket{
 	public $isWorldTemplateOptionLocked = false;
 	/** @var bool */
 	public $onlySpawnV1Villagers = false;
-    public bool $disablePersona = false;
-    public bool $disableCustomSkins = false;
-    public bool $muteEmoteAnnouncements = false;
+	/** @var bool */
+	public $disablePersona = false;
+	/** @var bool */
+	public $disableCustomSkins = false;
+	/** @var bool */
+	public $muteEmoteAnnouncements = false;
 	/** @var string */
 	public $vanillaVersion = ProtocolInfo::MINECRAFT_VERSION_NETWORK;
 	/** @var int */
@@ -143,10 +166,14 @@ class StartGamePacket extends DataPacket{
 	public $newNether = false;
     /** @var EducationUriResource|null */
     public $eduSharedUriResource = null;
-
-    public ?bool $experimentalGameplayOverride = null;
-    public int $chatRestrictionLevel = 0;
-    public bool $disablePlayerInteractions = false;
+    /** @var bool */
+	public $isExperimentalGameplayForced = false;
+	/** @var bool */
+	public $forceExperimentalGameplay = false;
+	/** @var int */
+	public $chatRestrictionLevel = ChatRestrictionLevel::NONE;
+	/** @var bool */
+	public $disablePlayerInteractions = false;
 
 	/** @var string */
 	public $levelId = ""; //base64 string, usually the same as world folder name in vanilla
@@ -172,10 +199,12 @@ class StartGamePacket extends DataPacket{
 	public $playerActorProperties;
 	/** @var UUID */
 	public $worldTemplateId;
-    public bool $enableClientSideChunkGeneration = false;
-    public bool $blockNetworkIdsAreHashes = false; //new in 1.19.80, possibly useful for multi version
-    /* NetworkPermission */
-    private bool $disableClientSounds = true;
+	/** @var bool */
+	public $enableClientSideChunkGeneration = false;
+	/** @var bool */
+	public $blockNetworkIdsAreHashes = false; //new in 1.19.80, possibly useful for multi version
+	/** @var bool */
+	public $disableClientSounds = false;
 
 	public function decodePayload(){
 		$this->actorUniqueId = $this->getActorUniqueId();
@@ -197,9 +226,9 @@ class StartGamePacket extends DataPacket{
 		$this->difficulty = $this->getVarInt();
 		$this->getBlockPosition($this->spawnX, $this->spawnY, $this->spawnZ);
 		$this->hasAchievementsDisabled = $this->getBool();
-        $this->editorMode = $this->getVarInt();
-        $this->createdInEditorMode = $this->getBool();
-        $this->exportedFromEditorMode = $this->getBool();
+		$this->isEditorMode = $this->getBool();
+		$this->createdInEditorMode = $this->getBool();
+		$this->exportedFromEditorMode = $this->getBool();
 		$this->time = $this->getVarInt();
 		$this->eduEditionOffer = $this->getVarInt();
 		$this->hasEduFeaturesEnabled = $this->getBool();
@@ -226,17 +255,20 @@ class StartGamePacket extends DataPacket{
 		$this->isFromWorldTemplate = $this->getBool();
 		$this->isWorldTemplateOptionLocked = $this->getBool();
 		$this->onlySpawnV1Villagers = $this->getBool();
-        $this->disablePersona = $this->getBool();
-        $this->disableCustomSkins = $this->getBool();
-        $this->muteEmoteAnnouncements = $this->getBool();
+		$this->disablePersona = $this->getBool();
+		$this->disableCustomSkins = $this->getBool();
+		$this->muteEmoteAnnouncements = $this->getBool();
 		$this->vanillaVersion = $this->getString();
 		$this->limitedWorldWidth = $this->getLInt();
 		$this->limitedWorldDepth = $this->getLInt();
 		$this->newNether = $this->getBool();
         $this->eduSharedUriResource = EducationUriResource::read($this);
-        $this->experimentalGameplayOverride = $this->readOptional(\Closure::fromCallable([$this, 'getBool']));
-        $this->chatRestrictionLevel = $this->getByte();
-        $this->disablePlayerInteractions = $this->getBool();
+        $this->isExperimentalGameplayForced = $this->getBool();
+		if($this->isExperimentalGameplayForced){
+			$this->forceExperimentalGameplay = $this->getBool();
+		}
+		$this->chatRestrictionLevel = $this->getByte();
+		$this->disablePlayerInteractions = $this->getBool();
 
 		$this->levelId = $this->getString();
 		$this->worldName = $this->getString();
@@ -266,9 +298,9 @@ class StartGamePacket extends DataPacket{
 		$this->playerActorProperties = $this->getNbtCompoundRoot();
 		$this->getLLong(); // block palette checksum
 		$this->worldTemplateId = $this->getUUID();
-        $this->enableClientSideChunkGeneration = $this->getBool();
-        $this->blockNetworkIdsAreHashes = $this->getBool();
-        $this->disableClientSounds = $this->getBool();
+		$this->enableClientSideChunkGeneration = $this->getBool();
+		$this->blockNetworkIdsAreHashes = $this->getBool();
+		$this->disableClientSounds = $this->getBool();
 	}
 
 	public function encodePayload(){
@@ -291,9 +323,9 @@ class StartGamePacket extends DataPacket{
 		$this->putVarInt($this->difficulty);
 		$this->putBlockPosition($this->spawnX, $this->spawnY, $this->spawnZ);
 		$this->putBool($this->hasAchievementsDisabled);
-        $this->putVarInt($this->editorMode);
-        $this->putBool($this->createdInEditorMode);
-        $this->putBool($this->exportedFromEditorMode);
+		$this->putBool($this->isEditorMode);
+		$this->putBool($this->createdInEditorMode);
+		$this->putBool($this->exportedFromEditorMode);
 		$this->putVarInt($this->time);
 		$this->putVarInt($this->eduEditionOffer);
 		$this->putBool($this->hasEduFeaturesEnabled);
@@ -320,18 +352,21 @@ class StartGamePacket extends DataPacket{
 		$this->putBool($this->isFromWorldTemplate);
 		$this->putBool($this->isWorldTemplateOptionLocked);
 		$this->putBool($this->onlySpawnV1Villagers);
-        $this->putBool($this->disablePersona);
-        $this->putBool($this->disableCustomSkins);
-        $this->putBool($this->muteEmoteAnnouncements);
+		$this->putBool($this->disablePersona);
+		$this->putBool($this->disableCustomSkins);
+		$this->putBool($this->muteEmoteAnnouncements);
 		$this->putString($this->vanillaVersion);
 		$this->putLInt($this->limitedWorldWidth);
 		$this->putLInt($this->limitedWorldDepth);
 		$this->putBool($this->newNether);
         ($this->eduSharedUriResource ?? new EducationUriResource("", ""))->write($this);
 
-        $this->writeOptional($this->experimentalGameplayOverride, \Closure::fromCallable([$this, 'putBool']));
-        $this->putByte($this->chatRestrictionLevel);
-        $this->putBool($this->disablePlayerInteractions);
+        $this->putBool($this->isExperimentalGameplayForced);
+		if($this->isExperimentalGameplayForced){
+			$this->putBool($this->forceExperimentalGameplay);
+		}
+		$this->putByte($this->chatRestrictionLevel);
+		$this->putBool($this->disablePlayerInteractions);
 
 		$this->putString($this->levelId);
 		$this->putString($this->worldName);
@@ -351,11 +386,13 @@ class StartGamePacket extends DataPacket{
 
 		$nbt = new NetworkNbtSerializer();
 		$this->put($nbt->write(new TreeRoot($this->playerActorProperties)));
+
 		$this->putLLong(0); // block palette checksum
+
 		$this->putUUID($this->worldTemplateId);
-        $this->putBool($this->enableClientSideChunkGeneration);
-        $this->putBool($this->blockNetworkIdsAreHashes);
-        $this->putBool($this->disableClientSounds);
+		$this->putBool($this->enableClientSideChunkGeneration);
+		$this->putBool($this->blockNetworkIdsAreHashes);
+		$this->putBool($this->disableClientSounds);
 	}
 
 	public function mustBeDecoded() : bool{

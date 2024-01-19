@@ -2,38 +2,36 @@
 
 /*
  *
- *  ____            _        _   __  __ _                  __  __ ____
- * |  _ \ ___   ___| | _____| |_|  \/  (_)_ __   ___      |  \/  |  _ \
- * | |_) / _ \ / __| |/ / _ \ __| |\/| | | '_ \ / _ \_____| |\/| | |_) |
- * |  __/ (_) | (__|   <  __/ |_| |  | | | | | |  __/_____| |  | |  __/
- * |_|   \___/ \___|_|\_\___|\__|_|  |_|_|_| |_|\___|     |_|  |_|_|
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
  *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
  *
- * @author PocketMine Team
- * @link http://www.pocketmine.net/
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
  *
  *
 */
 
+declare(strict_types=1);
+
 namespace pocketmine\level\generator\object;
 
 use pocketmine\block\Block;
-use pocketmine\block\Leaves;
 use pocketmine\block\Wood;
 
 class JungleTree extends Tree{
 
-	/**
-	 * JungleTree constructor.
-	 */
 	public function __construct(){
 		$this->trunkBlock = Block::LOG;
 		$this->leafBlock = Block::LEAVES;
-		$this->leafType = Leaves::JUNGLE;
 		$this->type = Wood::JUNGLE;
 		$this->treeHeight = 8;
 	}

@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace {
@@ -11,13 +31,16 @@ namespace pocketmine {
 	use pocketmine\utils\Binary;
 	use pocketmine\utils\MainLogger;
 	use pocketmine\utils\Terminal;
-    use pocketmine\utils\Timezone;
-    use pocketmine\utils\Utils;
+	use pocketmine\utils\Utils;
+	use pocketmine\utils\Filesystem;
+	use pocketmine\utils\Process;
 	use pocketmine\wizard\SetupWizard;
+	use pocketmine\thread\ThreadManager;
+	use pocketmine\thread\ThreadSafeClassLoader;
 	use raklib\RakLib;
 
 	const NAME = "iCore";
-	const VERSION = "2.0.2";
+	const VERSION = "2.0.3";
 	const API_VERSION = "3.3.0";
 	const CODENAME = "Blame Mojang";
 
@@ -28,13 +51,13 @@ namespace pocketmine {
 	 * Enjoy it as much as I did writing it. I don't want to do it again.
 	 */
 
-	if(version_compare("8.0", PHP_VERSION) > 0){
-		echo "[CRITICAL] You must use PHP >= 8.0" . PHP_EOL;
+	if(version_compare("8.2", PHP_VERSION) > 0){
+		echo "[CRITICAL] You must use PHP >= 8.2" . PHP_EOL;
 		exit(1);
 	}
 
-	if(!extension_loaded("pthreads")){
-		echo "[CRITICAL] Unable to find the pthreads extension." . PHP_EOL;
+	if(!extension_loaded("pmmpthread")){
+		echo "[CRITICAL] Unable to find the pmmpthread extension." . PHP_EOL;
 		exit(1);
 	}
 
@@ -56,20 +79,18 @@ namespace pocketmine {
 		define('pocketmine\PATH', realpath(getcwd()) . DIRECTORY_SEPARATOR);
 	}
 
-	if(!class_exists("ClassLoader", false)){
-		if(!is_file(\pocketmine\PATH . "src/spl/ClassLoader.php")){
-			echo "[CRITICAL] Unable to find the PocketMine-SPL library." . PHP_EOL;
-			echo "[CRITICAL] Please use provided builds or clone the repository recursively." . PHP_EOL;
+	if (!class_exists("ThreadSafeClassLoader", false)) {
+		if (!is_file(\pocketmine\PATH . "src/pocketmine/thread/ThreadSafeClassLoader.php")) {
 			exit(1);
 		}
-		require_once(\pocketmine\PATH . "src/spl/ClassLoader.php");
-		require_once(\pocketmine\PATH . "src/spl/BaseClassLoader.php");
+		require_once(\pocketmine\PATH . "src/pocketmine/thread/ThreadSafeClassLoader.php");
 	}
 
-	$autoloader = new \BaseClassLoader();
-	$autoloader->addPath(\pocketmine\PATH . "src");
-	$autoloader->addPath(\pocketmine\PATH . "src" . DIRECTORY_SEPARATOR . "spl");
-	$autoloader->register(true);
+	$autoloader = new ThreadSafeClassLoader();
+	foreach (scandir(($path = \pocketmine\PATH . DIRECTORY_SEPARATOR . "src")) as $dir) {
+		$autoloader->addPath("", $path . DIRECTORY_SEPARATOR . $dir);
+	}
+	$autoloader->register();
 
 	//set this after the autoloader is registered
 	set_error_handler([Utils::class, 'errorExceptionHandler']);
@@ -97,9 +118,6 @@ namespace pocketmine {
 
 	Terminal::init();
 
-    //Logger has a dependency on timezone
-    Timezone::init();
-
 	define('pocketmine\ANSI', Terminal::hasFormattingCodes());
 
 	if(!file_exists(\pocketmine\DATA)){
@@ -109,8 +127,8 @@ namespace pocketmine {
 	//Logger has a dependency on timezone, so we'll set it to UTC until we can get the actual timezone.
 	date_default_timezone_set("UTC");
 
-	$logger = new MainLogger(\pocketmine\DATA . "server.log", new \DateTimeZone(Timezone::get()));
-	$logger->registerStatic();
+	$logger = new MainLogger(\pocketmine\DATA . "server" . date("d-y-m") . ".log", new \DateTimeZone('UTC'));
+	\GlobalLogger::set($logger);
 
 	if(!ini_get("date.timezone")){
 		if(($timezone = detect_system_timezone()) and date_default_timezone_set($timezone)){
@@ -344,8 +362,8 @@ namespace pocketmine {
 		return $messages;
 	}
 
-	function cleanPath($path){
-		return str_replace(["\\", ".php", "phar://", str_replace(["\\", "phar://"], ["/", ""], \pocketmine\PATH), str_replace(["\\", "phar://"], ["/", ""], \pocketmine\PLUGIN_PATH)], ["/", "", "", "", ""], $path);
+	function cleanPath($path) : string{
+		return Filesystem::cleanPath($path);
 	}
 
 	$exitCode = 0;
@@ -364,13 +382,11 @@ namespace pocketmine {
 			++$errors;
 		}
 
-		$pthreads_version = phpversion("pthreads");
-		if(substr_count($pthreads_version, ".") < 2){
-			$pthreads_version = "0.$pthreads_version";
-		}
-		if(version_compare($pthreads_version, "3.1.7dev") < 0){
-			$logger->critical("pthreads >= 3.1.7dev is required, while you have $pthreads_version.");
-			++$errors;
+		if(($pmmpthread_version = phpversion("pmmpthread")) !== false){
+			if(version_compare($pmmpthread_version, "6.0.4") < 0 || version_compare($pmmpthread_version, "7.0.0") >= 0){
+				$logger->critical("pmmpthread ^6.0.7 is required, while you have $pmmpthread_version.");
+				++$errors;
+			}
 		}
 
 		if(extension_loaded("leveldb")){
@@ -401,6 +417,7 @@ namespace pocketmine {
 			"mbstring" => "Multibyte String",
 			"yaml" => "YAML",
 			"sockets" => "Sockets",
+            "chunkutils2" => "chunkutils2",
 			"zip" => "Zip",
 			"zlib" => "Zlib"
 		];
@@ -451,32 +468,35 @@ namespace pocketmine {
 		}
 
 		ThreadManager::init();
-		new Server($autoloader, $logger, \pocketmine\PATH, \pocketmine\DATA, \pocketmine\PLUGIN_PATH);
+
+		$options = [];
+
+		array_map(
+			function (string $raw) use (&$options) : void{
+				try {
+					[$key, $value] = explode("=", $raw);
+					$options[substr($key, 2)] = is_numeric($value) ? intval($value) : $value;
+				} catch (\Throwable) {}
+			},
+			array_filter(
+				$argv,
+				function (string $argument) : bool{
+					return str_contains($argument, "--");
+				}
+			)
+		);
+
+		new Server($autoloader, $logger, \pocketmine\PATH, \pocketmine\DATA, \pocketmine\PLUGIN_PATH, $options);
 
 		$logger->info("Stopping other threads");
 
-		$erroredThreads = 0;
-		foreach(ThreadManager::getInstance()->getAll() as $id => $thread){
-			$logger->debug("Stopping " . $thread->getThreadName() . " thread");
-			try{
-				$thread->quit();
-				$logger->debug($thread->getThreadName() . " thread stopped successfully.");
-			}catch(\ThreadException $e){
-				++$erroredThreads;
-				$logger->debug("Could not stop " . $thread->getThreadName() . " thread: " . $e->getMessage());
-			}
-		}
-
-		if($erroredThreads > 0){
-			if(\pocketmine\DEBUG > 1){
-				echo "Some threads could not be stopped, performing a force-kill" . PHP_EOL . PHP_EOL;
-			}
-			kill(getmypid());
+		if(ThreadManager::getInstance()->stopAll() > 0){
+			$logger->debug("Some threads could not be stopped, performing a force-kill");
+			Process::kill(Process::pid(), true);
 		}
 	}while(false);
 
 	$logger->shutdown();
-	$logger->join();
 
 	echo Terminal::$FORMAT_RESET . PHP_EOL;
 

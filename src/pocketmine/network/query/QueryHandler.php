@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 /**
@@ -10,11 +30,12 @@ namespace pocketmine\network\query;
 
 use pocketmine\Server;
 use pocketmine\utils\Binary;
+use pocketmine\utils\BinaryStream;
+use pocketmine\utils\BinaryDataException;
 
 use function chr;
 use function hash;
 use function microtime;
-use function ord;
 use function random_bytes;
 use function strlen;
 use function substr;
@@ -50,7 +71,7 @@ class QueryHandler{
 		$ev = $this->server->getQueryInformation();
 		$this->longData = $ev->getLongQuery();
 		$this->shortData = $ev->getShortQuery();
-		$this->timeout = hrtime(true) + $ev->getTimeout();
+		$this->timeout = microtime(true) + $ev->getTimeout();
 	}
 
 	public function regenerateToken(){
@@ -62,41 +83,54 @@ class QueryHandler{
 		return Binary::readInt(substr(hash("sha512", $salt . ":" . $token, true), 7, 4));
 	}
 
-	public function handle($address, $port, $packet){
-		$offset = 2;
-		$packetType = ord($packet[$offset++]);
-		$sessionID = Binary::readInt(substr($packet, $offset, 4));
-		$offset += 4;
-		$payload = substr($packet, $offset);
+	public function handle(string $address, int $port, string $packet) : bool{
+		try{
+			$stream = new BinaryStream($packet);
+			$header = $stream->get(2);
+			if($header !== "\xfe\xfd"){ //TODO: have this filtered by the regex filter we installed above
+				return false;
+			}
+			$packetType = $stream->getByte();
+			$sessionID = $stream->getInt();
 
-		switch($packetType){
-			case self::HANDSHAKE: //Handshake
-				$reply = chr(self::HANDSHAKE);
-				$reply .= Binary::writeInt($sessionID);
-				$reply .= self::getTokenString($this->token, $address) . "\x00";
+			switch($packetType){
+				case self::HANDSHAKE: //Handshake
+					$reply = chr(self::HANDSHAKE);
+					$reply .= Binary::writeInt($sessionID);
+					$reply .= self::getTokenString($this->token, $address) . "\x00";
 
-				$this->server->getNetwork()->sendPacket($address, $port, $reply);
-				break;
-			case self::STATISTICS: //Stat
-				$token = Binary::readInt(substr($payload, 0, 4));
-				if($token !== self::getTokenString($this->token, $address) and $token !== self::getTokenString($this->lastToken, $address)){
-					break;
-				}
-				$reply = chr(self::STATISTICS);
-				$reply .= Binary::writeInt($sessionID);
+					$this->server->getNetwork()->sendPacket($address, $port, $reply);
 
-				if($this->timeout < hrtime(true)){
-					$this->regenerateInfo();
-				}
+					return true;
+				case self::STATISTICS: //Stat
+					$token = $stream->getInt();
+					if($token !== ($t1 = self::getTokenString($this->token, $address)) and $token !== ($t2 = self::getTokenString($this->lastToken, $address))){
+						$this->debug("Bad token $token from $address $port, expected $t1 or $t2");
 
-				if(strlen($payload) === 8){
-					$reply .= $this->longData;
-				}else{
-					$reply .= $this->shortData;
-				}
-				$this->server->getNetwork()->sendPacket($address, $port, $reply);
-				break;
+						return true;
+					}
+					$reply = chr(self::STATISTICS);
+					$reply .= Binary::writeInt($sessionID);
+
+					if($this->timeout < microtime(true)){
+						$this->regenerateInfo();
+					}
+
+					$remaining = $stream->getRemaining();
+					if(strlen($remaining) === 4){ //TODO: check this! according to the spec, this should always be here and always be FF FF FF 01
+						$reply .= $this->longData;
+					}else{
+						$reply .= $this->shortData;
+					}
+					$this->server->getNetwork()->sendPacket($address, $port, $reply);
+
+					return true;
+				default:
+					return false;
+			}
+		}catch(BinaryDataException $e){
+			$this->debug("Bad packet from $address $port: " . $e->getMessage());
+			return false;
 		}
 	}
-
 }

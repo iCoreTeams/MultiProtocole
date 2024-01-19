@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\entity;
@@ -10,7 +30,9 @@ use pocketmine\event\entity\EntityDamageByChildEntityEvent;
 use pocketmine\event\entity\EntityDamageByEntityEvent;
 use pocketmine\event\entity\EntityDamageEvent;
 use pocketmine\event\entity\EntityDeathEvent;
+use pocketmine\event\Timings;
 use pocketmine\item\Item as ItemItem;
+use pocketmine\math\Vector3;
 use pocketmine\math\VoxelRayTrace;
 use pocketmine\nbt\tag\CompoundTag;
 use pocketmine\nbt\tag\FloatTag;
@@ -19,7 +41,6 @@ use pocketmine\network\bedrock\protocol\MobEffectPacket as BedrockMobEffectPacke
 use pocketmine\network\mcpe\protocol\EntityEventPacket;
 use pocketmine\network\mcpe\protocol\MobEffectPacket;
 use pocketmine\Player;
-use pocketmine\timings\Timings;
 use pocketmine\utils\Binary;
 use UnexpectedValueException;
 use function abs;
@@ -29,6 +50,8 @@ use function floor;
 use function sqrt;
 
 abstract class Living extends Entity implements Damageable{
+	private const X_MODIFIER = 0.225;
+    private const Y_MODIFIER = 0.205;
 
 	public $gravity = 0.08;
 	public $drag = 0.02;
@@ -90,7 +113,7 @@ abstract class Living extends Entity implements Damageable{
 		$this->attributeMap->addAttribute(Attribute::getAttribute(Attribute::ABSORPTION));
 	}
 
-	public function setHealth($amount){
+	public function setHealth(int|float $amount) : void{
 		$wasAlive = $this->isAlive();
 		parent::setHealth($amount);
 		$this->attributeMap->getAttribute(Attribute::HEALTH)->setValue($this->getHealth(), true);
@@ -249,9 +272,9 @@ abstract class Living extends Entity implements Damageable{
 		}
 
 		if($count > 0){
-			$r = ($color[0] / $count) & 0xff;
-			$g = ($color[1] / $count) & 0xff;
-			$b = ($color[2] / $count) & 0xff;
+			$r = intval(($color[0] / $count)) & 0xff;
+			$g = intval(($color[1] / $count)) & 0xff;
+			$b = intval(($color[2] / $count)) & 0xff;
 
 			$this->setDataProperty(Entity::DATA_POTION_COLOR, Entity::DATA_TYPE_INT, 0xff000000 | ($r << 16) | ($g << 8) | $b);
 			$this->setDataProperty(Entity::DATA_POTION_AMBIENT, Entity::DATA_TYPE_BYTE, $ambient ? 1 : 0);
@@ -318,6 +341,11 @@ abstract class Living extends Entity implements Damageable{
 	}
 
 	public function fall(float $fallDistance){
+		/*if($this->level->getBlockIdAt($this->getFloorX(), $this->getFloorY() - 1, $this->getFloorZ()) === Block::SLIME_BLOCK and !$this->isSneaking()){
+			$this->motionY = $this->gravity * $fallDistance;
+			$this->resetFallDistance();
+			return;
+		}*/
 		$damage = floor($fallDistance - 3 - ($this->hasEffect(Effect::JUMP) ? $this->getEffect(Effect::JUMP)->getEffectLevel() : 0));
 		if($damage > 0){
 			$ev = new EntityDamageEvent($this, EntityDamageEvent::CAUSE_FALL, $damage);
@@ -367,16 +395,21 @@ abstract class Living extends Entity implements Damageable{
 			}
 
 			if($e !== null){
-				if($source instanceof EntityDamageByChildEntityEvent){
+				if($e->isOnFire() > 0){
+					$this->setOnFire(2 * $this->server->getDifficulty());
+				}
+
+				if($source instanceof EntityDamageByChildEntityEvent) {
 					$deltaX = $e->motionX;
+					$deltaY = $e->motionY;
 					$deltaZ = $e->motionZ;
 				}else{
 					$deltaX = $this->x - $e->x;
+					$deltaY = $this->y - $e->y;
 					$deltaZ = $this->z - $e->z;
 				}
-				$this->knockBack($deltaX, $deltaZ, $source->getKnockBack(), $source->getKnockBackHeight(), $source->getKnockBackHeightCap());
 
-				$source->applyPostAttack();
+				$source->applyPostAttack($damage, $deltaX, $deltaY, $deltaZ);
 			}
 		}
 
@@ -388,27 +421,20 @@ abstract class Living extends Entity implements Damageable{
 		$this->attackTime = 10; //0.5 seconds cooldown
 	}
 
-	public function knockBack(float $diffX, float $diffZ, float $power, float $height = 0.4, float $heightCap = 0.4){
-		$len = sqrt($diffX ** 2 + $diffZ ** 2);
-		if($len == 0){
+    public function knockBack(float $deltaX, float $deltaZ, float $power = 1, float $height = 0.4, float $heightCap = 0.4) : void{
+		$f = sqrt($deltaX * $deltaX + $deltaZ * $deltaZ);
+		if($f <= 0){
 			return;
 		}
-		$lenInv = 1 / $len;
+		$f = 1 / $f;
 
-		$motion = $this->getSpeed();
-
+		$motion = new Vector3($this->motionX, $this->motionY, $this->motionZ);
 		$motion->x /= 2;
 		$motion->y /= 2;
 		$motion->z /= 2;
-
-		$motion->x += $diffX * $lenInv * $power * 0.4;
-		$motion->y += $height;
-		$motion->z += $diffZ * $lenInv * $power * 0.4;
-
-		if($motion->y > $heightCap){
-			$motion->y = $heightCap;
-		}
-
+		$motion->x += $deltaX * $f * self::X_MODIFIER * $power;
+		$motion->y += self::Y_MODIFIER;
+		$motion->z += $deltaZ * $f * self::X_MODIFIER * $power;
 		$this->setMotion($motion);
 	}
 

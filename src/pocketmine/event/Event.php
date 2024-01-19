@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 /**
@@ -7,17 +27,27 @@ declare(strict_types=1);
  */
 namespace pocketmine\event;
 
+use pocketmine\Server;
+
 use function get_class;
 
 abstract class Event{
-    private const MAX_EVENT_CALL_DEPTH = 50;
-    /** @var int */
-    private static $eventCallDepth = 1;
+	private const MAX_EVENT_CALL_DEPTH = 50;
+	/** @var int */
+	private static $eventCallDepth = 1;
 
-    /** @var string|null */
-    protected $eventName = null;
-    /** @var bool */
-    private $isCancelled = false;
+	/**
+	 * Any callable event must declare the static variable
+	 *
+	 * public static $handlerList = null;
+	 *
+	 * Not doing so will deny the proper event initialization
+	 */
+
+	/** @var string|null */
+	protected $eventName = null;
+	/** @var bool */
+	private $isCancelled = false;
 
 	/**
 	 * @return string
@@ -45,42 +75,54 @@ abstract class Event{
 	 *
 	 * @throws \BadMethodCallException
 	 */
-	public function setCancelled(bool $value = true): void{
+	public function setCancelled(bool $value = true){
 		if(!($this instanceof Cancellable)){
 			throw new \BadMethodCallException("Event is not Cancellable");
 		}
 
+		/** @var Event $this */
 		$this->isCancelled = $value;
 	}
 
-    /**
-     * Calls event handlers registered for this event.
-     *
-     * @throws \RuntimeException if event call recursion reaches the max depth limit
-     */
-    public function call() : void{
-        if(self::$eventCallDepth >= self::MAX_EVENT_CALL_DEPTH){
-            //this exception will be caught by the parent event call if all else fails
-            throw new \RuntimeException("Recursive event call detected (reached max depth of " . self::MAX_EVENT_CALL_DEPTH . " calls)");
-        }
+	/**
+	 * @return HandlerList
+	 */
+	public function getHandlers() : HandlerList{
+		if(static::$handlerList === null){
+			static::$handlerList = new HandlerList();
+		}
 
-        $handlerList = HandlerList::getHandlerListFor(get_class($this));
-        assert($handlerList !== null, "Called event should have a valid HandlerList");
+		return static::$handlerList;
+	}
 
-        ++self::$eventCallDepth;
-        try{
-            foreach(EventPriority::ALL as $priority){
-                $currentList = $handlerList;
-                while($currentList !== null){
-                    foreach($currentList->getListenersByPriority($priority) as $registration){
-                        $registration->callEvent($this);
-                    }
+	/**
+	 * Calls event handlers registered for this event.
+	 * 
+	 * @throws \RuntimeException
+	 */
+	public function call() : void{
+		if(self::$eventCallDepth >= self::MAX_EVENT_CALL_DEPTH){
+			//this exception will be caught by the parent event call if all else fails
+			throw new \RuntimeException("Recursive event call detected (reached max depth of " . self::MAX_EVENT_CALL_DEPTH . " calls)");
+		}
 
-                    $currentList = $currentList->getParent();
-                }
-            }
-        }finally{
-            --self::$eventCallDepth;
-        }
-    }
+		++self::$eventCallDepth;
+		foreach($this->getHandlers()->getRegisteredListeners() as $registration){
+			try{
+				$registration->callEvent($this);
+			}catch(\Throwable $e){
+				$server = Server::getInstance();
+
+				$server->getLogger()->critical(
+					$server->getLanguage()->translateString("pocketmine.plugin.eventError", [
+						$this->getEventName(),
+						$registration->getPlugin()->getDescription()->getFullName(),
+						$e->getMessage(),
+						get_class($registration->getListener())
+					]));
+				$server->getLogger()->logException($e);
+			}
+		}
+		--self::$eventCallDepth;
+	}
 }

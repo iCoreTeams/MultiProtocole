@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\network\mcpe;
@@ -113,12 +133,11 @@ class NetworkBinaryStream extends BinaryStream{
 			return;
 		}
 
-        $convert = $item->getItemPocket();
-		$this->putVarInt($convert->getId());
-		$auxValue = (($convert->getDamage() & 0x7fff) << 8) | $convert->getCount();
+		$this->putVarInt($item->getId());
+		$auxValue = (($item->getDamage() & 0x7fff) << 8) | $item->getCount();
 		$this->putVarInt($auxValue);
 
-		$nbt = $convert->getCompoundTag();
+		$nbt = $item->getCompoundTag();
 		$this->putLShort(strlen($nbt));
 		$this->put($nbt);
 
@@ -517,30 +536,4 @@ class NetworkBinaryStream extends BinaryStream{
 			throw new UnexpectedValueException("Expected TAG_Compound NBT root: " . $e->getMessage(), 0, $e);
 		}
 	}
-
-    /**
-     * @phpstan-template T
-     * @phpstan-param \Closure() : T $reader
-     * @phpstan-return T|null
-     */
-    public function readOptional(\Closure $reader) : mixed{
-        if($this->getBool()){
-            return $reader();
-        }
-        return null;
-    }
-
-    /**
-     * @phpstan-template T
-     * @phpstan-param T|null $value
-     * @phpstan-param \Closure(T) : void $writer
-     */
-    public function writeOptional(mixed $value, \Closure $writer) : void{
-        if($value !== null){
-            $this->putBool(true);
-            $writer($value);
-        }else{
-            $this->putBool(false);
-        }
-    }
 }

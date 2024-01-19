@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\network\bedrock\protocol;
@@ -23,8 +43,6 @@ class AddPlayerPacket extends DataPacket{
 	public $uuid;
 	/** @var string */
 	public $username;
-	/** @var int|null */
-	public $actorUniqueId = null; //TODO
 	/** @var int */
 	public $actorRuntimeId;
 	/** @var string */
@@ -45,7 +63,11 @@ class AddPlayerPacket extends DataPacket{
 	public $gameMode = Player::SURVIVAL;
 	/** @var array */
 	public $metadata = [];
-    public PropertySyncData $syncedProperties;
+	/** @var PropertySyncData|null */
+	public $syncedProperties;
+
+	/** @var UpdateAbilitiesPacket|null */
+	public $abilitiesPacket;
 
 	/** @var ActorLink[] */
 	public $links = [];
@@ -58,7 +80,7 @@ class AddPlayerPacket extends DataPacket{
 	public function decodePayload(){
 		$this->uuid = $this->getUUID();
 		$this->username = $this->getString();
-        $this->actorRuntimeId = $this->getActorRuntimeId();
+		$this->actorRuntimeId = $this->getActorRuntimeId();
 		$this->platformChatId = $this->getString();
 		$this->position = $this->getVector3();
 		$this->motion = $this->getVector3();
@@ -68,12 +90,14 @@ class AddPlayerPacket extends DataPacket{
 		$this->item = $this->getItemInstance();
 		$this->gameMode = $this->getVarInt();
 		$this->metadata = $this->getActorMetadata();
-        $this->syncedProperties = PropertySyncData::read($this);
+		$this->syncedProperties = PropertySyncData::read($this);
 
-        $this->actorUniqueId = $this->getLLong(); //entity unique id
-        $this->getByte();
-        $this->getByte();
-        $this->getByte(); //number of ability layers
+		if($this->abilitiesPacket === null){
+			$this->abilitiesPacket = new UpdateAbilitiesPacket($this->buffer, $this->offset);
+		}else{
+			$this->abilitiesPacket->setBuffer($this->buffer, $this->offset);
+		}
+		$this->abilitiesPacket->decodePayload();
 
 		$linkCount = $this->getUnsignedVarInt();
 		for($i = 0; $i < $linkCount; ++$i){
@@ -97,12 +121,17 @@ class AddPlayerPacket extends DataPacket{
 		$this->putItemInstance($this->item);
 		$this->putVarInt($this->gameMode);
 		$this->putActorMetadata($this->metadata);
-        $this->syncedProperties->write($this);
+		($this->syncedProperties ?? new PropertySyncData())->write($this);
 
-        $this->putLLong($this->actorUniqueId ?? $this->actorRuntimeId); //entity unique id
-        $this->putByte(0);
-        $this->putByte(0);
-        $this->putByte(0); //number of ability layers
+		if($this->abilitiesPacket === null){
+			$this->abilitiesPacket = new UpdateAbilitiesPacket();
+			$this->abilitiesPacket->targetActorUniqueId = $this->actorRuntimeId;
+			$this->abilitiesPacket->abilityLayers = [];
+		}else{
+			$this->abilitiesPacket->reset();
+		}
+		$this->abilitiesPacket->encodePayload();
+		$this->put($this->abilitiesPacket->getBuffer());
 
 		$this->putUnsignedVarInt(count($this->links));
 		foreach($this->links as $link){

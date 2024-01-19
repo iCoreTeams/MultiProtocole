@@ -1,12 +1,33 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\command;
 
-use pocketmine\lang\TranslationContainer;
+use pocketmine\event\TranslationContainer;
 use pocketmine\Server;
 use pocketmine\utils\TextFormat;
+
 use function count;
 use function ord;
 use function strlen;
@@ -62,14 +83,14 @@ class FormattedCommandAlias extends Command{
 		$index = strpos($formatString, '$');
 		while($index !== false){
 			$start = $index;
-			if($index > 0 and $formatString[$start - 1] === "\\"){
+			if($index > 0 and $formatString{$start - 1} === "\\"){
 				$formatString = substr($formatString, 0, $start - 1) . substr($formatString, $start);
 				$index = strpos($formatString, '$', $index);
 				continue;
 			}
 
 			$required = false;
-			if($formatString[$index + 1] == '$'){
+			if($formatString{$index + 1} == '$'){
 				$required = true;
 
 				++$index;
@@ -79,7 +100,7 @@ class FormattedCommandAlias extends Command{
 
 			$argStart = $index;
 
-			while($index < strlen($formatString) and self::inRange(ord($formatString[$index]) - 48, 0, 9)){
+			while($index < strlen($formatString) and self::inRange(ord($formatString{$index}) - 48, 0, 9)){
 				++$index;
 			}
 
@@ -97,7 +118,7 @@ class FormattedCommandAlias extends Command{
 
 			$rest = false;
 
-			if($index < strlen($formatString) and $formatString[$index] === "-"){
+			if($index < strlen($formatString) and $formatString{$index} === "-"){
 				$rest = true;
 				++$index;
 			}

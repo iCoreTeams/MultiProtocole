@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 /**
@@ -8,32 +28,39 @@ declare(strict_types=1);
 namespace pocketmine\tile;
 
 use pocketmine\block\Block;
+use pocketmine\event\Timings;
+use pocketmine\event\TimingsHandler;
 use pocketmine\level\format\Chunk;
 use pocketmine\level\Level;
 use pocketmine\level\Position;
-use pocketmine\math\Vector3;
 use pocketmine\nbt\tag\CompoundTag;
-use pocketmine\timings\Timings;
-use pocketmine\timings\TimingsHandler;
+
 use function assert;
 use function is_a;
 use function microtime;
 
 abstract class Tile extends Position{
 
-	public const BREWING_STAND = "BrewingStand";
-	public const CHEST = "Chest";
-	public const ENCHANT_TABLE = "EnchantTable";
-	public const ENDER_CHEST = "EnderChest";
-	public const FLOWER_POT = "FlowerPot";
-	public const FURNACE = "Furnace";
-	public const ITEM_FRAME = "ItemFrame";
-	public const MOB_SPAWNER = "MobSpawner";
-	public const SIGN = "Sign";
-	public const SKULL = "Skull";
-	public const BED = "Bed";
-	public const HOPPER = "Hopper";
-	public const DROPPER = "Dropper";
+    const BREWING_STAND = "BrewingStand";
+    const CHEST = "Chest";
+    const DL_DETECTOR = "DayLightDetector";
+    const ENCHANT_TABLE = "EnchantTable";
+    const FLOWER_POT = "FlowerPot";
+    const FURNACE = "Furnace";
+    const MOB_SPAWNER = "MobSpawner";
+    const SIGN = "Sign";
+    const SKULL = "Skull";
+    const ITEM_FRAME = "ItemFrame";
+    const DISPENSER = "Dispenser";
+    const DROPPER = "Dropper";
+    const CAULDRON = "Cauldron";
+    const HOPPER = "Hopper";
+    const BEACON = "Beacon";
+    const ENDER_CHEST = "EnderChest";
+    const BED = "Bed";
+    const DAY_LIGHT_DETECTOR = "DLDetector";
+    const SHULKER_BOX = "ShulkerBox";
+    const PISTON_ARM = "PistonArm";
 
 	public static $tileCount = 1;
 
@@ -44,9 +71,11 @@ abstract class Tile extends Position{
 	public $chunk;
 	public $name;
 	public $id;
+	public $attach;
 	public $metadata;
 	public $closed = false;
 	public $namedtag;
+	protected $lastUpdate;
 	protected $server;
 	protected $timings;
 
@@ -62,6 +91,7 @@ abstract class Tile extends Position{
 		self::registerTile(Furnace::class);
 		self::registerTile(ItemFrame::class);
 		self::registerTile(Sign::class);
+        self::registerTile(ShulkerBox::class);
 		self::registerTile(Skull::class);
 	}
 
@@ -106,15 +136,7 @@ abstract class Tile extends Position{
 		return self::$shortNames[static::class];
 	}
 
-    public static function createBaseNBT(string $saveId, Vector3 $pos) : CompoundTag{
-        return CompoundTag::create()
-            ->setString("id", $saveId)
-            ->setInt("x", (int) $pos->x)
-            ->setInt("y", (int) $pos->y)
-            ->setInt("z", (int) $pos->z);
-    }
-
-    public function __construct(Level $level, CompoundTag $nbt){
+	public function __construct(Level $level, CompoundTag $nbt){
 		$this->timings = Timings::getTileEntityTimings($this);
 
 		$this->namedtag = $nbt;
@@ -129,6 +151,7 @@ abstract class Tile extends Position{
 		assert($this->chunk !== null);
 
 		$this->name = "";
+		$this->lastUpdate = microtime(true);
 		$this->id = Tile::$tileCount++;
 
 		$this->getLevel()->addTile($this);
@@ -139,7 +162,7 @@ abstract class Tile extends Position{
 		return $this->id;
 	}
 
-	public function saveNBT(){
+	public function saveNBT(): void{
 		$this->namedtag->setString("id", $this->getSaveId());
 		$this->namedtag->setInt("x", $this->x);
 		$this->namedtag->setInt("y", $this->y);

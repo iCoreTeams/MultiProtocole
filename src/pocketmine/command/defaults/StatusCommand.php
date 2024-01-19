@@ -1,10 +1,31 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\command\defaults;
 
 use pocketmine\command\CommandSender;
+use pocketmine\thread\ThreadManager;
 use pocketmine\utils\TextFormat;
 use pocketmine\utils\Utils;
 
@@ -38,17 +59,17 @@ class StatusCommand extends VanillaCommand{
 
 		$time = microtime(true) - \pocketmine\START_TIME;
 
-		$seconds = floor($time % 60);
+		$seconds = floor((int)$time % 60);
 		$minutes = null;
 		$hours = null;
 		$days = null;
 
 		if($time >= 60){
-			$minutes = floor(($time % 3600) / 60);
+			$minutes = floor(((int)$time % 3600) / 60);
 			if($time >= 3600){
-				$hours = floor(($time % (3600 * 24)) / 3600);
+				$hours = floor(((int)$time % (3600 * 24)) / 3600);
 				if($time >= 3600 * 24){
-					$days = floor($time / (3600 * 24));
+					$days = floor((int)$time / (3600 * 24));
 				}
 			}
 		}
@@ -99,6 +120,12 @@ class StatusCommand extends VanillaCommand{
 				"Time $timeColor" . round($level->getTickRateTime(), 2) . "ms" . $tickRate
 			);
 		}
+
+        $sender->sendMessage(TextFormat::GOLD . 'Thread lists:');
+        $threadList = ThreadManager::getInstance()->getAll();
+        foreach($threadList as $thread){
+            $sender->sendMessage(TextFormat::GOLD . '- '. $thread->getThreadName());
+        }
 
 		return true;
 	}

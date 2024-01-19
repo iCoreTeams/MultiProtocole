@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\network\bedrock;
@@ -53,7 +73,6 @@ use pocketmine\network\bedrock\protocol\types\actor\ActorLink;
 use pocketmine\network\bedrock\protocol\types\actor\ActorMetadataFlags;
 use pocketmine\network\bedrock\protocol\types\actor\ActorMetadataProperties;
 use pocketmine\network\bedrock\protocol\types\actor\ActorMetadataTypes;
-use pocketmine\network\bedrock\protocol\types\actor\PropertySyncData;
 use pocketmine\network\bedrock\protocol\types\inventory\ItemInstance;
 use pocketmine\network\bedrock\protocol\types\LevelEventParticleIds;
 use pocketmine\network\bedrock\protocol\types\ParticleEffectIds;
@@ -224,10 +243,9 @@ abstract class PacketTranslator{
 				$pk->position = new Vector3($packet->x, $packet->y, $packet->z);
 				$pk->motion = new Vector3($packet->speedX, $packet->speedY, $packet->speedZ);
 				$pk->pitch = $packet->pitch;
-				$pk->yaw = $pk->headYaw = $pk->bodyYaw = $packet->yaw;
+				$pk->yaw = $pk->headYaw = $packet->yaw;
 				$pk->attributes = $packet->attributes;
 				$pk->metadata = self::translateMetadata($packet->metadata); //:o
-                $pk->syncedProperties = new PropertySyncData([], []);
 				foreach($packet->links as $link){
 					$pk->links[] = new ActorLink($link[0], $link[1], $link[2]);
 				}
@@ -252,7 +270,7 @@ abstract class PacketTranslator{
 				$pk = new BedrockAddPlayerPacket();
 				$pk->uuid = $packet->uuid;
 				$pk->username = $packet->username;
-				$pk->actorUniqueId = $packet->entityUniqueId;
+				//$pk->actorUniqueId = $packet->entityUniqueId;
 				$pk->actorRuntimeId = $packet->entityRuntimeId;
 				$pk->position = new Vector3($packet->x, $packet->y, $packet->z);
 				$pk->motion = new Vector3($packet->speedX, $packet->speedY, $packet->speedZ);
@@ -261,7 +279,6 @@ abstract class PacketTranslator{
 				$pk->headYaw = $packet->headYaw;
 				$pk->item = ItemInstance::legacy($packet->item);
 				$pk->metadata = self::translateMetadata($packet->metadata); //:o
-                $pk->syncedProperties = new PropertySyncData([], []);
 				break;
 			case MCPEProtocolInfo::PLAYER_LIST_PACKET:
 				/** @var MCPEPlayerListPacket $packet */
@@ -427,11 +444,7 @@ abstract class PacketTranslator{
 					$pk->sound = $soundIds[$packet->sound];
 					$pk->position = new Vector3($packet->x, $packet->y, $packet->z);
 					$pk->extraData = $packet->extraData;
-                    if(in_array($packet->sound, [
-                        MCPELevelSoundEventPacket::SOUND_HIT,
-                        MCPELevelSoundEventPacket::SOUND_POWER_ON,
-                        MCPELevelSoundEventPacket::SOUND_POWER_OFF
-                    ], true)){
+					if($packet->sound === MCPELevelSoundEventPacket::SOUND_HIT){
 						$pk->extraData = BlockPalette::getRuntimeFromLegacyId($packet->extraData);
 					}elseif($packet->sound === MCPELevelSoundEventPacket::SOUND_PLACE){
 						$pk->extraData = BlockPalette::getRuntimeFromLegacyId($packet->extraData);
@@ -461,7 +474,6 @@ abstract class PacketTranslator{
 				/** @var MCPELevelEventPacket $packet */
 				if(($packet->evid & MCPELevelEventPacket::EVENT_ADD_PARTICLE_MASK) > 0){ //Particle
 					static $legacyMaskIds = [
-                        MCPELevelEventParticleIds::FALLING_DUST => LevelEventParticleIds::FALLING_DUST,
 						MCPELevelEventParticleIds::MOB_SPELL => LevelEventParticleIds::MOB_SPELL,
 						MCPELevelEventParticleIds::MOB_SPELL_INSTANTANEOUS => LevelEventParticleIds::MOB_SPELL_INSTANTANEOUS,
 						MCPELevelEventParticleIds::ITEM_BREAK => LevelEventParticleIds::ITEM_BREAK,
@@ -498,7 +510,7 @@ abstract class PacketTranslator{
 						MCPELevelEventParticleIds::HUGE_EXPLODE_SEED => ParticleEffectIds::HUGE_EXPLOSION_LAB_MISC,
 						MCPELevelEventParticleIds::MOB_FLAME => ParticleEffectIds::MOBFLAME,
 						MCPELevelEventParticleIds::WATER_SPLASH => ParticleEffectIds::WATER_SPLASH,
-
+						MCPELevelEventParticleIds::FALLING_DUST => ParticleEffectIds::FALLING_DUST_SCAFFOLDING,
 						MCPELevelEventParticleIds::INK => ParticleEffectIds::INK,
 						MCPELevelEventParticleIds::NOTE => ParticleEffectIds::NOTE
 					];
@@ -639,7 +651,6 @@ abstract class PacketTranslator{
 				$pk = new BedrockSetActorDataPacket();
 				$pk->actorRuntimeId = $packet->entityRuntimeId;
 				$pk->metadata = self::translateMetadata($packet->metadata); //:o
-                $pk->syncedProperties = new PropertySyncData([], []);
 				break;
 			case MCPEProtocolInfo::SET_SPAWN_POSITION_PACKET:
 				/** @var MCPESetSpawnPositionPacket $packet */
@@ -806,9 +817,10 @@ abstract class PacketTranslator{
 				if($old === Entity::DATA_FLAG_ALWAYS_SHOW_NAMETAG){
 					$result[ActorMetadataProperties::ALWAYS_SHOW_NAMETAG] = [ActorMetadataTypes::BYTE, ($old_flags & (1 << $old)) > 0 ? 1 : 0];
 				}elseif(($old_flags & (1 << $old)) > 0){
-                    $flags ^= (1 << $new);
+					$flags ^= (1 << $new);
 				}
 			}
+
 			$result[ActorMetadataProperties::FLAGS][1] = $flags;
 		}
 		return $result;

@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\plugin;
@@ -16,7 +36,7 @@ interface PluginLoader{
 	 *
 	 * @return Plugin|null
 	 */
-	public function loadPlugin(string $file): ?Plugin;
+	public function loadPlugin(string $file);
 
 	/**
 	 * Gets the PluginDescription from the file
@@ -25,7 +45,7 @@ interface PluginLoader{
 	 *
 	 * @return null|PluginDescription
 	 */
-	public function getPluginDescription(string $file): ?PluginDescription;
+	public function getPluginDescription(string $file);
 
 	/**
 	 * Returns the filename regex patterns that this loader accepts
@@ -33,20 +53,4 @@ interface PluginLoader{
 	 * @return string
 	 */
 	public function getPluginFilters() : string;
-
-	/**
-	 * @param Plugin $plugin
-	 *
-	 * @return void
-	 */
-	public function enablePlugin(Plugin $plugin);
-
-	/**
-	 * @param Plugin $plugin
-	 *
-	 * @return void
-	 */
-	public function disablePlugin(Plugin $plugin): void;
-
-
 }

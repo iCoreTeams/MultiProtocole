@@ -1,25 +1,51 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\utils;
 
-/**
- * Class used to handle Minecraft chat format, and convert it to other formats like ANSI or HTML
- */
-use function is_array;
-use function json_encode;
+use function mb_scrub;
+use function preg_last_error;
+use function preg_quote;
 use function preg_replace;
 use function preg_split;
 use function str_repeat;
 use function str_replace;
-
-use const JSON_UNESCAPED_SLASHES;
+use const PREG_BACKTRACK_LIMIT_ERROR;
+use const PREG_BAD_UTF8_ERROR;
+use const PREG_BAD_UTF8_OFFSET_ERROR;
+use const PREG_INTERNAL_ERROR;
+use const PREG_JIT_STACKLIMIT_ERROR;
+use const PREG_RECURSION_LIMIT_ERROR;
 use const PREG_SPLIT_DELIM_CAPTURE;
 use const PREG_SPLIT_NO_EMPTY;
 
+/**
+ * Class used to handle Minecraft chat format, and convert it to other formats like HTML
+ */
 abstract class TextFormat{
 	public const ESCAPE = "\xc2\xa7"; //§
+	public const EOL = "\n";
 
 	public const BLACK = TextFormat::ESCAPE . "0";
 	public const DARK_BLUE = TextFormat::ESCAPE . "1";
@@ -37,243 +63,134 @@ abstract class TextFormat{
 	public const LIGHT_PURPLE = TextFormat::ESCAPE . "d";
 	public const YELLOW = TextFormat::ESCAPE . "e";
 	public const WHITE = TextFormat::ESCAPE . "f";
+	public const MINECOIN_GOLD = TextFormat::ESCAPE . "g";
+
+	public const COLORS = [
+		self::BLACK => self::BLACK,
+		self::DARK_BLUE => self::DARK_BLUE,
+		self::DARK_GREEN => self::DARK_GREEN,
+		self::DARK_AQUA => self::DARK_AQUA,
+		self::DARK_RED => self::DARK_RED,
+		self::DARK_PURPLE => self::DARK_PURPLE,
+		self::GOLD => self::GOLD,
+		self::GRAY => self::GRAY,
+		self::DARK_GRAY => self::DARK_GRAY,
+		self::BLUE => self::BLUE,
+		self::GREEN => self::GREEN,
+		self::AQUA => self::AQUA,
+		self::RED => self::RED,
+		self::LIGHT_PURPLE => self::LIGHT_PURPLE,
+		self::YELLOW => self::YELLOW,
+		self::WHITE => self::WHITE,
+		self::MINECOIN_GOLD => self::MINECOIN_GOLD,
+	];
 
 	public const OBFUSCATED = TextFormat::ESCAPE . "k";
 	public const BOLD = TextFormat::ESCAPE . "l";
 	public const STRIKETHROUGH = TextFormat::ESCAPE . "m";
 	public const UNDERLINE = TextFormat::ESCAPE . "n";
 	public const ITALIC = TextFormat::ESCAPE . "o";
+
+	public const FORMATS = [
+		self::OBFUSCATED => self::OBFUSCATED,
+		self::BOLD => self::BOLD,
+		self::STRIKETHROUGH => self::STRIKETHROUGH,
+		self::UNDERLINE => self::UNDERLINE,
+		self::ITALIC => self::ITALIC,
+	];
+
 	public const RESET = TextFormat::ESCAPE . "r";
+
+	private static function makePcreError() : \InvalidArgumentException{
+		$errorCode = preg_last_error();
+		$message = [
+			PREG_INTERNAL_ERROR => "Internal error",
+			PREG_BACKTRACK_LIMIT_ERROR => "Backtrack limit reached",
+			PREG_RECURSION_LIMIT_ERROR => "Recursion limit reached",
+			PREG_BAD_UTF8_ERROR => "Malformed UTF-8",
+			PREG_BAD_UTF8_OFFSET_ERROR => "Bad UTF-8 offset",
+			PREG_JIT_STACKLIMIT_ERROR => "PCRE JIT stack limit reached"
+		][$errorCode] ?? "Unknown (code $errorCode)";
+		throw new \InvalidArgumentException("PCRE error: $message");
+	}
+
+	/**
+	 * @throws \InvalidArgumentException
+	 */
+	private static function preg_replace(string $pattern, string $replacement, string $string) : string{
+		$result = preg_replace($pattern, $replacement, $string);
+		if($result === null){
+			throw self::makePcreError();
+		}
+		return $result;
+	}
 
 	/**
 	 * Splits the string by Format tokens
 	 *
-	 * @param string $string
-	 *
-	 * @return array
+	 * @return string[]
 	 */
 	public static function tokenize(string $string) : array{
-		return preg_split("/(" . TextFormat::ESCAPE . "[0123456789abcdefklmnor])/", $string, -1, PREG_SPLIT_NO_EMPTY | PREG_SPLIT_DELIM_CAPTURE);
+		$result = preg_split("/(" . TextFormat::ESCAPE . "[0-9a-gk-or])/u", $string, -1, PREG_SPLIT_NO_EMPTY | PREG_SPLIT_DELIM_CAPTURE);
+		if($result === false) throw self::makePcreError();
+		return $result;
 	}
 
 	/**
-	 * Cleans the string from Minecraft codes and ANSI Escape Codes
+	 * Cleans the string from Minecraft codes, ANSI Escape Codes and invalid UTF-8 characters
 	 *
-	 * @param string $string
-	 * @param bool   $removeFormat
-	 *
-	 * @return string
+	 * @return string valid clean UTF-8
 	 */
 	public static function clean(string $string, bool $removeFormat = true) : string{
+		$string = mb_scrub($string, 'UTF-8');
+		$string = self::preg_replace("/[\x{E000}-\x{F8FF}]/u", "", $string); //remove unicode private-use-area characters (they might break the console)
 		if($removeFormat){
-			return str_replace(TextFormat::ESCAPE, "", preg_replace(["/" . TextFormat::ESCAPE . "[0123456789abcdefklmnor]/", "/\x1b[\\(\\][[0-9;\\[\\(]+[Bm]/"], "", $string));
+			$string = str_replace(TextFormat::ESCAPE, "", self::preg_replace("/" . TextFormat::ESCAPE . "[0-9a-gk-or]/u", "", $string));
 		}
-		return str_replace("\x1b", "", preg_replace("/\x1b[\\(\\][[0-9;\\[\\(]+[Bm]/", "", $string));
+		return str_replace("\x1b", "", self::preg_replace("/\x1b[\\(\\][[0-9;\\[\\(]+[Bm]/u", "", $string));
 	}
 
-
-        /**
-	 * Returns an JSON-formatted string with colors/markup
+	/**
+	 * Replaces placeholders of § with the correct character. Only valid codes (as in the constants of the TextFormat class) will be converted.
 	 *
-	 * @param string|array $string
-	 *
-	 * @return string
+	 * @param string $placeholder default "&"
 	 */
-	public static function toJSON($string) : string{
-		if(!is_array($string)){
-			$string = self::tokenize($string);
-		}
-		$newString = [];
-		$pointer =& $newString;
-		$color = "white";
-		$bold = false;
-		$italic = false;
-		$underlined = false;
-		$strikethrough = false;
-		$obfuscated = false;
-		$index = 0;
+	public static function colorize(string $string, string $placeholder = "&") : string{
+		return self::preg_replace('/' . preg_quote($placeholder, "/") . '([0-9a-gk-or])/u', TextFormat::ESCAPE . '$1', $string);
+	}
 
-		foreach($string as $token){
-			if(isset($pointer["text"])){
-				if(!isset($newString["extra"])){
-					$newString["extra"] = [];
-				}
-				$newString["extra"][$index] = [];
-				$pointer =& $newString["extra"][$index];
-				if($color !== "white"){
-					$pointer["color"] = $color;
-				}
-				if($bold !== false){
-					$pointer["bold"] = true;
-				}
-				if($italic !== false){
-					$pointer["italic"] = true;
-				}
-				if($underlined !== false){
-					$pointer["underlined"] = true;
-				}
-				if($strikethrough !== false){
-					$pointer["strikethrough"] = true;
-				}
-				if($obfuscated !== false){
-					$pointer["obfuscated"] = true;
-				}
-				++$index;
-			}
-			switch($token){
-				case TextFormat::BOLD:
-					if($bold === false){
-						$pointer["bold"] = true;
-						$bold = true;
-					}
-					break;
-				case TextFormat::OBFUSCATED:
-					if($obfuscated === false){
-						$pointer["obfuscated"] = true;
-						$obfuscated = true;
-					}
-					break;
-				case TextFormat::ITALIC:
-					if($italic === false){
-						$pointer["italic"] = true;
-						$italic = true;
-					}
-					break;
-				case TextFormat::UNDERLINE:
-					if($underlined === false){
-						$pointer["underlined"] = true;
-						$underlined = true;
-					}
-					break;
-				case TextFormat::STRIKETHROUGH:
-					if($strikethrough === false){
-						$pointer["strikethrough"] = true;
-						$strikethrough = true;
-					}
-					break;
-				case TextFormat::RESET:
-					if($color !== "white"){
-						$pointer["color"] = "white";
-						$color = "white";
-					}
-					if($bold !== false){
-						$pointer["bold"] = false;
-						$bold = false;
-					}
-					if($italic !== false){
-						$pointer["italic"] = false;
-						$italic = false;
-					}
-					if($underlined !== false){
-						$pointer["underlined"] = false;
-						$underlined = false;
-					}
-					if($strikethrough !== false){
-						$pointer["strikethrough"] = false;
-						$strikethrough = false;
-					}
-					if($obfuscated !== false){
-						$pointer["obfuscated"] = false;
-						$obfuscated = false;
-					}
-					break;
-
-				//Colors
-				case TextFormat::BLACK:
-					$pointer["color"] = "black";
-					$color = "black";
-					break;
-				case TextFormat::DARK_BLUE:
-					$pointer["color"] = "dark_blue";
-					$color = "dark_blue";
-					break;
-				case TextFormat::DARK_GREEN:
-					$pointer["color"] = "dark_green";
-					$color = "dark_green";
-					break;
-				case TextFormat::DARK_AQUA:
-					$pointer["color"] = "dark_aqua";
-					$color = "dark_aqua";
-					break;
-				case TextFormat::DARK_RED:
-					$pointer["color"] = "dark_red";
-					$color = "dark_red";
-					break;
-				case TextFormat::DARK_PURPLE:
-					$pointer["color"] = "dark_purple";
-					$color = "dark_purple";
-					break;
-				case TextFormat::GOLD:
-					$pointer["color"] = "gold";
-					$color = "gold";
-					break;
-				case TextFormat::GRAY:
-					$pointer["color"] = "gray";
-					$color = "gray";
-					break;
-				case TextFormat::DARK_GRAY:
-					$pointer["color"] = "dark_gray";
-					$color = "dark_gray";
-					break;
-				case TextFormat::BLUE:
-					$pointer["color"] = "blue";
-					$color = "blue";
-					break;
-				case TextFormat::GREEN:
-					$pointer["color"] = "green";
-					$color = "green";
-					break;
-				case TextFormat::AQUA:
-					$pointer["color"] = "aqua";
-					$color = "aqua";
-					break;
-				case TextFormat::RED:
-					$pointer["color"] = "red";
-					$color = "red";
-					break;
-				case TextFormat::LIGHT_PURPLE:
-					$pointer["color"] = "light_purple";
-					$color = "light_purple";
-					break;
-				case TextFormat::YELLOW:
-					$pointer["color"] = "yellow";
-					$color = "yellow";
-					break;
-				case TextFormat::WHITE:
-					$pointer["color"] = "white";
-					$color = "white";
-					break;
-				default:
-					$pointer["text"] = $token;
-					break;
+	/**
+	 * Adds base formatting to the string. The given format codes will be inserted directly after any RESET (§r) codes.
+	 *
+	 * This is useful for log messages, where a RESET code should return to the log message's original colour (e.g.
+	 * blue for NOTICE), rather than whatever the terminal's base text colour is (usually some off-white colour).
+	 *
+	 * Example behaviour:
+	 * - Base format "§c" (red) + "Hello" (no format) = "§r§cHello"
+	 * - Base format "§c" + "Hello §rWorld" = "§r§cHello §r§cWorld"
+	 *
+	 * Note: Adding base formatting to the output string a second time will result in a combination of formats from both
+	 * calls. This is not by design, but simply a consequence of the way the function is implemented.
+	 */
+	public static function addBase(string $baseFormat, string $string) : string{
+		$baseFormatParts = self::tokenize($baseFormat);
+		foreach($baseFormatParts as $part){
+			if(!isset(self::FORMATS[$part]) && !isset(self::COLORS[$part])){
+				throw new \InvalidArgumentException("Unexpected base format token \"$part\", expected only color and format tokens");
 			}
 		}
+		$baseFormat = self::RESET . $baseFormat;
 
-		if(isset($newString["extra"])){
-			foreach($newString["extra"] as $k => $d){
-				if(!isset($d["text"])){
-					unset($newString["extra"][$k]);
-				}
-			}
-		}
-
-		return json_encode($newString, JSON_UNESCAPED_SLASHES);
+		return $baseFormat . str_replace(TextFormat::RESET, $baseFormat, $string);
 	}
 
 	/**
 	 * Returns an HTML-formatted string with colors/markup
-	 *
-	 * @param string|array $string
-	 *
-	 * @return string
 	 */
-	public static function toHTML($string) : string{
-		if(!is_array($string)){
-			$string = self::tokenize($string);
-		}
+	public static function toHTML(string $string) : string{
 		$newString = "";
 		$tokens = 0;
-		foreach($string as $token){
+		foreach(self::tokenize($string) as $token){
 			switch($token){
 				case TextFormat::BOLD:
 					$newString .= "<span style=font-weight:bold>";
@@ -365,6 +282,10 @@ abstract class TextFormat{
 					$newString .= "<span style=color:#FFF>";
 					++$tokens;
 					break;
+				case TextFormat::MINECOIN_GOLD:
+					$newString .= "<span style=color:#dd0>";
+					++$tokens;
+					break;
 				default:
 					$newString .= $token;
 					break;
@@ -375,16 +296,4 @@ abstract class TextFormat{
 
 		return $newString;
 	}
-
-	/**
-	 * Returns a string with colorized ANSI Escape codes
-	 *
-	 * @param string|array $string
-	 *
-	 * @return string
-	 */
-	public static function toANSI($string) : string{
-		return Terminal::toANSI($string);
-	}
-
 }

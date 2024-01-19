@@ -1,5 +1,25 @@
 <?php
 
+/*
+ *
+ *                            __  __ _
+ *     /\                    |  \/  (_)
+ *    /  \   __ _ _   _  __ _| \  / |_ _ __   ___
+ *   / /\ \ / _` | | | |/ _` | |\/| | | '_ \ / _ \
+ *  / ____ \ (_| | |_| | (_| | |  | | | | | |  __/
+ * /_/    \_\__, |\__,_|\__,_|_|  |_|_|_| |_|\___|
+ *             | |
+ *             |_|
+ *
+ * This program is private software. No license required.
+ * Publication of this program is forbidden and will be punished.
+ *
+ * @author GreenWix Project
+ * @link https://www.greenwix.fun
+ *
+ *
+*/
+
 declare(strict_types=1);
 
 namespace pocketmine\plugin;
@@ -44,7 +64,7 @@ class ScriptPluginLoader implements PluginLoader{
 	 *
 	 * @return Plugin|null
 	 */
-	public function loadPlugin(string $file): ?Plugin{
+	public function loadPlugin(string $file){
 		if(($description = $this->getPluginDescription($file)) instanceof PluginDescription){
 			$this->server->getLogger()->info($this->server->getLanguage()->translateString("pocketmine.plugin.load", [$description->getFullName()]));
 			$dataFolder = dirname($file) . DIRECTORY_SEPARATOR . $description->getName();
@@ -58,7 +78,7 @@ class ScriptPluginLoader implements PluginLoader{
 
 			if(class_exists($className, true)){
 				$plugin = new $className();
-				$this->initPlugin($plugin, $description, $dataFolder, $file);
+				$this->server->getPluginManager()->initPlugin($this, $plugin, $description, $dataFolder, $file);
 
 				return $plugin;
 			}else{
@@ -76,7 +96,7 @@ class ScriptPluginLoader implements PluginLoader{
 	 *
 	 * @return null|PluginDescription
 	 */
-	public function getPluginDescription(string $file): ?PluginDescription{
+	public function getPluginDescription(string $file){
 		$content = file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
 
 		$data = [];
@@ -116,42 +136,5 @@ class ScriptPluginLoader implements PluginLoader{
 	 */
 	public function getPluginFilters() : string{
 		return "/\\.php$/i";
-	}
-
-	/**
-	 * @param PluginBase        $plugin
-	 * @param PluginDescription $description
-	 * @param string            $dataFolder
-	 * @param string            $file
-	 */
-	private function initPlugin(PluginBase $plugin, PluginDescription $description, string $dataFolder, string $file): void{
-		$plugin->init($this, $this->server, $description, $dataFolder, $file);
-		$plugin->onLoad();
-	}
-
-	/**
-	 * @param Plugin $plugin
-	 */
-	public function enablePlugin(Plugin $plugin): void{
-		if($plugin instanceof PluginBase and !$plugin->isEnabled()){
-			$this->server->getLogger()->info($this->server->getLanguage()->translateString("pocketmine.plugin.enable", [$plugin->getDescription()->getFullName()]));
-
-			$plugin->setEnabled(true);
-
-			(new PluginEnableEvent($plugin))->call();
-		}
-	}
-
-	/**
-	 * @param Plugin $plugin
-	 */
-	public function disablePlugin(Plugin $plugin): void{
-		if($plugin instanceof PluginBase and $plugin->isEnabled()){
-			$this->server->getLogger()->info($this->server->getLanguage()->translateString("pocketmine.plugin.disable", [$plugin->getDescription()->getFullName()]));
-
-			(new PluginDisableEvent($plugin))->call();
-
-			$plugin->setEnabled(false);
-		}
 	}
 }
