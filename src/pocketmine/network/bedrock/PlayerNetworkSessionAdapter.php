@@ -73,335 +73,366 @@ use function is_bool;
 use function strlen;
 use function substr;
 
-class PlayerNetworkSessionAdapter extends BedrockNetworkSession{
+class PlayerNetworkSessionAdapter extends BedrockNetworkSession
+{
 
-	private const MAX_FORM_RESPONSE_DEPTH = 2;
+    private const MAX_FORM_RESPONSE_DEPTH = 2;
 
     private $lastTextPacket = 0;
     private $textPacketCnt = 0;
     private $textPacketExceed = 0;
-	/** @var ?int */
-	private $lastPlayerAuthInputFlags = null;
-	/** @var ?float */
-	private $lastPlayerAuthInputPitch = null;
-	/** @var ?float */
-	private $lastPlayerAuthInputYaw = null;
-	/** @var ?Position */
-	private $lastPlayerAuthInputPosition = null;
+    /** @var ?int */
+    private $lastPlayerAuthInputFlags = null;
+    /** @var ?float */
+    private $lastPlayerAuthInputPitch = null;
+    /** @var ?float */
+    private $lastPlayerAuthInputYaw = null;
+    /** @var ?Position */
+    private $lastPlayerAuthInputPosition = null;
 
-	public function __construct(
-		private Server $server,
-		private BedrockPlayer $player
-	){}
+    public function __construct(
+        private Server        $server,
+        private BedrockPlayer $player
+    )
+    {
+    }
 
-	public function handleDataPacket(DataPacket $packet){
-		//TODO: Remove this hack once InteractPacket spam issue is fixed
-		if(strlen($packet->buffer) > 1 and substr($packet->buffer, 0, 2) === "\x21\x04"){
-			return;
-		}
+    public function handleDataPacket(DataPacket $packet)
+    {
+        //TODO: Remove this hack once InteractPacket spam issue is fixed
+        if (strlen($packet->buffer) > 1 and substr($packet->buffer, 0, 2) === "\x21\x04") {
+            return;
+        }
 
-		if(
-			!$this->player->loggedIn and
-			!$this->player->awaitingEncryptionHandshake and
-			!($packet instanceof LoginPacket or $packet instanceof RequestNetworkSettingsPacket)
-		){ //Ignore any packets before login and network settings
-			return;
-		}
+        if (
+            !$this->player->loggedIn and
+            !$this->player->awaitingEncryptionHandshake and
+            !($packet instanceof LoginPacket or $packet instanceof RequestNetworkSettingsPacket)
+        ) { //Ignore any packets before login and network settings
+            return;
+        }
 
-		$timings = Timings::getReceiveDataPacketTimings($packet);
-		$timings->startTiming();
+        $timings = Timings::getReceiveDataPacketTimings($packet);
+        $timings->startTiming();
 
-		if(!$packet->wasDecoded and $packet->mustBeDecoded()){ //Allow plugins to decode it
-			$packet->decode();
-			if(!$packet->feof() and !$packet->mayHaveUnreadBytes()){
-				$remains = substr($packet->buffer, $packet->offset);
-				$this->server->getLogger()->debug("Still " . strlen($remains) . " bytes unread in " . $packet->getName() . ": 0x" . bin2hex($remains));
-			}
-		}
+        if (!$packet->wasDecoded and $packet->mustBeDecoded()) { //Allow plugins to decode it
+            $packet->decode();
+            if (!$packet->feof() and !$packet->mayHaveUnreadBytes()) {
+                $remains = substr($packet->buffer, $packet->offset);
+                $this->server->getLogger()->debug("Still " . strlen($remains) . " bytes unread in " . $packet->getName() . ": 0x" . bin2hex($remains));
+            }
+        }
 
-		$ev = new DataPacketReceiveEvent($this->player, $packet);
-		$ev->call();
+        $ev = new DataPacketReceiveEvent($this->player, $packet);
+        $ev->call();
 
-		if(!$ev->isCancelled() and $packet->mustBeDecoded() and !$packet->handle($this)){
-			$this->server->getLogger()->debug("Unhandled " . $packet->getName() . " received from " . $this->player->getName() . ": 0x" . bin2hex($packet->buffer));
-		}
+        if (!$ev->isCancelled() and $packet->mustBeDecoded() and !$packet->handle($this)) {
+            $this->server->getLogger()->debug("Unhandled " . $packet->getName() . " received from " . $this->player->getName() . ": 0x" . bin2hex($packet->buffer));
+        }
 
-		$timings->stopTiming();
-		return;
-	}
+        $timings->stopTiming();
+        return;
+    }
 
-	public function handleModalFormResponse(ModalFormResponsePacket $packet) : bool{
-		if ($packet->cancelReason !== NULL) {
-			return $this->player->onFormSubmit($packet->formId, null);
-		} elseif ($packet->formData !== null){
-			try{
-				$responseData = json_decode($packet->formData, true, self::MAX_FORM_RESPONSE_DEPTH, JSON_THROW_ON_ERROR);
-			}catch(\JsonException $e){
-				$this->server->getLogger()->logException($e);
-				return false;
-			}
-			return $this->player->onFormSubmit($packet->formId, $responseData);
-		}else{
-			$this->server->getLogger()->logException(throw new \RuntimeException("Expected either formData or cancelReason to be set in ModalFormResponsePacket"));
-			return false;
-		}
-	}
+    public function handleModalFormResponse(ModalFormResponsePacket $packet): bool
+    {
+        if ($packet->cancelReason !== NULL) {
+            return $this->player->onFormSubmit($packet->formId, null);
+        } elseif ($packet->formData !== null) {
+            try {
+                $responseData = json_decode($packet->formData, true, self::MAX_FORM_RESPONSE_DEPTH, JSON_THROW_ON_ERROR);
+            } catch (\JsonException $e) {
+                $this->server->getLogger()->logException($e);
+                return false;
+            }
+            return $this->player->onFormSubmit($packet->formId, $responseData);
+        } else {
+            $this->server->getLogger()->logException(throw new \RuntimeException("Expected either formData or cancelReason to be set in ModalFormResponsePacket"));
+            return false;
+        }
+    }
 
-	private function resolveOnOffInputFlags(int $inputFlags, int $startFlag, int $stopFlag) : ?bool{
-		$enabled = ($inputFlags & (1 << $startFlag)) !== 0;
-		$disabled = ($inputFlags & (1 << $stopFlag)) !== 0;
-		if($enabled !== $disabled){
-			return $enabled;
-		}
-		//neither flag was set, or both were set
-		return null;
-	}
+    private function resolveOnOffInputFlags(int $inputFlags, int $startFlag, int $stopFlag): ?bool
+    {
+        $enabled = ($inputFlags & (1 << $startFlag)) !== 0;
+        $disabled = ($inputFlags & (1 << $stopFlag)) !== 0;
+        if ($enabled !== $disabled) {
+            return $enabled;
+        }
+        //neither flag was set, or both were set
+        return null;
+    }
 
-	public function handlePlayerAuthInput(PlayerAuthInputPacket $packet) : bool{
-		$rawPos = $packet->playerMovePosition;
-		$rawYaw = $packet->yaw;
-		$rawPitch = $packet->pitch;
+    public function handlePlayerAuthInput(PlayerAuthInputPacket $packet): bool
+    {
+        $rawPos = $packet->playerMovePosition;
+        $rawYaw = $packet->yaw;
+        $rawPitch = $packet->pitch;
 
-		if ($rawYaw !== $this->lastPlayerAuthInputYaw || $rawPitch !== $this->lastPlayerAuthInputPitch) {
-			$this->lastPlayerAuthInputYaw = $rawYaw;
-			$this->lastPlayerAuthInputPitch = $rawPitch;
+        if ($rawYaw !== $this->lastPlayerAuthInputYaw || $rawPitch !== $this->lastPlayerAuthInputPitch) {
+            $this->lastPlayerAuthInputYaw = $rawYaw;
+            $this->lastPlayerAuthInputPitch = $rawPitch;
 
-			$yaw = fmod($rawYaw, 360);
-			$pitch = fmod($rawPitch, 360);
-			if($yaw < 0){
-				$yaw += 360;
-			}
-			$this->player->setRotation($yaw, $pitch);
-		}
+            $yaw = fmod($rawYaw, 360);
+            $pitch = fmod($rawPitch, 360);
+            if ($yaw < 0) {
+                $yaw += 360;
+            }
+            $this->player->setRotation($yaw, $pitch);
+        }
 
-		$hasMoved = $this->lastPlayerAuthInputPosition === null || !$this->lastPlayerAuthInputPosition->equals($rawPos);
-		$newPos = $rawPos->round(4)->subtract(0, 1.62, 0);
+        $hasMoved = $this->lastPlayerAuthInputPosition === null || !$this->lastPlayerAuthInputPosition->equals($rawPos);
+        $newPos = $rawPos->round(4)->subtract(0, 1.62, 0);
 
-		if ($hasMoved) {
-			$this->player->updateNextPosition($newPos);
-		}
+        if ($hasMoved) {
+            $this->player->updateNextPosition($newPos);
+        }
 
-		$inputFlags = $packet->inputFlags;
-		if ($inputFlags !== $this->lastPlayerAuthInputFlags) {
-			$this->lastPlayerAuthInputFlags = $inputFlags;
+        $inputFlags = $packet->inputFlags;
+        if ($inputFlags !== $this->lastPlayerAuthInputFlags) {
+            $this->lastPlayerAuthInputFlags = $inputFlags;
 
-			$sneaking = $this->resolveOnOffInputFlags($inputFlags, PlayerAuthInputPacket::INPUT_START_SNEAKING, PlayerAuthInputPacket::INPUT_STOP_SNEAKING);
-			//$swimming = $this->resolveOnOffInputFlags($inputFlags, PlayerAuthInputPacket::START_SWIMMING, PlayerAuthInputPacket::STOP_SWIMMING);
-			$sprinting = $this->resolveOnOffInputFlags($inputFlags, PlayerAuthInputPacket::INPUT_START_SPRINTING, PlayerAuthInputPacket::INPUT_STOP_SPRINTING);
-			$gliding = $this->resolveOnOffInputFlags($inputFlags, PlayerAuthInputPacket::INPUT_START_GLIDING, PlayerAuthInputPacket::INPUT_STOP_GLIDING);
-			
-			$mismatch = 
-			($gliding !== null && !$this->player->toggleGlide($gliding)) |
-			($sneaking !== null && !$this->player->toggleSneak($sneaking)) |
-			//($swimming !== null && !$this->player->toggleSwin($swimming)) |
-			($sprinting !== null && !$this->player->toggleSprint($sprinting));
+            $sneaking = $this->resolveOnOffInputFlags($inputFlags, PlayerAuthInputPacket::INPUT_START_SNEAKING, PlayerAuthInputPacket::INPUT_STOP_SNEAKING);
+            //$swimming = $this->resolveOnOffInputFlags($inputFlags, PlayerAuthInputPacket::START_SWIMMING, PlayerAuthInputPacket::STOP_SWIMMING);
+            $sprinting = $this->resolveOnOffInputFlags($inputFlags, PlayerAuthInputPacket::INPUT_START_SPRINTING, PlayerAuthInputPacket::INPUT_STOP_SPRINTING);
+            $gliding = $this->resolveOnOffInputFlags($inputFlags, PlayerAuthInputPacket::INPUT_START_GLIDING, PlayerAuthInputPacket::INPUT_STOP_GLIDING);
 
-			if ((bool)$mismatch) {
-				$this->player->sendData($this->player);
-			}
+            $mismatch =
+                ($gliding !== null && !$this->player->toggleGlide($gliding)) |
+                ($sneaking !== null && !$this->player->toggleSneak($sneaking)) |
+                //($swimming !== null && !$this->player->toggleSwin($swimming)) |
+                ($sprinting !== null && !$this->player->toggleSprint($sprinting));
 
-			if ($packet->getInputFlag(PlayerAuthInputPacket::INPUT_START_JUMPING)) {
-				$this->player->toggleGlide(false);
-				$this->player->jump();
-			}
+            if ((bool)$mismatch) {
+                $this->player->sendData($this->player);
+            }
 
-			//TODO: block actions
-			$blockActions = $packet->blockActions;
+            if ($packet->getInputFlag(PlayerAuthInputPacket::INPUT_START_JUMPING)) {
+                $this->player->toggleGlide(false);
+                $this->player->jump();
+            }
 
-			if ($blockActions !== null) {
-				if (count($blockActions) > 100) {
-					return false;
-				}
+            //TODO: block actions
+            $blockActions = $packet->blockActions;
 
-				foreach ($blockActions as $k => $blockAction) {
-					var_dump($k, $blockAction);
-				}
-			}
-		}
-		return true;
-	}
+            if ($blockActions !== null) {
+                if (count($blockActions) > 100) {
+                    return false;
+                }
 
-	public function handleLogin(LoginPacket $packet) : bool{
-		return $this->player->handleBedrockLogin($packet);
-	}
+                foreach ($blockActions as $k => $blockAction) {
+                    var_dump($k, $blockAction);
+                }
+            }
+        }
+        return true;
+    }
 
-	public function handleClientToServerHandshake(ClientToServerHandshakePacket $packet) : bool{
-		return $this->player->onEncryptionHandshake();
-	}
+    public function handleLogin(LoginPacket $packet): bool
+    {
+        return $this->player->handleBedrockLogin($packet);
+    }
 
-	public function handleResourcePackClientResponse(ResourcePackClientResponsePacket $packet) : bool{
-		return $this->player->handleBedrockResourcePackClientResponse($packet);
-	}
+    public function handleClientToServerHandshake(ClientToServerHandshakePacket $packet): bool
+    {
+        return $this->player->onEncryptionHandshake();
+    }
 
-	public function handleResourcePackChunkRequest(ResourcePackChunkRequestPacket $packet) : bool{
-		return $this->player->handleBedrockResourcePackChunkRequest($packet);
-	}
+    public function handleResourcePackClientResponse(ResourcePackClientResponsePacket $packet): bool
+    {
+        return $this->player->handleBedrockResourcePackClientResponse($packet);
+    }
 
-	public function handleRequestChunkRadius(RequestChunkRadiusPacket $packet) : bool{
-		if(!$this->player->loginProcessed){
-			return false;
-		}
-		$this->player->setViewDistance($packet->radius);
+    public function handleResourcePackChunkRequest(ResourcePackChunkRequestPacket $packet): bool
+    {
+        return $this->player->handleBedrockResourcePackChunkRequest($packet);
+    }
 
-		return true;
-	}
+    public function handleRequestChunkRadius(RequestChunkRadiusPacket $packet): bool
+    {
+        if (!$this->player->loginProcessed) {
+            return false;
+        }
+        $this->player->setViewDistance($packet->radius);
 
-	public function handleSetLocalPlayerAsInitialized(SetLocalPlayerAsInitializedPacket $packet) : bool{
-		$this->player->doFirstSpawn();
+        return true;
+    }
 
-		return true;
-	}
+    public function handleSetLocalPlayerAsInitialized(SetLocalPlayerAsInitializedPacket $packet): bool
+    {
+        $this->player->doFirstSpawn();
 
-	public function handleMovePlayer(MovePlayerPacket $packet) : bool{
-		$yaw = fmod($packet->yaw, 360);
-		$pitch = fmod($packet->pitch, 360);
-		if($yaw < 0){
-			$yaw += 360;
-		}
+        return true;
+    }
 
-		$this->player->setRotation($yaw, $pitch);
-		$this->player->updateNextPosition($packet->position->round(4)->subtract(0, 1.62, 0));
+    public function handleMovePlayer(MovePlayerPacket $packet): bool
+    {
+        $yaw = fmod($packet->yaw, 360);
+        $pitch = fmod($packet->pitch, 360);
+        if ($yaw < 0) {
+            $yaw += 360;
+        }
 
-		return true;
-	}
+        $this->player->setRotation($yaw, $pitch);
+        $this->player->updateNextPosition($packet->position->round(4)->subtract(0, 1.62, 0));
 
-	public function handleInventoryTransaction(InventoryTransactionPacket $packet) : bool{
-		return $this->player->handleInventoryTransaction($packet);
-	}
+        return true;
+    }
 
-	public function handleLevelSoundEvent(LevelSoundEventPacket $packet) : bool{
-		return $this->player->handleBedrockLevelSoundEvent($packet);
-	}
+    public function handleInventoryTransaction(InventoryTransactionPacket $packet): bool
+    {
+        return $this->player->handleInventoryTransaction($packet);
+    }
 
-	public function handleActorEvent(ActorEventPacket $packet) : bool{
-		return $this->player->handleActorEvent($packet);
-	}
+    public function handleLevelSoundEvent(LevelSoundEventPacket $packet): bool
+    {
+        return $this->player->handleBedrockLevelSoundEvent($packet);
+    }
 
-	public function handleMobEquipment(MobEquipmentPacket $packet) : bool{
-		return $this->player->handleBedrockMobEquipment($packet);
-	}
+    public function handleActorEvent(ActorEventPacket $packet): bool
+    {
+        return $this->player->handleActorEvent($packet);
+    }
 
-	public function handleBlockPickRequest(BlockPickRequestPacket $packet) : bool{
-		return $this->player->handleBedrockBlockPickRequest($packet);
-	}
+    public function handleMobEquipment(MobEquipmentPacket $packet): bool
+    {
+        return $this->player->handleBedrockMobEquipment($packet);
+    }
 
-	public function handleAnimate(AnimatePacket $packet) : bool{
-		return $this->player->handleBedrockAnimate($packet);
-	}
+    public function handleBlockPickRequest(BlockPickRequestPacket $packet): bool
+    {
+        return $this->player->handleBedrockBlockPickRequest($packet);
+    }
 
-	public function handleContainerClose(ContainerClosePacket $packet) : bool{
-		if(!$this->player->spawned){
-			return true;
-		}
+    public function handleAnimate(AnimatePacket $packet): bool
+    {
+        return $this->player->handleBedrockAnimate($packet);
+    }
 
-		$pk = new ContainerClosePacket();
-		$pk->windowId = $packet->windowId;
-		$pk->server = false;
-		$this->player->sendDataPacket($pk);
+    public function handleContainerClose(ContainerClosePacket $packet): bool
+    {
+        if (!$this->player->spawned) {
+            return true;
+        }
 
-		$this->player->newInventoryClose($packet->windowId);
+        $pk = new ContainerClosePacket();
+        $pk->windowId = $packet->windowId;
+        $pk->server = false;
+        $this->player->sendDataPacket($pk);
 
-		if($packet->windowId !== ContainerIds::INVENTORY){
-			$this->player->setClientClosingWindowId($packet->windowId);
-			$this->player->closeWindow($packet->windowId);
-			$this->player->setClientClosingWindowId(-1);
-		}
+        $this->player->newInventoryClose($packet->windowId);
 
-		return true;
-	}
+        if ($packet->windowId !== ContainerIds::INVENTORY) {
+            $this->player->setClientClosingWindowId($packet->windowId);
+            $this->player->closeWindow($packet->windowId);
+            $this->player->setClientClosingWindowId(-1);
+        }
 
-	public function handleRequestAbility(RequestAbilityPacket $packet) : bool{
-		if($packet->abilityId === RequestAbilityPacket::ABILITY_FLYING){
-			if(!is_bool($packet->abilityValue)){
-				throw new UnexpectedValueException("Flying ability value should always be bool");
-			}
-			$this->player->toggleFlight($packet->abilityValue);
-			return true;
-		}
+        return true;
+    }
 
-		if($packet->abilityId === RequestAbilityPacket::ABILITY_NOCLIP){
-			if(!is_bool($packet->abilityValue)){
-				throw new UnexpectedValueException("No-clip ability value should always be bool");
-			}
-			$this->player->toggleNoClip($packet->abilityValue);
-			return true;
-		}
+    public function handleRequestAbility(RequestAbilityPacket $packet): bool
+    {
+        if ($packet->abilityId === RequestAbilityPacket::ABILITY_FLYING) {
+            if (!is_bool($packet->abilityValue)) {
+                throw new UnexpectedValueException("Flying ability value should always be bool");
+            }
+            $this->player->toggleFlight($packet->abilityValue);
+            return true;
+        }
 
-		return false;
-	}
+        if ($packet->abilityId === RequestAbilityPacket::ABILITY_NOCLIP) {
+            if (!is_bool($packet->abilityValue)) {
+                throw new UnexpectedValueException("No-clip ability value should always be bool");
+            }
+            $this->player->toggleNoClip($packet->abilityValue);
+            return true;
+        }
 
-	public function handleBlockActorData(BlockActorDataPacket $packet) : bool{
-		return $this->player->handleBedrockBlockActorData($packet);
-	}
+        return false;
+    }
 
-    public function handlePlayerInput(PlayerInputPacket $packet) : bool{
+    public function handleBlockActorData(BlockActorDataPacket $packet): bool
+    {
+        return $this->player->handleBedrockBlockActorData($packet);
+    }
+
+    public function handlePlayerInput(PlayerInputPacket $packet): bool
+    {
         return $this->player->handleBedrockPlayerInput($packet);
     }
 
-	public function handleSetPlayerGameType(SetPlayerGameTypePacket $packet) : bool{
-		return $this->player->handleBedrockSetPlayerGameType($packet);
-	}
+    public function handleSetPlayerGameType(SetPlayerGameTypePacket $packet): bool
+    {
+        return $this->player->handleBedrockSetPlayerGameType($packet);
+    }
 
-	public function handleItemFrameDropItem(ItemFrameDropItemPacket $packet) : bool{
-		return $this->player->handleBedrockItemFrameDropItem($packet);
-	}
+    public function handleItemFrameDropItem(ItemFrameDropItemPacket $packet): bool
+    {
+        return $this->player->handleBedrockItemFrameDropItem($packet);
+    }
 
-	public function handleCommandRequest(CommandRequestPacket $packet) : bool{
-		if(!$this->player->spawned or !$this->player->isAlive()){
-			return true;
-		}
+    public function handleCommandRequest(CommandRequestPacket $packet): bool
+    {
+        if (!$this->player->spawned or !$this->player->isAlive()) {
+            return true;
+        }
 
-		$this->player->chat($packet->command);
-		return true;
-	}
+        $this->player->chat($packet->command);
+        return true;
+    }
 
-	public function handleText(TextPacket $packet) : bool{
+    public function handleText(TextPacket $packet): bool
+    {
         $time = time();
 
-        if($this->lastTextPacket !== $time){
+        if ($this->lastTextPacket !== $time) {
             $this->textPacketCnt = 0;
         }
         $this->lastTextPacket = $time;
 
-        if(++$this->textPacketCnt >= 5){
-            if(++$this->textPacketExceed >= 10){
+        if (++$this->textPacketCnt >= 5) {
+            if (++$this->textPacketExceed >= 10) {
                 $this->server->getNetwork()->blockAddress($this->player->getAddress(), 300);
             }
             return false;
         }
 
-        if(strlen($packet->message) > 200){
-            $this->server->getLogger()->warning('big text packet from '.$this->player->getName().' as '.strlen($packet->message).' len with textPacketCnt='.$this->textPacketCnt);
+        if (strlen($packet->message) > 200) {
+            $this->server->getLogger()->warning('big text packet from ' . $this->player->getName() . ' as ' . strlen($packet->message) . ' len with textPacketCnt=' . $this->textPacketCnt);
             $this->server->getNetwork()->blockAddress($this->player->getAddress(), 300);
 
             return false;
         }
 
-        if(!$this->player->spawned or !$this->player->isAlive()){
-			return true;
-		}
+        if (!$this->player->spawned or !$this->player->isAlive()) {
+            return true;
+        }
 
-		$this->player->resetCrafting();
-		if($packet->type === TextPacket::TYPE_CHAT){
-			$this->player->chat($packet->message);
-		}
+        $this->player->resetCrafting();
+        if ($packet->type === TextPacket::TYPE_CHAT) {
+            $this->player->chat($packet->message);
+        }
 
-		return true;
-	}
+        return true;
+    }
 
-	public function handlePlayerAction(PlayerActionPacket $packet) : bool{
-		return $this->player->handleBedrockPlayerAction($packet);
-	}
+    public function handlePlayerAction(PlayerActionPacket $packet): bool
+    {
+        return $this->player->handleBedrockPlayerAction($packet);
+    }
 
-	public function handlePlayerSkin(PlayerSkinPacket $packet) : bool{
-		return $this->player->handlePlayerSkin($packet);
-	}
+    public function handlePlayerSkin(PlayerSkinPacket $packet): bool
+    {
+        return $this->player->handlePlayerSkin($packet);
+    }
 
-	public function handleRespawn(RespawnPacket $packet) : bool{
-		return $this->player->handleBedrockRespawn($packet);
-	}
+    public function handleRespawn(RespawnPacket $packet): bool
+    {
+        return $this->player->handleBedrockRespawn($packet);
+    }
 
-	public function handleInteract(InteractPacket $packet) : bool
+    public function handleInteract(InteractPacket $packet): bool
     {
         $target = $this->player->level->getEntity($packet->actorRuntimeId);
         if ($packet->action === InteractPacket::ACTION_OPEN_INVENTORY and $packet->actorRuntimeId === $this->player->getId()) {
@@ -422,10 +453,6 @@ class PlayerNetworkSessionAdapter extends BedrockNetworkSession{
             if ($target instanceof MinecartAbstract) { //TODO: Boat
                 $target->setLinked(0, $this->player);
                 return true;
-            }
-        } elseif ($packet->action === InteractPacket::ACTION_RIGHT_CLICK) {
-            if ($target instanceof Rideable) {
-                $this->player->linkEntity($target);
             }
         }
         return true;
