@@ -26,7 +26,7 @@ namespace pocketmine\item;
 
 use pocketmine\entity\Entity;
 use pocketmine\entity\EntityDataHelper;
-use pocketmine\entity\Projectile;
+use pocketmine\entity\projectile\Projectile;
 use pocketmine\event\entity\ProjectileLaunchEvent;
 use pocketmine\math\Vector3;
 use pocketmine\nbt\tag\CompoundTag;

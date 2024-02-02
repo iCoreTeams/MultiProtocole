@@ -49,6 +49,7 @@ use raklib\server\ServerHandler;
 use raklib\server\ServerInstance;
 use raklib\utils\InternetAddress;
 use pmmp\thread\Thread as NativeThread;
+use Throwable;
 use function bin2hex;
 use function get_class;
 use function igbinary_unserialize;
@@ -256,7 +257,10 @@ class RakLibInterface implements ServerInstance, AdvancedNetworkInterface{
 
 								$buf = $stream->getString();
                                 $pk = BedrockPacketPool::getPacket($buf);
-                                $player->handleDataPacket($pk);
+
+								if($pk !== null){
+									$player->handleDataPacket($pk);
+								}
 							}
 						}
 					} else {

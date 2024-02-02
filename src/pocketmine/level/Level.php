@@ -50,10 +50,10 @@ use pocketmine\block\Sapling;
 use pocketmine\block\SnowLayer;
 use pocketmine\block\Sugarcane;
 use pocketmine\block\Wheat;
-use pocketmine\entity\Arrow;
 use pocketmine\entity\Entity;
 use pocketmine\entity\EntityDataHelper;
-use pocketmine\entity\Item as DroppedItem;
+use pocketmine\entity\object\Item as DroppedItem;
+use pocketmine\entity\projectile\Arrow;
 use pocketmine\event\block\BlockBreakEvent;
 use pocketmine\event\block\BlockPlaceEvent;
 use pocketmine\event\block\BlockUpdateEvent;
@@ -75,14 +75,15 @@ use pocketmine\level\format\io\LevelProvider;
 use pocketmine\level\generator\Generator;
 use pocketmine\level\generator\GeneratorRegisterTask;
 use pocketmine\level\generator\GeneratorUnregisterTask;
-use pocketmine\level\generator\LightPopulationTask;
 use pocketmine\level\generator\PopulationTask;
 use pocketmine\level\light\BlockLightUpdate;
+use pocketmine\level\light\LightPopulationTask;
 use pocketmine\level\light\SkyLightUpdate;
 use pocketmine\level\particle\DestroyBlockParticle;
 use pocketmine\level\particle\Particle;
 use pocketmine\level\sound\Sound;
 use pocketmine\level\utils\VectorHashUtils;
+use pocketmine\level\weather\Weather;
 use pocketmine\math\AxisAlignedBB;
 use pocketmine\math\Vector3;
 use pocketmine\metadata\BlockMetadataStore;
@@ -95,6 +96,7 @@ use pocketmine\network\bedrock\protocol\UpdateBlockPacket as BedrockUpdateBlockP
 use pocketmine\network\mcpe\protocol\DataPacket;
 use pocketmine\network\mcpe\protocol\LevelEventPacket;
 use pocketmine\network\mcpe\protocol\LevelSoundEventPacket;
+use pocketmine\network\mcpe\protocol\SetDifficultyPacket;
 use pocketmine\network\mcpe\protocol\SetTimePacket;
 use pocketmine\network\mcpe\protocol\UpdateBlockPacket;
 use pocketmine\Player;
@@ -139,6 +141,15 @@ class Level extends VectorHashUtils implements ChunkManager, Metadatable{
 	public const TIME_SUNRISE = 23000;
 
 	public const TIME_FULL = 24000;
+
+    public const DIFFICULTY_PEACEFUL = 0;
+    public const DIFFICULTY_EASY = 1;
+    public const DIFFICULTY_NORMAL = 2;
+    public const DIFFICULTY_HARD = 3;
+
+    public const DIMENSION_NORMAL = 0;
+    public const DIMENSION_NETHER = 1;
+    public const DIMENSION_END = 2;
 
 	/** @var Tile[] */
 	private $tiles = [];
@@ -282,6 +293,10 @@ class Level extends VectorHashUtils implements ChunkManager, Metadatable{
 	/** @var SkyLightUpdate|null */
 	private $skyLightUpdate = null;
 
+    private int $dimension = self::DIMENSION_NORMAL;
+
+    private Weather $weather;
+
 	public static function generateChunkLoaderId(ChunkLoader $loader) : int{
 		if($loader->getLoaderId() === 0){
 			return self::$chunkLoaderCounter++;
@@ -340,9 +355,31 @@ class Level extends VectorHashUtils implements ChunkManager, Metadatable{
 
 		$this->timings = new LevelTimings($this);
 		$this->temporalPosition = new Position(0, 0, 0, $this);
+        $this->weather = new Weather($this, 0);
 		$this->temporalVector = new Vector3(0, 0, 0);
 		$this->tickRate = 1;
+
+        if($server->getAdvancedProperty("level.weather", true) and $this->getDimension() == self::DIMENSION_NORMAL){
+            $this->weather->setCanCalculate(true);
+        }else {
+            $this->weather->setCanCalculate(false);
+        }
 	}
+
+    public function setDimension(int $dimension): void{
+        $this->dimension = $dimension;
+    }
+
+    public function getDimension() : int{
+        return $this->dimension;
+    }
+
+    /**
+     * @return Weather
+     */
+    public function getWeather(){
+        return $this->weather;
+    }
 
 	public function getTickRate() : int{
 		return $this->tickRate;
@@ -751,6 +788,8 @@ class Level extends VectorHashUtils implements ChunkManager, Metadatable{
 			$this->sendTime();
 			$this->sendTimeTicker = 0;
 		}
+
+        $this->weather->calcWeather($currentTick);
 
 		$this->unloadChunks();
 
@@ -2675,8 +2714,8 @@ class Level extends VectorHashUtils implements ChunkManager, Metadatable{
 					if($this->isFullBlock($block)){
 						if($wasAir){
 							$y++;
-							break;
 						}
+                        break;
 					}else{
 						$wasAir = true;
 					}
@@ -2776,9 +2815,56 @@ class Level extends VectorHashUtils implements ChunkManager, Metadatable{
 		$this->provider->setSeed($seed);
 	}
 
+    /**
+     * @param string $str
+     * @return int
+     */
+    public static function getDifficultyFromString(string $str) : int{
+        return match (strtolower(trim($str))) {
+            "0", "peaceful", "p" => Level::DIFFICULTY_PEACEFUL,
+            "1", "easy", "e" => Level::DIFFICULTY_EASY,
+            "2", "normal", "n" => Level::DIFFICULTY_NORMAL,
+            "3", "hard", "h" => Level::DIFFICULTY_HARD,
+            default => -1,
+        };
+
+    }
+
 	public function getWorldHeight() : int{
 		return $this->provider->getWorldHeight();
 	}
+
+    /**
+     * @return int
+     */
+    public function getDifficulty() : int{
+        return $this->provider->getDifficulty();
+    }
+
+    /**
+     * @param int $difficulty
+     */
+    public function setDifficulty(int $difficulty): void{
+        if($difficulty < 0 or $difficulty > 3){
+            throw new \InvalidArgumentException("Invalid difficulty level $difficulty");
+        }
+        $this->provider->setDifficulty($difficulty);
+
+        $this->sendDifficulty();
+    }
+
+    /**
+     * @param Player[] ...$targets
+     */
+    public function sendDifficulty(Player ...$targets): void{
+        if(count($targets) === 0){
+            $targets = $this->getPlayers();
+        }
+
+        $pk = new SetDifficultyPacket();
+        $pk->difficulty = $this->getDifficulty();
+        $this->server->broadcastPacket($targets, $pk);
+    }
 
 	public function populateChunk(int $x, int $z, bool $force = false) : bool{
 		if(isset($this->chunkPopulationQueue[$index = Level::chunkHash($x, $z)]) or (count($this->chunkPopulationQueue) >= $this->chunkPopulationQueueSize and !$force)){

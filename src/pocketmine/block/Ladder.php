@@ -25,6 +25,7 @@ declare(strict_types=1);
 namespace pocketmine\block;
 
 use pocketmine\entity\Entity;
+use pocketmine\entity\Living;
 use pocketmine\item\Item;
 use pocketmine\item\Tool;
 use pocketmine\level\Level;
@@ -59,9 +60,12 @@ class Ladder extends Transparent{
 		return true;
 	}
 
-	public function onEntityCollide(Entity $entity){
-		$entity->resetFallDistance();
-		$entity->onGround = true;
+	public function onEntityCollide(Entity $entity):bool{
+        if($entity instanceof Living and $entity->asVector3()->floor()->distanceSquared($this) < 1){ //entity coordinates must be inside block
+            $entity->resetFallDistance();
+            $entity->onGround = true;
+        }
+        return true;
 	}
 
 	protected function recalculateBoundingBox(){

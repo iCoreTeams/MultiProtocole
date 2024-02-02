@@ -30,7 +30,6 @@ namespace pocketmine\item;
 use InvalidArgumentException;
 use InvalidStateException;
 use pocketmine\block\Block;
-use pocketmine\block\BlockToolType;
 use pocketmine\entity\Entity;
 use pocketmine\inventory\Fuel;
 use pocketmine\item\enchantment\Enchantment;
@@ -57,7 +56,6 @@ use function get_class;
 use function hex2bin;
 use function is_numeric;
 use function str_replace;
-use function strtoupper;
 use function trim;
 
 class Item implements ItemIds, \JsonSerializable{
@@ -117,12 +115,14 @@ class Item implements ItemIds, \JsonSerializable{
 			self::$list[self::BOWL] = Bowl::class;
 			self::$list[self::MUSHROOM_STEW] = MushroomStew::class;
 			self::$list[self::GOLDEN_SWORD] = GoldSword::class;
+            self::$list[self::HOPPER] = Hopper::class;
 			self::$list[self::GOLDEN_SHOVEL] = GoldShovel::class;
 			self::$list[self::GOLDEN_PICKAXE] = GoldPickaxe::class;
 			self::$list[self::GOLDEN_AXE] = GoldAxe::class;
 			self::$list[self::STRING] = StringItem::class;
 			self::$list[self::FEATHER] = Feather::class;
 			self::$list[self::GUNPOWDER] = Gunpowder::class;
+            self::$list[self::END_CRYSTAL] = EnderCrystal::class;
 			self::$list[self::WOODEN_HOE] = WoodenHoe::class;
 			self::$list[self::STONE_HOE] = StoneHoe::class;
 			self::$list[self::IRON_HOE] = IronHoe::class;
@@ -354,42 +354,39 @@ class Item implements ItemIds, \JsonSerializable{
 		return Item::get(Item::AIR, 0, 0);
 	}
 
-	/**
-	 * @param string $str
-	 * @param bool   $multiple
-	 *
-	 * @return Item[]|Item
-	 */
-	public static function fromString(string $str, bool $multiple = false){
-		if($multiple === true){
-			$blocks = [];
-			foreach(explode(",", $str) as $b){
-				$blocks[] = self::fromString($b, false);
-			}
+    public static function fromString(string $str, bool $multiple = false){
+        if($multiple){
+            $blocks = [];
+            foreach(explode(",", $str) as $b){
+                $blocks[] = self::fromStringSingle($b);
+            }
 
-			return $blocks;
-		}else{
-			$b = explode(":", str_replace([" ", "minecraft:"], ["_", ""], trim($str)));
-			if(!isset($b[1])){
-				$meta = 0;
-			}else{
-				$meta = $b[1] & 0xFFFF;
-			}
+            return $blocks;
+        }else{
+            return self::fromStringSingle($str);
+        }
+    }
 
-			if(defined(Item::class . "::" . strtoupper($b[0]))){
-				$item = self::get(constant(Item::class . "::" . strtoupper($b[0])), $meta);
-				if($item->getId() === self::AIR and strtoupper($b[0]) !== "AIR"){
-					$item = self::get($b[0] & 0xFFFF, $meta);
-				}
-			}elseif(is_numeric($b[0])){
-				$item = self::get($b[0] & 0xFFFF, $meta);
-			}else{
-				return self::get(self::AIR, 0, 0);
-			}
+    public static function fromStringSingle(string $str) : Item{
+        $b = explode(":", str_replace([" ", "minecraft:"], ["_", ""], trim($str)));
+        if(!isset($b[1])){
+            $meta = 0;
+        }elseif(is_numeric($b[1])){
+            $meta = (int) $b[1];
+        }else{
+            throw new \InvalidArgumentException("Unable to parse \"" . $b[1] . "\" from \"" . $str . "\" as a valid meta value");
+        }
 
-			return $item;
-		}
-	}
+        if(is_numeric($b[0])){
+            $item = self::get((int) $b[0], $meta);
+        }elseif(defined(ItemIds::class . "::" . mb_strtoupper($b[0]))){
+            $item = self::get(constant(ItemIds::class . "::" . mb_strtoupper($b[0])), $meta);
+        }else{
+            throw new \InvalidArgumentException("Unable to resolve \"" . $str . "\" to a valid item");
+        }
+
+        return $item;
+    }
 
 	/**
 	 * @param int $id
@@ -807,18 +804,18 @@ class Item implements ItemIds, \JsonSerializable{
 	 *
 	 * @throws InvalidStateException if the count is less than or equal to zero, or if the stack is air.
 	 */
-	public function pop() : Item{
-		if($this->isNull()){
-			throw new InvalidStateException("Cannot pop an item from a null stack");
-		}
+    public function pop(int $count = 1) : Item{
+        if($count > $this->count){
+            throw new \InvalidArgumentException("Cannot pop $count items from a stack of $this->count");
+        }
 
-		$item = clone $this;
-		$item->setCount(1);
+        $item = clone $this;
+        $item->count = $count;
 
-		$this->count--;
+        $this->count -= $count;
 
-		return $item;
-	}
+        return $item;
+    }
 
 	/**
 	 * @return bool
@@ -1113,7 +1110,7 @@ class Item implements ItemIds, \JsonSerializable{
 	}
 
 	/**
-	 * @deprecated Use {@link Item#equals} instead, this method will be removed in the future.
+	 * @deprecated Use {@link \pocketmine\entity\object\Item#equals} instead, this method will be removed in the future.
 	 *
 	 * @param Item $item
 	 * @param bool $checkDamage
@@ -1137,7 +1134,7 @@ class Item implements ItemIds, \JsonSerializable{
 	 *
 	 * @return array
 	 */
-	final public function jsonSerialize() : mixed{
+	final public function jsonSerialize() : array{
 		return [
 			"id" => $this->getId(),
 			"damage" => $this->getDamage(),
@@ -1147,7 +1144,7 @@ class Item implements ItemIds, \JsonSerializable{
 	}
 
 	/**
-	 * Returns an Item from properties created in an array by {@link Item#jsonSerialize}
+	 * Returns an Item from properties created in an array by {@link \pocketmine\entity\object\Item#jsonSerialize}
 	 *
 	 * @param array $data
 	 * @return Item
@@ -1187,10 +1184,6 @@ class Item implements ItemIds, \JsonSerializable{
 
 	/**
 	 * Deserializes an Item from an NBT CompoundTag
-	 *
-	 * @param CompoundTag $tag
-	 *
-	 * @return Item
 	 */
 	public static function nbtDeserialize(CompoundTag $tag) : Item{
 		if(!$tag->hasTag("id") or !$tag->hasTag("Count")){
@@ -1204,7 +1197,12 @@ class Item implements ItemIds, \JsonSerializable{
 		if($idTag instanceof ShortTag){
 			$item = Item::get($idTag->getValue(), $meta, $count);
 		}elseif($idTag instanceof StringTag){ //PC item save format
-			$item = Item::fromString($idTag->getValue());
+            try{
+                $item = Item::fromStringSingle($idTag->getValue());
+            }catch(\InvalidArgumentException $e){
+                //TODO: improve error handling
+                return Item::air();
+            }
 			$item->setDamage($meta);
 			$item->setCount($count);
 		}else{
@@ -1219,9 +1217,6 @@ class Item implements ItemIds, \JsonSerializable{
 	}
 
 	public function __clone(){
-		if($this->block !== null){
-			$this->block = clone $this->block;
-		}
 		if($this->nbt !== null){
 			$this->nbt = clone $this->nbt;
 		}

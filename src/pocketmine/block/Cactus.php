@@ -67,9 +67,10 @@ class Cactus extends Transparent{
 		);
 	}
 
-	public function onEntityCollide(Entity $entity){
+	public function onEntityCollide(Entity $entity): bool{
 		$ev = new EntityDamageByBlockEvent($this, $entity, EntityDamageEvent::CAUSE_CONTACT, 1);
-		$entity->attack($ev->getFinalDamage(), $ev);
+		$entity->attack($ev);
+        return true;
 	}
 
 	public function onUpdate($type){

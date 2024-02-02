@@ -30,16 +30,13 @@ use pocketmine\entity\object\MinecartAbstract;
 use pocketmine\entity\Rideable;
 use pocketmine\event\server\DataPacketReceiveEvent;
 use pocketmine\event\Timings;
-use pocketmine\item\Item;
 use pocketmine\math\Vector3;
 use pocketmine\network\mcpe\protocol\AdventureSettingsPacket;
 use pocketmine\network\mcpe\protocol\AnimatePacket;
 use pocketmine\network\mcpe\protocol\BatchPacket;
 use pocketmine\network\mcpe\protocol\BlockEntityDataPacket;
 use pocketmine\network\mcpe\protocol\BlockPickRequestPacket;
-use pocketmine\network\mcpe\protocol\BossEventPacket;
 use pocketmine\network\mcpe\protocol\ClientToServerHandshakePacket;
-use pocketmine\network\mcpe\protocol\CommandBlockUpdatePacket;
 use pocketmine\network\mcpe\protocol\CommandStepPacket;
 use pocketmine\network\mcpe\protocol\ContainerClosePacket;
 use pocketmine\network\mcpe\protocol\ContainerSetSlotPacket;
@@ -247,8 +244,9 @@ class PlayerNetworkSessionAdapter extends MCPENetworkSession{
                 }
                 break;
 			case InteractPacket::ACTION_MOUSEOVER:
-                if ($target instanceof Interactive) {
-                    $this->player->setInteractiveTag($target->getInteractButtonText());
+                $text = $target->getInteractButtonText($this->player);
+                if ($text !== null) {
+                    $this->player->setInteractiveTag($text);
                 } else {
                     $this->player->removeInteractiveTag();
                 }
@@ -330,12 +328,12 @@ class PlayerNetworkSessionAdapter extends MCPENetworkSession{
 		return $this->player->handleCraftingEvent($packet);
 	}
 
-	public function handleAdventureSettings(AdventureSettingsPacket $packet) : bool{
-		$this->player->toggleFlight($packet->isFlying);
-		$this->player->toggleNoClip($packet->noClip);
+    public function handleAdventureSettings(AdventureSettingsPacket $packet) : bool{
+        $this->player->toggleFlight($packet->isFlying);
+        $this->player->toggleNoClip($packet->noClip);
 
-		return true;
-	}
+        return true;
+    }
 
 	public function handleBlockEntityData(BlockEntityDataPacket $packet) : bool{
 		return $this->player->handleBlockEntityData($packet);

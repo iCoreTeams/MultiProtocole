@@ -85,7 +85,7 @@ class QueryRegenerateEvent extends ServerEvent{
 	 */
 	public function __construct(Server $server, int $timeout = 5){
 		$this->timeout = $timeout;
-		$this->customServerName = $server->getAdvancedProperty("query.server-name", "AquaMine Server");
+		$this->customServerName = $server->getAdvancedProperty("query.server-name", "iCore Server");
 		$this->motd = $server->getMotd();
 		$this->subMotd = $server->getName() . " v" . $server->getPocketMineVersion();
 		$this->listPlugins = $server->getAdvancedProperty("query.visible-plugins", false);

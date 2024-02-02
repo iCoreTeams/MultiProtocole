@@ -37,6 +37,9 @@ class SimpleTransactionQueue implements TransactionQueue{
 	/** @var \SplQueue */
 	protected $transactionsToRetry;
 
+    /** @var Inventory[] */
+    protected $inventories;
+
 	/** @var float */
 	protected $lastUpdate = -1;
 
@@ -57,7 +60,14 @@ class SimpleTransactionQueue implements TransactionQueue{
 	 */
 	public function getPlayer(){
 		return $this->player;
-	}
+    }
+
+    /**
+     * @return Inventory[]
+     */
+    public function getInventories(){
+        return $this->inventories;
+    }
 
 	public function getTransactionCount(){
 		return $this->transactionCount;
@@ -76,9 +86,13 @@ class SimpleTransactionQueue implements TransactionQueue{
 	 * Adds a transaction to the queue
 	 */
 	public function addTransaction(Transaction $transaction){
-		$this->transactionQueue->enqueue($transaction);
-		$this->lastUpdate = microtime(true);
-		$this->transactionCount += 1;
+        $this->transactionQueue->enqueue($transaction);
+        if($transaction->getInventory() instanceof Inventory){
+            /** For dropping items, the target inventory is open air, a.k.a. null. */
+            $this->inventories[spl_object_hash($transaction)] = $transaction->getInventory();
+        }
+        $this->lastUpdate = microtime(true);
+        $this->transactionCount += 1;
 	}
 
 	/**
@@ -97,8 +111,20 @@ class SimpleTransactionQueue implements TransactionQueue{
  			$ev = new InventoryTransactionEvent($this);
  			$ev->call();
  		}else{
- 			return;
- 		}
+            return false;
+        }
+
+        $queue = $ev->getQueue();
+        if ($queue instanceof SimpleTransactionQueue) {
+            $player = $queue->getPlayer();
+            if ($queue->getInventories() !== null) {
+                foreach ($queue->getInventories() as $inv) {
+                    if ($player->getWindowId($inv) === -1) {
+                        $ev->setCancelled();
+                    }
+                }
+            }
+        }
 
 		while(!$this->transactionQueue->isEmpty()){
 
@@ -136,8 +162,10 @@ class SimpleTransactionQueue implements TransactionQueue{
 			}
 
 			if($ev->isCancelled()){
-				$transaction->sendSlotUpdate($this->player); //Send update back to client for cancelled transaction
-				continue;
+                $this->transactionCount -= 1;
+                $transaction->sendSlotUpdate($this->player); //Send update back to client for cancelled transaction
+                unset($this->inventories[spl_object_hash($transaction)]);
+                continue;
 			}elseif(!$transaction->execute($this->player)){
 				$transaction->addFailure();
 				if($transaction->getFailures() >= self::DEFAULT_ALLOWED_RETRIES){
@@ -151,14 +179,16 @@ class SimpleTransactionQueue implements TransactionQueue{
 				continue;
 			}
 
-			$this->transactionCount -= 1;
-			$transaction->setSuccess();
-			$transaction->sendSlotUpdate($this->player);
+            $this->transactionCount -= 1;
+            $transaction->setSuccess();
+            $transaction->sendSlotUpdate($this->player);
+            unset($this->inventories[spl_object_hash($transaction)]);
 		}
 
-		foreach($failed as $f){
-			$f->sendSlotUpdate($this->player);
-		}
+        foreach($failed as $f){
+            $f->sendSlotUpdate($this->player);
+            unset($this->inventories[spl_object_hash($f)]);
+        }
 
 		return true;
 	}

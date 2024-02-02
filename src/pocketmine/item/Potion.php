@@ -104,8 +104,10 @@ class Potion extends Item implements FoodSource{
         $ev = new EntityEatItemEvent($human, $this);
         $ev->call();
 
-        foreach($ev->getAdditionalEffects() as $effect){
-            $human->addEffect($effect);
+        foreach($ev->getAdditionalEffects() as $effect) {
+            if ($effect instanceof Effect) {
+                $human->addEffect($effect);
+            }
         }
 
         $human->getInventory()->setItemInHand($ev->getResidue());

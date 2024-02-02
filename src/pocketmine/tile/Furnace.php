@@ -32,17 +32,17 @@ use pocketmine\inventory\FurnaceRecipe;
 use pocketmine\inventory\InventoryHolder;
 use pocketmine\item\Item;
 use pocketmine\level\Level;
-use pocketmine\nbt\NBT;
 use pocketmine\nbt\tag\CompoundTag;
-use pocketmine\nbt\tag\ListTag;
 use pocketmine\nbt\tag\ShortTag;
-use pocketmine\nbt\tag\StringTag;
 use pocketmine\network\mcpe\protocol\ContainerSetDataPacket;
 
 use function ceil;
 use function microtime;
 
 class Furnace extends Spawnable implements InventoryHolder, Container, Nameable{
+    use NameableTrait {
+        addAdditionalSpawnData as addNameSpawnData;
+    }
 	use ContainerTrait;
 
 	/** @var FurnaceInventory */
@@ -68,23 +68,6 @@ class Furnace extends Spawnable implements InventoryHolder, Container, Nameable{
 		if($this->namedtag->getShort("BurnTime") > 0){
 			$this->scheduleUpdate();
 		}
-	}
-
-	public function getName() : string{
-		return $this->hasName() ? $this->namedtag->getString("CustomName") : "Furnace";
-	}
-
-	public function hasName() : bool{
-		return $this->namedtag->hasTag("CustomName", StringTag::class);
-	}
-
-	public function setName(string $str){
-		if($str === ""){
-			$this->namedtag->removeTag("CustomName");
-			return;
-		}
-
-		$this->namedtag->setString("CustomName", $str);
 	}
 
 	public function close(){
@@ -225,8 +208,6 @@ class Furnace extends Spawnable implements InventoryHolder, Container, Nameable{
 		$nbt->setShort("BurnTime", $this->namedtag->getShort("BurnTime"));
 		$nbt->setShort("CookTime", $this->namedtag->getShort("CookTime"));
 
-		if($this->hasName()){
-			$nbt->setString("CustomName", $this->namedtag->getString("CustomName"));
-		}
+        $this->addNameSpawnData($nbt, $isBedrock);
 	}
 }

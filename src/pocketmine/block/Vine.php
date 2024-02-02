@@ -72,8 +72,9 @@ class Vine extends Transparent{
 		return true;
 	}
 
-	public function onEntityCollide(Entity $entity){
+	public function onEntityCollide(Entity $entity):bool{
 		$entity->resetFallDistance();
+        return true;
 	}
 
 	protected function recalculateBoundingBox(){

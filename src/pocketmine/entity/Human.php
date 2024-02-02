@@ -25,6 +25,7 @@ declare(strict_types=1);
 namespace pocketmine\entity;
 
 use pocketmine\BedrockPlayer;
+use pocketmine\entity\projectile\ProjectileSource;
 use pocketmine\event\entity\EntityDamageEvent;
 use pocketmine\event\entity\EntityRegainHealthEvent;
 use pocketmine\event\player\PlayerExhaustEvent;
@@ -45,13 +46,11 @@ use pocketmine\nbt\tag\ListTag;
 use pocketmine\nbt\tag\StringTag;
 use pocketmine\network\bedrock\protocol\PlayerListPacket as BedrockPlayerListPacket;
 use pocketmine\network\bedrock\protocol\PlayerSkinPacket;
-use pocketmine\network\bedrock\protocol\types\inventory\ItemInstance;
 use pocketmine\network\bedrock\protocol\types\PlayerListEntry as BedrockPlayerListEntry;
 use pocketmine\network\mcpe\protocol\AddPlayerPacket;
 use pocketmine\network\mcpe\protocol\EntityEventPacket;
 use pocketmine\network\mcpe\protocol\LevelEventPacket;
 use pocketmine\network\mcpe\protocol\LevelSoundEventPacket;
-use pocketmine\network\mcpe\protocol\MovePlayerPacket;
 use pocketmine\network\mcpe\protocol\PlayerListPacket as McpePlayerListPacket;
 use pocketmine\network\mcpe\protocol\types\PlayerListEntry as McpePlayerListEntry;
 use pocketmine\network\mcpe\protocol\types\Skin as McpeSkin;
@@ -88,9 +87,9 @@ class Human extends Creature implements ProjectileSource, InventoryHolder{
 	protected $uuid;
 	protected $rawUUID;
 
-	public $width = 0.6;
-	public $height = 1.8;
-	public $eyeHeight = 1.62;
+	public float $width = 0.6;
+	public float $height = 1.8;
+	public ?float $eyeHeight = 1.62;
 
 	/** @var Skin */
 	protected $skin;
@@ -100,7 +99,7 @@ class Human extends Creature implements ProjectileSource, InventoryHolder{
 	protected $totalXp = 0;
 	protected $xpSeed;
 
-	protected $baseOffset = 1.62;
+	protected float $baseOffset = 1.62;
 
 	/**
 	 * @return UUID|null
@@ -361,7 +360,7 @@ class Human extends Creature implements ProjectileSource, InventoryHolder{
 
 			if($this->namedtag->hasTag("Skin", CompoundTag::class)){
 				$skinTag = $this->namedtag->getCompoundTag("Skin");
-				$this->setSkin(Skin::fromMcpeSkin(new McpeSkin($skinTag->getString("Name"), $skinTag->getString("Data"))));
+				$this->setSkin(Skin::fromMcpeSkin(new McpeSkin($skinTag->getString("Name"), $skinTag->getTag("Data")->getValue())));
 			}else{
 				throw new \InvalidStateException((new \ReflectionClass($this))->getShortName() . " must have a valid skin set");
 			}
@@ -480,7 +479,7 @@ class Human extends Creature implements ProjectileSource, InventoryHolder{
 					}
 				}elseif($food <= 0){
 					if(($difficulty === 1 and $health > 10) or ($difficulty === 2 and $health > 1) or $difficulty === 3){
-						$this->attack(1, new EntityDamageEvent($this, EntityDamageEvent::CAUSE_STARVATION, 1));
+						$this->attack(new EntityDamageEvent($this, EntityDamageEvent::CAUSE_STARVATION, 1));
 					}
 				}
 			}

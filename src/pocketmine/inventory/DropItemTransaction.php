@@ -54,11 +54,10 @@ class DropItemTransaction extends BaseTransaction{
 		return -1;
 	}
 
-	public function sendSlotUpdate(Player $source){
-		foreach($source->getWindows() as $inv){
-			$inv->sendContents($source);
-		}
-	}
+    public function sendSlotUpdate(Player $source){
+        //Nothing to update
+    }
+
 
 	public function getChange(){
 		return ["in" => $this->getTargetItem(),

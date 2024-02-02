@@ -24,16 +24,23 @@ declare(strict_types=1);
 
 namespace pocketmine\command;
 
+use pocketmine\command\defaults\DeopCommand;
 use pocketmine\command\defaults\DumpMemoryCommand;
+use pocketmine\command\defaults\GamemodeCommand;
 use pocketmine\command\defaults\GarbageCollectorCommand;
 use pocketmine\command\defaults\GiveCommand;
 use pocketmine\command\defaults\HelpCommand;
+use pocketmine\command\defaults\KillCommand;
+use pocketmine\command\defaults\ListCommand;
+use pocketmine\command\defaults\OpCommand;
 use pocketmine\command\defaults\SaveCommand;
 use pocketmine\command\defaults\SaveOffCommand;
 use pocketmine\command\defaults\SaveOnCommand;
+use pocketmine\command\defaults\SayCommand;
 use pocketmine\command\defaults\SetWorldSpawnCommand;
 use pocketmine\command\defaults\StopCommand;
 use pocketmine\command\defaults\VanillaCommand;
+use pocketmine\command\defaults\WeatherCommand;
 use pocketmine\command\defaults\WhitelistCommand;
 use pocketmine\command\defaults\StatusCommand;
 use pocketmine\command\defaults\VersionCommand;
@@ -102,6 +109,13 @@ class SimpleCommandMap implements CommandMap{
 		$this->register("pocketmine", new SetWorldSpawnCommand("setworldspawn"));
 		$this->register("pocketmine", new StatusCommand("status"));
 		$this->register("pocketmine", new VersionCommand("ver"));
+        $this->register("pocketmine", new DeopCommand("deop"));
+        $this->register("pocketmine", new GamemodeCommand("gamemode"));
+        $this->register("pocketmine", new KillCommand("kill"));
+        $this->register("pocketmine", new ListCommand("list"));
+        $this->register("pocketmine", new OpCommand("op"));
+        $this->register("pocketmine", new SayCommand("say"));
+        $this->register("pocketmine", new WeatherCommand("weather"));
 
 		if($this->server->getProperty("debug.commands", false)){
 			$this->register("pocketmine", new GarbageCollectorCommand("gc"));

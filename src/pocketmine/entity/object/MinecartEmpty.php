@@ -7,6 +7,7 @@ namespace pocketmine\entity\object;
 use pocketmine\math\Vector3;
 use pocketmine\entity\feature\Interactive;
 use pocketmine\entity\Rideable;
+use pocketmine\Player;
 
 class MinecartEmpty extends MinecartAbstract implements Interactive, Rideable
 {
@@ -15,7 +16,7 @@ class MinecartEmpty extends MinecartAbstract implements Interactive, Rideable
 
     public function getSeatPosition(): Vector3 { return new Vector3(0, 1, 0); }
 
-    public function getInteractButtonText(): string { return "action.interact.ride.minecart"; }
+    public function getInteractButtonText(Player $player): ?string { return "action.interact.ride.minecart"; }
 
     public function isRideable() :bool{
         return true;

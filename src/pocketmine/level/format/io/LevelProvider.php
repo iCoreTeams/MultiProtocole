@@ -187,6 +187,18 @@ interface LevelProvider{
 	 */
 	public function setSeed($value);
 
+    /**
+     * Returns the world difficulty. This will be one of the Level constants.
+     * @return int
+     */
+    public function getDifficulty() : int;
+
+    /**
+     * Sets the world difficulty.
+     * @param int $difficulty
+     */
+    public function setDifficulty(int $difficulty): void;
+
 	/**
 	 * @return Vector3
 	 */

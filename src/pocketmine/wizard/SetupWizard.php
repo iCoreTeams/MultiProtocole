@@ -45,9 +45,9 @@ use const PHP_EOL;
 use const STDIN;
 
 class SetupWizard{
+
 	public const DEFAULT_NAME = "Minecraft: PE Server";
 	public const DEFAULT_PORT = 19132;
-	public const DEFAULT_MEMORY = 256;
 	public const DEFAULT_PLAYERS = 20;
 	public const DEFAULT_GAMEMODE = 0;
 

@@ -112,7 +112,12 @@ class Color{
 		return new Color(($code >> 16) & 0xff, ($code >> 8) & 0xff, $code & 0xff);
 	}
 
-	/**
+    public static function getRGB($r, $g, $b){
+        return new Color((int) $r, (int) $g, (int) $b);
+    }
+
+
+    /**
 	 * Returns a Color from the supplied ARGB colour code (32-bit)
 	 *
 	 * @param int $code

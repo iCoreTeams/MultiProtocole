@@ -26,11 +26,11 @@ namespace pocketmine;
 
 use pocketmine\block\Air;
 use pocketmine\block\Block;
-use pocketmine\entity\Arrow;
 use pocketmine\entity\Human;
-use pocketmine\entity\Item as DroppedItem;
+use pocketmine\entity\object\Item as DroppedItem;
 use pocketmine\entity\object\MinecartAbstract;
 use pocketmine\entity\object\MinecartEmpty;
+use pocketmine\entity\projectile\Arrow;
 use pocketmine\entity\Rideable;
 use pocketmine\entity\Skin;
 use pocketmine\event\inventory\CraftItemEvent;
@@ -40,7 +40,6 @@ use pocketmine\event\player\PlayerAnimationEvent;
 use pocketmine\event\player\PlayerInteractEvent;
 use pocketmine\event\player\PlayerLoginEvent;
 use pocketmine\event\player\PlayerPreLoginEvent;
-use pocketmine\event\player\PlayerRespawnEvent;
 use pocketmine\event\player\PlayerSkinChangeEvent;
 use pocketmine\event\player\PlayerToggleGlideEvent;
 use pocketmine\event\player\PlayerToggleSneakEvent;
@@ -50,11 +49,10 @@ use pocketmine\event\server\DataPacketSendEvent;
 use pocketmine\event\TextContainer;
 use pocketmine\event\Timings;
 use pocketmine\event\TranslationContainer;
+use pocketmine\form\Form;
 use pocketmine\inventory\BaseTransaction;
 use pocketmine\inventory\DropItemTransaction;
 use pocketmine\inventory\PlayerInventory;
-use pocketmine\inventory\ShapedRecipe;
-use pocketmine\inventory\ShapelessRecipe;
 use pocketmine\inventory\SwapTransaction;
 use pocketmine\item\enchantment\Enchantment;
 use pocketmine\item\FlintSteel;
@@ -80,6 +78,7 @@ use pocketmine\network\bedrock\protocol\AnimatePacket;
 use pocketmine\network\bedrock\protocol\AvailableCommandsPacket;
 use pocketmine\network\bedrock\protocol\BlockActorDataPacket;
 use pocketmine\network\bedrock\protocol\BlockPickRequestPacket;
+use pocketmine\network\bedrock\protocol\ChangeDimensionPacket;
 use pocketmine\network\bedrock\protocol\ChunkRadiusUpdatedPacket;
 use pocketmine\network\bedrock\protocol\CompletedUsingItemPacket;
 use pocketmine\network\bedrock\protocol\DataPacket as BedrockPacket;
@@ -91,6 +90,7 @@ use pocketmine\network\bedrock\protocol\ItemFrameDropItemPacket;
 use pocketmine\network\bedrock\protocol\LevelSoundEventPacket;
 use pocketmine\network\bedrock\protocol\LoginPacket;
 use pocketmine\network\bedrock\protocol\MobEquipmentPacket;
+use pocketmine\network\bedrock\protocol\ModalFormRequestPacket;
 use pocketmine\network\bedrock\protocol\NetworkChunkPublisherUpdatePacket;
 use pocketmine\network\bedrock\protocol\NetworkSettingsPacket;
 use pocketmine\network\bedrock\protocol\PlayerActionPacket;
@@ -115,11 +115,10 @@ use pocketmine\network\bedrock\protocol\TextPacket;
 use pocketmine\network\bedrock\protocol\TransferPacket;
 use pocketmine\network\bedrock\protocol\types\CommandData;
 use pocketmine\network\bedrock\protocol\types\CommandEnum;
+use pocketmine\network\bedrock\protocol\types\CommandOverload;
 use pocketmine\network\bedrock\protocol\types\CommandParameter;
 use pocketmine\network\bedrock\protocol\types\CommandPermissions;
-use pocketmine\network\bedrock\protocol\types\CommandOverload;
 use pocketmine\network\bedrock\protocol\types\CompressionAlgorithm;
-use pocketmine\network\bedrock\protocol\types\DimensionIds;
 use pocketmine\network\bedrock\protocol\types\Experiments;
 use pocketmine\network\bedrock\protocol\types\inventory\ContainerIds;
 use pocketmine\network\bedrock\protocol\types\inventory\ItemInstance;
@@ -137,8 +136,6 @@ use pocketmine\network\bedrock\protocol\types\UseItemTransactionData;
 use pocketmine\network\bedrock\protocol\UpdateAbilitiesPacket;
 use pocketmine\network\bedrock\protocol\UpdateAdventureSettingsPacket;
 use pocketmine\network\bedrock\protocol\UpdateAttributesPacket;
-use pocketmine\network\bedrock\protocol\ModalFormRequestPacket;
-use pocketmine\network\bedrock\protocol\PlayerAuthInputPacket;
 use pocketmine\network\bedrock\StaticPacketCache;
 use pocketmine\network\bedrock\utils\BedrockUtils;
 use pocketmine\network\bedrock\VerifyLoginTask;
@@ -153,7 +150,6 @@ use pocketmine\network\mcpe\protocol\EntityEventPacket as MCPEEntityEventPacket;
 use pocketmine\network\mcpe\protocol\LevelEventPacket as MCPELevelEventPacket;
 use pocketmine\network\mcpe\protocol\LevelSoundEventPacket as MCPELevelSoundEventPacket;
 use pocketmine\network\mcpe\protocol\TakeItemEntityPacket as MCPETakeItemEntityPacket;
-use pocketmine\form\Form;
 use pocketmine\network\NetworkInterface;
 use pocketmine\resourcepacks\ResourcePack;
 use pocketmine\tile\ItemFrame;
@@ -260,7 +256,7 @@ class BedrockPlayer extends Player{
 		parent::__construct($interface, $clientID, $ip, $port, $isValid);
 
 		$this->sessionAdapter = new PlayerNetworkSessionAdapter($this->server, $this);
-		$this->chunkCache = BedrockChunkCache::getInstance($this->level);
+		$this->chunkCache = BedrockChunkCache::getInstance($this->level, $this->getChunkProtocol());
 	}
 
 	/**
@@ -298,7 +294,7 @@ class BedrockPlayer extends Player{
 		}
 	}
 
-	protected function checkProtocol(int $protocol) : bool{
+	protected function checkProtocol(string $buffer, int $protocol) : bool{
 		$currentProtocol = ProtocolInfo::CURRENT_PROTOCOL;
 		if($protocol !== $currentProtocol){
 			if($protocol < $currentProtocol){
@@ -321,7 +317,7 @@ class BedrockPlayer extends Player{
 			return false;
 		}
 
-		if(!$this->checkProtocol($packet->protocolVersion)){
+		if(!$this->checkProtocol($packet->buffer, $packet->protocolVersion)){
 			return true;
 		}
 
@@ -343,7 +339,7 @@ class BedrockPlayer extends Player{
 			return false;
 		}
 
-		if(!$this->checkProtocol($packet->protocol)){
+		if(!$this->checkProtocol($packet->buffer, $packet->protocol)){
 			return true;
 		}
 
@@ -730,7 +726,7 @@ class BedrockPlayer extends Player{
 		$pk->pitch = $this->pitch;
 		$pk->yaw = $this->yaw;
 		$pk->seed = -1;
-		$pk->dimension = DimensionIds::OVERWORLD; //TODO: implement this properly
+        $pk->dimension = $this->level->getDimension();
 		$pk->worldGamemode = Player::getClientFriendlyGamemode($this->server->getGamemode());
 		$pk->difficulty = $this->server->getDifficulty();
 		$pk->spawnX = $spawnPosition->getFloorX();
@@ -1195,9 +1191,9 @@ class BedrockPlayer extends Player{
 	}
 
 	public function handleBedrockPlayerAction(PlayerActionPacket $packet) : bool{
-		if($this->spawned === false or (!$this->isAlive() and $packet->action !== PlayerActionPacket::ACTION_RESPAWN)){
-			return true;
-		}
+        if(!$this->spawned or (!$this->isAlive() and $packet->action !== PlayerActionPacket::ACTION_RESPAWN and $packet->action !== PlayerActionPacket::ACTION_DIMENSION_CHANGE_ACK)){
+            return true;
+        }
 
 		$pos = new Vector3($packet->x, $packet->y, $packet->z);
 
@@ -1237,49 +1233,14 @@ class BedrockPlayer extends Player{
 				$this->stopSleep();
 				break;
 			case PlayerActionPacket::ACTION_RESPAWN:
-				if($this->spawned === false or $this->isAlive() or !$this->isOnline()){
-					break;
-				}
+                if($this->isAlive() or !$this->isOnline()){
+                    break;
+                }
 
-				if($this->server->isHardcore()){
-					$this->setBanned(true);
-					break;
-				}
-
-				$this->resetCrafting();
-
-				$ev = new PlayerRespawnEvent($this, $this->getSpawn());
-				$ev->call();
-
-				$this->teleport($ev->getRespawnPosition());
-
-				$this->resetLastMovements();
-
-				$this->setSprinting(false);
-				$this->setSneaking(false);
-
-				$this->extinguish();
-				$this->setDataProperty(self::DATA_AIR, self::DATA_TYPE_SHORT, 400);
-				$this->deadTicks = 0;
-				$this->noDamageTicks = 60;
-
-				$this->removeAllEffects();
-				$this->setHealth($this->getMaxHealth());
-				$this->setFood(20);
-
-				foreach($this->attributeMap->getAll() as $attr){
-					$attr->resetToDefault();
-				}
-
-				$this->sendData($this);
-
-				$this->sendSettings();
-				$this->inventory->sendContents($this);
-				$this->inventory->sendArmorContents($this);
-
-				$this->spawnToAll();
-				$this->scheduleUpdate();
+                $this->respawn();
 				break;
+            case PlayerActionPacket::ACTION_DIMENSION_CHANGE_ACK:
+                break;
 			case PlayerActionPacket::ACTION_JUMP:
 				$this->jump();
 				return true;
@@ -1429,9 +1390,17 @@ class BedrockPlayer extends Player{
 	public function handleInventoryTransaction(InventoryTransactionPacket $packet) : bool{
 		$result = true;
 
-		$data = $packet->trData;
+        if(count($packet->trData->getActions()) > 50){
+            $this->server->getNetwork()->blockAddress($this->getAddress(), 300);
+            return false;
+        }
+        if(count($packet->legacySetItemSlots) > 10){
+            $this->server->getNetwork()->blockAddress($this->getAddress(), 300);
+            return false;
+        }
+
+        $data = $packet->trData;
 		if($data instanceof NormalTransactionData){
-			/** @var NetworkInventoryAction[] $actions */
 			$actions = [];
 			foreach($data->getActions() as $action){
 				if($action->oldItem->stack->equals($action->newItem->stack, true, true, true)){ // ???
@@ -1490,7 +1459,6 @@ class BedrockPlayer extends Player{
 			}
 			foreach($actions as $action){
 				if($action->isFinalCraftingPart()){
-					/** @var ShapedRecipe[]|ShapelessRecipe[] $possibleRecipes */
 					$possibleRecipes = $this->server->getCraftingManager()->getRecipesByResult($action->oldItem->stack);
 					$recipe = null;
 					$toRemove = [];
@@ -1498,8 +1466,6 @@ class BedrockPlayer extends Player{
 					$ingredients = [];
 					$floatingInventory = null;
 					foreach($possibleRecipes as $r){
-						/* Check the ingredient list and see if it matches the ingredients we've put into the crafting grid
-						 * As soon as we find a recipe that we have all the ingredients for, take it and run with it. */
 
 						//Make a copy of the floating inventory that we can make changes to.
 						$floatingInventory = clone $this->floatingInventory;
@@ -1569,7 +1535,7 @@ class BedrockPlayer extends Player{
 					}
 				}
 			}
-		}elseif($data instanceof MismatchTransactionData){
+        }elseif($data instanceof MismatchTransactionData){
 			$this->inventory->sendContents($this);
 		}elseif($data instanceof UseItemTransactionData){
 			if($this->inventory->getHeldItemSlot() !== $data->getHotbarSlot()){
@@ -1792,11 +1758,34 @@ class BedrockPlayer extends Player{
 	}
 
 	protected function switchLevel(Level $targetLevel){
-		$oldLevel = $this->level;
-		if(Human::switchLevel($targetLevel)){
-			$this->clearUsedChunks($oldLevel);
-			$this->level->sendTime($this);
-		}
+        $oldLevel = $this->level;
+        if(Human::switchLevel($targetLevel)){
+            if($oldLevel !== null){
+                foreach($this->usedChunks as $index => $d){
+                    Level::getXZ($index, $X, $Z);
+                    $this->unloadChunk($X, $Z, $oldLevel);
+                }
+            }
+
+            $this->usedChunks = [];
+            $this->loadQueue = [];
+
+            $this->level->sendTime($this);
+            $this->level->sendDifficulty($this);
+
+            if($targetLevel->getDimension() != $oldLevel->getDimension()){
+                $pk = new ChangeDimensionPacket();
+                $pk->dimension = $targetLevel->getDimension();
+                $pk->position = $this->asVector3();
+                $this->sendDataPacket($pk);
+
+                $this->sendPlayStatus(PlayStatusPacket::PLAYER_SPAWN);
+            }
+
+            if($this->spawned){
+                $this->spawnToAll();
+            }
+        }
 	}
 
 	protected function unloadChunk($x, $z, Level $level = null){
@@ -1810,7 +1799,7 @@ class BedrockPlayer extends Player{
 					}
 				}
 			}else{ //There can still be a pending request
-				BedrockChunkCache::getInstance($level)->unregister($this, $x, $z);
+				BedrockChunkCache::getInstance($level, $this->getChunkProtocol())->unregister($this, $x, $z);
 			}
 
 			unset($this->usedChunks[$index]);
@@ -1824,7 +1813,7 @@ class BedrockPlayer extends Player{
 		parent::setLevel($level);
 
 		if($this->level !== null){
-			$this->chunkCache = BedrockChunkCache::getInstance($this->level);
+			$this->chunkCache = BedrockChunkCache::getInstance($this->level, $this->getChunkProtocol());
 		}
 		return $this;
 	}
@@ -2091,10 +2080,11 @@ class BedrockPlayer extends Player{
 		}
 
 		if(!$packet instanceof BedrockPacket){
-            $packet = PacketTranslator::translate($packet); //try to translate this packet to client, otherwise ignore
-            if($packet === null){
-                return false;
-            }
+			$packet = PacketTranslator::translate($packet); //try to translate this packet to client, otherwise ignore
+		}
+
+        if($packet === null){
+            return true;
         }
 
 		//Basic safety restriction. TODO: improve this
@@ -2286,4 +2276,5 @@ class BedrockPlayer extends Player{
 	public function getProtocolVersion() : int{
 		return ProtocolInfo::CURRENT_PROTOCOL;
 	}
+
 }

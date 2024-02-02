@@ -364,4 +364,11 @@ class AxisAlignedBB{
 	public static function one() : AxisAlignedBB{
 		return new AxisAlignedBB(0, 0, 0, 1, 1, 1);
 	}
+
+    /**
+     * Returns an expanded clone of this AxisAlignedBB.
+     */
+    public function expandedCopy(float $x, float $y, float $z) : AxisAlignedBB{
+        return (clone $this)->expand($x, $y, $z);
+    }
 }

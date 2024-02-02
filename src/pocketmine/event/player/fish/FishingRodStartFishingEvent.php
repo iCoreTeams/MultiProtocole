@@ -24,7 +24,7 @@ declare(strict_types=1);
 
 namespace pocketmine\event\player\fish;
 
-use pocketmine\entity\FishingHook;
+use pocketmine\entity\projectile\FishingHook;
 use pocketmine\event\Cancellable;
 use pocketmine\event\player\PlayerEvent;
 use pocketmine\Player;

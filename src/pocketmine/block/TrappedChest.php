@@ -30,6 +30,10 @@ class TrappedChest extends Chest{
 
 	protected $id = self::TRAPPED_CHEST;
 
+    public function isTrapped() : bool{
+        return true;
+    }
+
 	public function getName(){
 		return "Trapped Chest";
 	}

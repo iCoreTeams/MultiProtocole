@@ -69,20 +69,18 @@ class FlowerPot extends Flowable{
 
 		$this->getLevel()->setBlock($block, $this, true, true);
 
-		$nbt = new CompoundTag("", [
-			new StringTag("id", Tile::FLOWER_POT),
-			new IntTag("x", $block->x),
-			new IntTag("y", $block->y),
-			new IntTag("z", $block->z),
-			new ShortTag("item", 0),
-			new IntTag("mData", 0),
-		]);
-
-		if($item->hasCustomBlockData()){
-			foreach($item->getCustomBlockData() as $key => $v){
-				$nbt->{$key} = $v;
-			}
-		}
+        $nbt = CompoundTag::create()
+            ->setString("id", Tile::FLOWER_POT)
+            ->setInt("x", $this->x)
+            ->setInt("y", $this->y)
+            ->setInt("z", $this->z)
+            ->setShort("item", 0)
+            ->setInt("mData", 0);
+        if($item->hasCustomBlockData()){
+            foreach($item->getCustomBlockData() as $key => $v){
+                $nbt->setTag($key, $v);
+            }
+        }
 
 		Tile::createTile(Tile::FLOWER_POT, $this->getLevel(), $nbt);
 		return true;

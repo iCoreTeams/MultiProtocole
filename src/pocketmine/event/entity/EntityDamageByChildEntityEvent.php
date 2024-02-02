@@ -24,9 +24,8 @@ declare(strict_types=1);
 
 namespace pocketmine\event\entity;
 
-use pocketmine\entity\Arrow;
 use pocketmine\entity\Entity;
-use pocketmine\entity\Living;
+use pocketmine\entity\projectile\Arrow;
 use pocketmine\item\enchantment\Enchantment;
 
 /**

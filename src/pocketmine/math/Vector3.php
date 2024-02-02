@@ -42,39 +42,40 @@ class Vector3{
 	public const SIDE_WEST = 4;
 	public const SIDE_EAST = 5;
 
-	public $x;
-	public $y;
-	public $z;
+    public function __construct(
+        public float|int|null $x = 0,
+        public float|int|null $y = 0,
+        public float|int|null $z = 0
+    ){}
 
-	public function __construct($x = 0, $y = 0, $z = 0){
-		$this->x = $x;
-		$this->y = $y;
-		$this->z = $z;
-	}
+    public static function zero() : Vector3{
+        //TODO: make this reuse a single object, once Vector3 becomes immutable
+        return new self(0, 0, 0);
+    }
 
-	public function getX(){
-		return $this->x;
-	}
+    public function getX() : float|int{
+        return $this->x;
+    }
 
-	public function getY(){
-		return $this->y;
-	}
+    public function getY() : float|int{
+        return $this->y;
+    }
 
-	public function getZ(){
-		return $this->z;
-	}
+    public function getZ() : float|int{
+        return $this->z;
+    }
 
-	public function getFloorX(){
-		return (int) floor($this->x);
-	}
+    public function getFloorX() : int{
+        return (int) floor($this->x);
+    }
 
-	public function getFloorY(){
-		return (int) floor($this->y);
-	}
+    public function getFloorY() : int{
+        return (int) floor($this->y);
+    }
 
-	public function getFloorZ(){
-		return (int) floor($this->z);
-	}
+    public function getFloorZ() : int{
+        return (int) floor($this->z);
+    }
 
 	public function getRight(){
 		return $this->x;
@@ -348,5 +349,15 @@ class Vector3{
 	public function __toString(){
 		return "Vector3(x=" . $this->x . ",y=" . $this->y . ",z=" . $this->z . ")";
 	}
+
+    public static function sum(Vector3 ...$vector3s) : Vector3{
+        $x = $y = $z = 0;
+        foreach($vector3s as $vector3){
+            $x += $vector3->x;
+            $y += $vector3->y;
+            $z += $vector3->z;
+        }
+        return new Vector3($x, $y, $z);
+    }
 
 }

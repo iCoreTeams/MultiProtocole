@@ -38,6 +38,10 @@ abstract class Door extends Transparent{
 		return false;
 	}
 
+    protected function recalculateCollisionBoxes() : array{
+        return [];
+    }
+
 	private function getFullDamage(){
 		$damage = $this->getDamage();
 		$isUp = ($damage & 0x08) > 0;
@@ -204,14 +208,17 @@ abstract class Door extends Transparent{
 
 	public function onUpdate($type){
 		if($type === Level::BLOCK_UPDATE_NORMAL){
-			if($this->getSide(Vector3::SIDE_DOWN)->getId() === self::AIR){ //Replace with common break method
-				$this->getLevel()->setBlock($this, new Air(), false);
-				if($this->getSide(Vector3::SIDE_UP) instanceof Door){
-					$this->getLevel()->setBlock($this->getSide(Vector3::SIDE_UP), new Air(), false);
-				}
+            if ($this->getSide(Vector3::SIDE_DOWN)->getId() === self::AIR) { //Replace with common break method
+                $this->getLevel()->setBlock($this, Block::get(BlockIds::AIR), false, false); //why last false
+                if ($this->getSide(Vector3::SIDE_UP) instanceof Door) {
+                    $this->getLevel()->setBlock($this->getSide(Vector3::SIDE_UP), Block::get(BlockIds::AIR), false);
+                }
 
-				return Level::BLOCK_UPDATE_NORMAL;
-			}
+                foreach($this->getDrops(Item::get(Item::DIAMOND_PICKAXE)) as $drop){
+                    $this->getLevel()->dropItem($this, Item::get($drop[0], $drop[1], $drop[2]));
+                }
+                return Level::BLOCK_UPDATE_NORMAL;
+            }
 		}
 
 		return false;
@@ -240,58 +247,67 @@ abstract class Door extends Transparent{
 
 			$this->setDamage($player->getDirection() & 0x03);
 			$this->getLevel()->setBlock($block, $this, true, true); //Bottom
-			$this->getLevel()->setBlock($blockUp, $b = Block::get($this->getId(), $metaUp), true); //Top
+			$this->getLevel()->setBlock($blockUp, Block::get($this->getId(), $metaUp), true); //Top
 			return true;
 		}
 
 		return false;
 	}
 
-	public function onActivate(Item $item, Player $player = null){
-		if(($this->getDamage() & 0x08) === 0x08){ //Top
-			$down = $this->getSide(Vector3::SIDE_DOWN);
-			if($down->getId() === $this->getId()){
-				$meta = $down->getDamage() ^ 0x04;
-				$this->level->setBlock($down, Block::get($this->getId(), $meta), true);
-				$this->level->addSound(new DoorSound($this));
-				return true;
-			}
+    public function onBreak(Item $item, Player $player = null) : bool{
+        if(($this->getDamage() & 0x08) === 0x08){
+            $down = $this->getSide(Vector3::SIDE_DOWN);
+            if($down->getId() === $this->getId()){
+                $this->getLevel()->setBlock($down, Block::get(Block::AIR), true);
+            }
+        }else{
+            $up = $this->getSide(Vector3::SIDE_UP);
+            if($up->getId() === $this->getId()){
+                $this->getLevel()->setBlock($up, Block::get(Block::AIR), true);
+            }
+        }
+        $this->getLevel()->setBlock($this, Block::get(Block::AIR), true);
 
-			return false;
-		}else{
-			$this->meta ^= 0x04;
-			$this->level->setBlock($this, $this, true);
-			$this->level->addSound(new DoorSound($this));
-		}
+        return true;
+    }
 
-		return true;
-	}
+    public function isOpened(){
+        return (($this->getFullDamage() & 0x04) > 0);
+    }
 
-	public function canBeActivated() : bool{
-		return true;
-	}
+    public function onActivate(Item $item, Player $player = null){
+        if(($this->getDamage() & 0x08) === 0x08){ //Top
+            $down = $this->getSide(Vector3::SIDE_DOWN);
+            if($down->getId() === $this->getId()){
+                $meta = $down->getDamage() ^ 0x04;
+                $this->level->setBlock($down, Block::get($this->getId(), $meta), true);
+                $this->level->addSound(new DoorSound($this));
+                return true;
+            }
 
-	public function getDrops(Item $item){
-		if(($this->meta & 0x08) === 0){ //bottom half only
-			return parent::getDrops($item);
-		}
+            return false;
+        }else{
+            $this->meta ^= 0x04;
+            $this->level->setBlock($this, $this, true);
+            $this->level->addSound(new DoorSound($this));
+        }
 
-		return [];
-	}
+        return true;
+    }
 
-	public function getAffectedBlocks() : array{
-		if(($this->getDamage() & 0x08) === 0x08){
-			$down = $this->getSide(Vector3::SIDE_DOWN);
-			if($down->getId() === $this->getId()){
-				return [$this, $down];
-			}
-		}else{
-			$up = $this->getSide(Vector3::SIDE_UP);
-			if($up->getId() === $this->getId()){
-				return [$this, $up];
-			}
-		}
+    public function getAffectedBlocks() : array{
+        if(($this->getDamage() & 0x08) === 0x08){
+            $down = $this->getSide(Vector3::SIDE_DOWN);
+            if($down->getId() === $this->getId()){
+                return [$this, $down];
+            }
+        }else{
+            $up = $this->getSide(Vector3::SIDE_UP);
+            if($up->getId() === $this->getId()){
+                return [$this, $up];
+            }
+        }
 
-		return parent::getAffectedBlocks();
-	}
+        return parent::getAffectedBlocks();
+    }
 }

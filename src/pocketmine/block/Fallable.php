@@ -41,7 +41,7 @@ abstract class Fallable extends Solid{
 				$nbt->setInt("TileID", $this->getId());
 				$nbt->setByte("Data", $this->getDamage());
 
-				$fall = Entity::createEntity("FallingSand", $this->getLevel(), $nbt);
+				$fall = Entity::createEntity("FallingBlock", $this->getLevel(), $nbt);
 
 				$fall->spawnToAll();
 			}

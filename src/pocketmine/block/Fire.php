@@ -24,16 +24,14 @@ declare(strict_types=1);
 
 namespace pocketmine\block;
 
-use pocketmine\entity\Arrow;
 use pocketmine\entity\Entity;
+use pocketmine\entity\projectile\Arrow;
 use pocketmine\event\entity\EntityCombustByBlockEvent;
 use pocketmine\event\entity\EntityDamageByBlockEvent;
 use pocketmine\event\entity\EntityDamageEvent;
 use pocketmine\item\Item;
 use pocketmine\level\Level;
 use pocketmine\math\Vector3;
-use pocketmine\Server;
-
 use function mt_rand;
 
 class Fire extends Flowable{
@@ -64,9 +62,9 @@ class Fire extends Flowable{
 		return true;
 	}
 
-	public function onEntityCollide(Entity $entity){
+	public function onEntityCollide(Entity $entity):bool{
 		$ev = new EntityDamageByBlockEvent($this, $entity, EntityDamageEvent::CAUSE_FIRE, 1);
-		$entity->attack($ev->getFinalDamage(), $ev);
+		$entity->attack($ev);
 
 		$ev = new EntityCombustByBlockEvent($this, $entity, 8);
 		if($entity instanceof Arrow){
@@ -76,6 +74,7 @@ class Fire extends Flowable{
 		if(!$ev->isCancelled()){
 			$entity->setOnFire($ev->getDuration());
 		}
+        return true;
 	}
 
 	public function getDrops(Item $item){

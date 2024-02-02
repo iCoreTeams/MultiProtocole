@@ -83,11 +83,11 @@ class BurningFurnace extends Solid{
 			$nbt->setString("CustomName", $item->getCustomName());
 		}
 
-		if($item->hasCustomBlockData()){
-			foreach($item->getCustomBlockData() as $key => $v){
-				$nbt->{$key} = $v;
-			}
-		}
+        if($item->hasCustomBlockData()){
+            foreach($item->getCustomBlockData() as $key => $v){
+                $nbt->setTag($key, $v);
+            }
+        }
 
 		Tile::createTile("Furnace", $this->getLevel(), $nbt);
 

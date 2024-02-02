@@ -56,8 +56,9 @@ class Cobweb extends Flowable{
 		return 1;
 	}
 
-	public function onEntityCollide(Entity $entity){
+	public function onEntityCollide(Entity $entity):bool{
 		$entity->resetFallDistance();
+        return true;
 	}
 
 	public function getDrops(Item $item){

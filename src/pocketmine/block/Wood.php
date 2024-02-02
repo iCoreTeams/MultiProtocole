@@ -76,7 +76,7 @@ class Wood extends Solid{
 		];
 	}
 
-	public function getToolType(){
+    public function getToolType(){
 		return Tool::TYPE_AXE;
 	}
 }

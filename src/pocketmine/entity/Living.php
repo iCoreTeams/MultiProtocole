@@ -53,8 +53,8 @@ abstract class Living extends Entity implements Damageable{
 	private const X_MODIFIER = 0.225;
     private const Y_MODIFIER = 0.205;
 
-	public $gravity = 0.08;
-	public $drag = 0.02;
+	public float $gravity = 0.08;
+	public float $drag = 0.02;
 
 	protected $attackTime = 0;
 
@@ -160,13 +160,6 @@ abstract class Living extends Entity implements Damageable{
 		}else{
 			$this->namedtag->removeTag("ActiveEffects");
 		}
-	}
-
-
-	public function hasLineOfSight(Entity $entity){
-		//TODO: head height
-		return true;
-		//return $this->getLevel()->rayTraceBlocks(Vector3::createVector($this->x, $this->y + $this->height, $this->z), Vector3::createVector($entity->x, $entity->y + $entity->height, $entity->z)) === null;
 	}
 
 	/**
@@ -341,15 +334,10 @@ abstract class Living extends Entity implements Damageable{
 	}
 
 	public function fall(float $fallDistance){
-		/*if($this->level->getBlockIdAt($this->getFloorX(), $this->getFloorY() - 1, $this->getFloorZ()) === Block::SLIME_BLOCK and !$this->isSneaking()){
-			$this->motionY = $this->gravity * $fallDistance;
-			$this->resetFallDistance();
-			return;
-		}*/
 		$damage = floor($fallDistance - 3 - ($this->hasEffect(Effect::JUMP) ? $this->getEffect(Effect::JUMP)->getEffectLevel() : 0));
 		if($damage > 0){
 			$ev = new EntityDamageEvent($this, EntityDamageEvent::CAUSE_FALL, $damage);
-			$this->attack($ev->getFinalDamage(), $ev);
+			$this->attack($ev);
 		}
 	}
 
@@ -367,7 +355,7 @@ abstract class Living extends Entity implements Damageable{
 		parent::applyDamageModifiers($source);
 	}
 
-	public function attack($damage, EntityDamageEvent $source){
+	public function attack(EntityDamageEvent $source){
 		if($this->noDamageTicks > 0){
 			$source->setCancelled();
 		}
@@ -381,7 +369,7 @@ abstract class Living extends Entity implements Damageable{
 			$source->setCancelled();
 		}
 
-		parent::attack($damage, $source);
+		parent::attack($source);
 
 		if($source->isCancelled()){
 			return;
@@ -466,7 +454,7 @@ abstract class Living extends Entity implements Damageable{
 			if($this->isInsideOfSolid()){
 				$hasUpdate = true;
 				$ev = new EntityDamageEvent($this, EntityDamageEvent::CAUSE_SUFFOCATION, 1);
-				$this->attack($ev->getFinalDamage(), $ev);
+				$this->attack($ev);
 			}
 
 			if(!$this->hasEffect(Effect::WATER_BREATHING) and $this->isInsideOfWater()){
@@ -479,7 +467,7 @@ abstract class Living extends Entity implements Damageable{
 						$airTicks = 0;
 
 						$ev = new EntityDamageEvent($this, EntityDamageEvent::CAUSE_DROWNING, 2);
-						$this->attack($ev->getFinalDamage(), $ev);
+						$this->attack($ev);
 					}
 					$this->setDataProperty(self::DATA_AIR, self::DATA_TYPE_SHORT, $airTicks);
 				}
@@ -491,7 +479,7 @@ abstract class Living extends Entity implements Damageable{
 						$airTicks = 0;
 
 						$ev = new EntityDamageEvent($this, EntityDamageEvent::CAUSE_SUFFOCATION, 2);
-						$this->attack($ev->getFinalDamage(), $ev);
+						$this->attack($ev);
 					}
 					$this->setDataProperty(self::DATA_AIR, self::DATA_TYPE_SHORT, $airTicks);
 				}else{

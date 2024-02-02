@@ -25,7 +25,7 @@ declare(strict_types=1);
 namespace pocketmine\item;
 
 use pocketmine\entity\Entity;
-use pocketmine\entity\FishingHook;
+use pocketmine\entity\projectile\FishingHook;
 use pocketmine\event\player\fish\FishingRodStartFishingEvent;
 use pocketmine\math\Vector3;
 use pocketmine\network\mcpe\protocol\LevelSoundEventPacket;

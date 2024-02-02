@@ -76,11 +76,11 @@ class SignPost extends Transparent{
 				$nbt->setString("Creator", $player->getRawUniqueId());
 			}
 
-			if($item->hasCustomBlockData()){
-				foreach($item->getCustomBlockData() as $key => $v){
-					$nbt->{$key} = $v;
-				}
-			}
+            if($item->hasCustomBlockData()){
+                foreach($item->getCustomBlockData() as $key => $v){
+                    $nbt->setTag($key, $v);
+                }
+            }
 
 			if($face === 1){
 				$this->meta = floor((($player->yaw + 180) * 16 / 360) + 0.5) & 0x0f;

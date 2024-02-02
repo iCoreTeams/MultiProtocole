@@ -34,7 +34,6 @@ use pocketmine\network\bedrock\protocol\LevelChunkPacket;
 use pocketmine\network\bedrock\protocol\ProtocolInfo;
 use pocketmine\scheduler\AsyncTask;
 use pocketmine\Server;
-use function assert;
 
 class BedrockChunkRequestTask extends AsyncTask{
 
@@ -53,7 +52,10 @@ class BedrockChunkRequestTask extends AsyncTask{
 	/** @var int */
 	protected $compressionLevel;
 
-	public function __construct(Level $level, Chunk $chunk){
+	/** @var int */
+	protected $protocolVersion;
+
+	public function __construct(Level $level, Chunk $chunk, int $protocolVersion){
 		$this->levelId = $level->getId();
 		$this->compressionLevel = NetworkCompression::$LEVEL;
 
@@ -62,6 +64,8 @@ class BedrockChunkRequestTask extends AsyncTask{
 
 		$this->tileData = BedrockChunkSerializer::serializeTiles($chunk);
 		$this->chunk = $chunk->fastSerialize();
+
+		$this->protocolVersion = $protocolVersion;
 	}
 
 	public function onRun(){
@@ -88,7 +92,7 @@ class BedrockChunkRequestTask extends AsyncTask{
 		$level = $server->getLevel($this->levelId);
 		if($level instanceof Level){
 			if($this->hasResult()){
-				BedrockChunkCache::getInstance($level)->requestCallback($this->chunkX, $this->chunkZ, $this->getResult());
+				BedrockChunkCache::getInstance($level, $this->protocolVersion)->requestCallback($this->chunkX, $this->chunkZ, $this->getResult());
 			}else{
 				$server->getLogger()->error("Chunk request for level #" . $this->levelId . ", x=" . $this->chunkX . ", z=" . $this->chunkZ . " doesn't have any result data");
 			}

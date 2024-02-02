@@ -85,11 +85,11 @@ class EnderChest extends Chest{
 			$nbt->setString("CustomName", $item->getCustomName());
 		}
 
-		if($item->hasCustomBlockData()){
-			foreach($item->getCustomBlockData() as $key => $v){
-				$nbt->{$key} = $v;
-			}
-		}
+        if($item->hasCustomBlockData()){
+            foreach($item->getCustomBlockData() as $key => $v){
+                $nbt->setTag($key, $v);
+            }
+        }
 		Tile::createTile(Tile::ENDER_CHEST, $this->getLevel(), $nbt);
 
 		return true;

@@ -29,6 +29,8 @@ use pocketmine\item\Tool;
 
 class WoodenDoor extends Door{
 
+    protected $id = self::WOODEN_DOOR_BLOCK;
+
 	public function getHardness(){
 		return 3;
 	}
@@ -39,7 +41,7 @@ class WoodenDoor extends Door{
 
 	public function getDrops(Item $item){
 		return [
-			[$this->getItemId(), 0, 1],
+			[Item::WOODEN_DOOR, 0, 1],
 		];
 	}
 }

@@ -240,6 +240,15 @@ abstract class BaseInventory implements Inventory{
 		return -1;
 	}
 
+    public function firstOccupied(): int{
+        for($i = 0; $i < $this->size; $i++){
+            if(($item = $this->getItem($i))->getId() !== Item::AIR and $item->getCount() > 0){
+                return $i;
+            }
+        }
+        return -1;
+    }
+
 	public function canAddItem(Item $item) : bool{
 		$item = clone $item;
 		$checkDamage = !$item->hasAnyDamageValue();
@@ -278,6 +287,7 @@ abstract class BaseInventory implements Inventory{
 			$item = $this->getItem($i);
 			if($item->getId() === Item::AIR or $item->getCount() <= 0){
 				$emptySlots[] = $i;
+                continue;
 			}
 
 			foreach($itemSlots as $index => $slot){
@@ -483,6 +493,10 @@ abstract class BaseInventory implements Inventory{
 			$player->sendDataPacket($pk);
 		}
 	}
+
+    public function slotExists(int $slot) : bool{
+        return $slot >= 0 && $slot < $this->getSize();
+    }
 
 	public function getType() : InventoryType{
 		return $this->type;

@@ -340,10 +340,6 @@ abstract class MCPENetworkSession implements NetworkSession{
 		return false;
 	}
 
-	public function handleAdventureSettings(AdventureSettingsPacket $packet) : bool{
-		return false;
-	}
-
 	public function handleBlockEntityData(BlockEntityDataPacket $packet) : bool{
 		return false;
 	}
@@ -495,5 +491,9 @@ abstract class MCPENetworkSession implements NetworkSession{
 	public function handlePurchaseReceipt(PurchaseReceiptPacket $packet) : bool{
 		return false;
 	}
+
+    public function handleAdventureSettings(AdventureSettingsPacket $packet) : bool{
+        return false;
+    }
 
 }

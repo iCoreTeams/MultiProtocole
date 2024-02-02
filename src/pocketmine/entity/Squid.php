@@ -41,8 +41,8 @@ use const M_PI;
 class Squid extends WaterAnimal{
 	public const NETWORK_ID = self::SQUID;
 
-	public $width = 0.95;
-	public $height = 0.95;
+	public float $width = 0.95;
+	public float $height = 0.95;
 
 	/** @var Vector3 */
 	public $swimDirection = null;
@@ -59,8 +59,8 @@ class Squid extends WaterAnimal{
 		return "Squid";
 	}
 
-	public function attack($damage, EntityDamageEvent $source){
-		parent::attack($damage, $source);
+	public function attack(EntityDamageEvent $source){
+		parent::attack($source);
 		if($source->isCancelled()){
 			return;
 		}

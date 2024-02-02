@@ -105,7 +105,7 @@ interface ProtocolInfo{
 	public const CRAFTING_DATA_PACKET = 0x34;
 	public const CRAFTING_EVENT_PACKET = 0x35;
 	public const GUI_DATA_PICK_ITEM_PACKET = 0x36;
-	public const ADVENTURE_SETTINGS_PACKET = 0x37;
+
 	public const BLOCK_ACTOR_DATA_PACKET = 0x38;
 	public const PLAYER_INPUT_PACKET = 0x39;
 	public const LEVEL_CHUNK_PACKET = 0x3a;

@@ -34,11 +34,13 @@ use pocketmine\level\Level;
 use pocketmine\level\LevelException;
 use pocketmine\nbt\BigEndianNbtSerializer;
 use pocketmine\nbt\tag\ByteArrayTag;
+use pocketmine\nbt\tag\ByteTag;
 use pocketmine\nbt\tag\CompoundTag;
 use pocketmine\nbt\tag\IntArrayTag;
 use pocketmine\nbt\tag\ListTag;
 use pocketmine\nbt\TreeRoot;
 use pocketmine\Player;
+use pocketmine\Server;
 use pocketmine\utils\MainLogger;
 use pocketmine\utils\Utils;
 use pocketmine\utils\Zlib;
@@ -277,7 +279,8 @@ class McRegion extends BaseLevelProvider{
 		}
 		//TODO, add extra details
 		$levelData = CompoundTag::create()
-			->setByte("hardcore", 0)
+            ->setByte("hardcore", ($options["hardcore"] ?? false) === true ? 1 : 0)
+			->setByte("Difficulty", Level::getDifficultyFromString((string) ($options["difficulty"] ?? "normal")))
 			->setByte("initialized", 1)
 			->setInt("GameType", 0)
 			->setInt("generatorVersion", 1) //2 in MCPE
@@ -300,6 +303,14 @@ class McRegion extends BaseLevelProvider{
 		$buffer = Zlib::compress($decompressed, ZLIB_ENCODING_GZIP);
 		file_put_contents($path . "level.dat", $buffer);
 	}
+
+    public function getDifficulty() : int{
+        return $this->levelData->getByte("Difficulty", Level::DIFFICULTY_NORMAL);
+    }
+
+    public function setDifficulty(int $difficulty): void{
+        $this->levelData->setByte("Difficulty", $difficulty);
+    }
 
 	public function getGenerator() : string{
 		return $this->levelData->getString("generatorName");

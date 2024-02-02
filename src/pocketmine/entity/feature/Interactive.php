@@ -24,6 +24,4 @@ namespace pocketmine\entity\feature;
 interface Interactive
 {
 
-    public function getInteractButtonText(): string;
-
 }

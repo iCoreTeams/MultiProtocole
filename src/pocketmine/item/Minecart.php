@@ -25,7 +25,7 @@ declare(strict_types=1);
 namespace pocketmine\item;
 
 use pocketmine\block\Block;
-use pocketmine\entity\Entity;
+use pocketmine\block\Rail;
 use pocketmine\entity\EntityDataHelper;
 use pocketmine\entity\object\MinecartEmpty;
 use pocketmine\level\Level;
@@ -41,20 +41,16 @@ class Minecart extends Item{
     }
 
     public function onActivate(Level $level, Player $player, Block $block, Block $target, $face, $fx, $fy, $fz){
-        $minecart = new MinecartEmpty(
-            $player->getLevel(),
-            EntityDataHelper::createBaseNBT(
-                $block->add(0, 0.8, 0),
-                null,
-                0, 0
-            )
-        );
-        $minecart->spawnToAll();
+        if ($target instanceof Rail) {
+            $nbt = EntityDataHelper::createBaseNBT($block->add(0, 0.8, 0), null, 0, 0);
+            $minecart = new MinecartEmpty($player->getLevel(), $nbt);
 
-        if($player->isSurvival()){
-            $this->pop();
+            $minecart->spawnToAll();
+
+            if ($player->isSurvival()) {
+                $this->pop();
+            }
         }
-
         return true;
     }
 

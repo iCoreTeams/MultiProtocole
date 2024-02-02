@@ -42,6 +42,7 @@ use pocketmine\nbt\tag\{
 	StringTag};
 use pocketmine\nbt\TreeRoot;
 use pocketmine\network\mcpe\protocol\ProtocolInfo;
+use pocketmine\Server;
 use pocketmine\tile\Tile;
 use pocketmine\utils\Binary;
 use pocketmine\utils\BinaryStream;
@@ -199,7 +200,7 @@ class LevelDB extends BaseLevelProvider{
 		$levelData = CompoundTag::create()
 			//Vanilla fields
 			->setInt("DayCycleStopTime", -1)
-			->setInt("Difficulty", 2)
+            ->setInt("Difficulty", Level::getDifficultyFromString((string) ($options["difficulty"] ?? "normal")))
 			->setByte("ForceGameType", 0)
 			->setInt("GameType", 0)
 			->setInt("Generator", $generatorType)
@@ -228,7 +229,7 @@ class LevelDB extends BaseLevelProvider{
 
 			//Additional PocketMine-MP fields
 			->setTag("GameRules", new CompoundTag())
-			->setByte("hardcore", 0)
+			->setByte("hardcore", ($options["hardcore"] ?? false) === true ? 1 : 0)
 			->setString("generatorName", Generator::getGeneratorName($generator))
 			->setString("generatorOptions", $options["preset"] ?? "");
 
@@ -262,6 +263,14 @@ class LevelDB extends BaseLevelProvider{
 		$buffer = (new LittleEndianNbtSerializer())->write(new TreeRoot($this->levelData));
 		file_put_contents($this->getPath() . "level.dat", Binary::writeLInt(self::CURRENT_STORAGE_VERSION) . Binary::writeLInt(strlen($buffer)) . $buffer);
 	}
+
+    public function getDifficulty() : int{
+        return $this->levelData->getByte("Difficulty", Level::DIFFICULTY_NORMAL);
+    }
+
+    public function setDifficulty(int $difficulty): void{
+        $this->levelData->setByte("Difficulty", $difficulty);
+    }
 
 	public function unloadChunks(){
 		foreach($this->chunks as $chunk){

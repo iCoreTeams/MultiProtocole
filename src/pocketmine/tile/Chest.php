@@ -24,15 +24,19 @@ declare(strict_types=1);
 
 namespace pocketmine\tile;
 
+use pocketmine\block\Block;
 use pocketmine\inventory\ChestInventory;
 use pocketmine\inventory\DoubleChestInventory;
 use pocketmine\inventory\InventoryHolder;
 use pocketmine\level\Level;
+use pocketmine\nbt\tag\ByteTag;
 use pocketmine\nbt\tag\CompoundTag;
 use pocketmine\nbt\tag\IntTag;
-use pocketmine\nbt\tag\StringTag;
 
 class Chest extends Spawnable implements InventoryHolder, Container, Nameable{
+    use NameableTrait {
+        addAdditionalSpawnData as addNameSpawnData;
+    }
 	use ContainerTrait;
 
 	/** @var ChestInventory */
@@ -45,6 +49,15 @@ class Chest extends Spawnable implements InventoryHolder, Container, Nameable{
 		$this->inventory = new ChestInventory($this);
 
 		$this->initItems($nbt);
+
+        if (!$this->namedtag->hasTag("trapped", ByteTag::class)){
+            $blockTile = $this->level->getBlockAt($this->x, $this->y, $this->z);
+            if($blockTile->getId() === Block::TRAPPED_CHEST){
+                $this->namedtag->setByte("trapped", 1);
+            }else{
+                $this->namedtag->setByte("trapped", 0);
+            }
+        }
 	}
 
 	public function close(){
@@ -111,31 +124,9 @@ class Chest extends Spawnable implements InventoryHolder, Container, Nameable{
 		}
 	}
 
-	/**
-	 * @return string
-	 */
-	public function getName() : string{
-		return $this->namedtag->getString("CustomName", "Chest");
-	}
-
-	/**
-	 * @return bool
-	 */
-	public function hasName() : bool{
-		return $this->namedtag->hasTag("CustomName", StringTag::class);
-	}
-
-	/**
-	 * @param string $str
-	 */
-	public function setName(string $str){
-		if($str === ""){
-			$this->namedtag->removeTag("CustomName");
-			return;
-		}
-
-		$this->namedtag->setString("CustomName", $str);
-	}
+    public function isTrapped(): int{
+        return $this->namedtag->getByte("trapped", 0);
+    }
 
 	public function isPaired(){
 		if(!$this->namedtag->hasTag("pairx", IntTag::class) or !$this->namedtag->hasTag("pairz", IntTag::class)){
@@ -166,8 +157,6 @@ class Chest extends Spawnable implements InventoryHolder, Container, Nameable{
 
 		$this->createPair($tile);
 
-		//$this->spawnToAll();
-		//$tile->spawnToAll();
 		$this->onChanged();
 		$tile->onChanged();
 		$this->checkPairing();
@@ -209,8 +198,6 @@ class Chest extends Spawnable implements InventoryHolder, Container, Nameable{
 			$nbt->setInt("pairz", $this->namedtag->getInt("pairz"));
 		}
 
-		if($this->hasName()){
-			$nbt->setString("CustomName", $this->namedtag->getString("CustomName"));
-		}
+        $this->addNameSpawnData($nbt, $isBedrock);
 	}
 }

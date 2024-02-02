@@ -383,14 +383,14 @@ class Effect{
 			case Effect::POISON:
 				if($entity->getHealth() > 1 and !($entity instanceof Player and $entity->isCreative())){
 					$ev = new EntityDamageEvent($entity, EntityDamageEvent::CAUSE_MAGIC, 1);
-					$entity->attack($ev->getFinalDamage(), $ev);
+					$entity->attack($ev);
 				}
 				break;
 
 			case Effect::WITHER:
 				if(!($entity instanceof Player and $entity->isCreative())){
 					$ev = new EntityDamageEvent($entity, EntityDamageEvent::CAUSE_MAGIC, 1);
-					$entity->attack($ev->getFinalDamage(), $ev);
+					$entity->attack($ev);
 				}
 				break;
 
@@ -417,7 +417,7 @@ class Effect{
 				//TODO: add particles (witch spell)
 				$amount = (4 << $this->amplifier) * $this->potency;
 				if($amount > 0 and !($entity instanceof Player and $entity->isCreative())){
-					$entity->attack($amount, new EntityDamageEvent($entity, EntityDamageEvent::CAUSE_MAGIC, $amount));
+					$entity->attack(new EntityDamageEvent($entity, EntityDamageEvent::CAUSE_MAGIC, $amount));
 				}
 				break;
 			case Effect::SATURATION:

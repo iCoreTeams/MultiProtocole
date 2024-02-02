@@ -101,7 +101,8 @@ class Chest extends Transparent{
 			->setString("id", Tile::CHEST)
 			->setInt("x", $this->x)
 			->setInt("y", $this->y)
-			->setInt("z", $this->z);
+			->setInt("z", $this->z)
+            ->setByte("trapped", $this->isTrapped() ? 1 : 0);
 
 		if($item->hasCustomName()){
 			$nbt->setString("CustomName", $item->getCustomName());
@@ -116,8 +117,10 @@ class Chest extends Transparent{
 		$tile = Tile::createTile("Chest", $this->getLevel(), $nbt);
 
 		if($chest instanceof TileChest and $tile instanceof TileChest){
-			$chest->pairWith($tile);
-			$tile->pairWith($chest);
+            if ($chest->isTrapped() == $tile->isTrapped()){
+                $chest->pairWith($tile);
+                $tile->pairWith($chest);
+            }
 		}
 
 		return true;
@@ -150,7 +153,8 @@ class Chest extends Transparent{
 					->setString("id", Tile::CHEST)
 					->setInt("x", $this->x)
 					->setInt("y", $this->y)
-					->setInt("z", $this->z);
+					->setInt("z", $this->z)
+                    ->setByte("trapped", $this->isTrapped() ? 1 : 0);
 				$chest = Tile::createTile("Chest", $this->getLevel(), $nbt);
 			}
 
@@ -165,6 +169,10 @@ class Chest extends Transparent{
 
 		return true;
 	}
+
+    public function isTrapped() : bool{
+        return false;
+    }
 
 	public function canBeActivated() : bool{
 		return true;

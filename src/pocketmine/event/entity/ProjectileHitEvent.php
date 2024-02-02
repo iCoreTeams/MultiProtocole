@@ -24,7 +24,7 @@ declare(strict_types=1);
 
 namespace pocketmine\event\entity;
 
-use pocketmine\entity\Projectile;
+use pocketmine\entity\projectile\Projectile;
 use pocketmine\math\RayTraceResult;
 
 class ProjectileHitEvent extends EntityEvent{

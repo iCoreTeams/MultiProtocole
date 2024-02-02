@@ -108,7 +108,7 @@ class Random{
 		$this->w = ($this->w ^ (($this->w >> 19) & 0x7fffffff)
 		                     ^ ($t ^ (($t >> 8) & 0x7fffffff))) & 0xffffffff;
 
-		return $this->w;
+        return Binary::signInt($this->w);
 	}
 
 	/**

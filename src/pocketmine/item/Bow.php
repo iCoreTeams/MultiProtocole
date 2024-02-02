@@ -24,9 +24,9 @@ declare(strict_types=1);
 
 namespace pocketmine\item;
 
-use pocketmine\entity\Arrow as ArrowEntity;
 use pocketmine\entity\EntityDataHelper;
-use pocketmine\entity\Projectile;
+use pocketmine\entity\projectile\Arrow as ArrowEntity;
+use pocketmine\entity\projectile\Projectile;
 use pocketmine\event\entity\EntityShootBowEvent;
 use pocketmine\event\entity\ProjectileLaunchEvent;
 use pocketmine\item\enchantment\Enchantment;

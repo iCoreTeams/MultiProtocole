@@ -25,12 +25,15 @@ interface TransactionQueue{
 
 	public const DEFAULT_ALLOWED_RETRIES = 5;
 
-	function getTransactions();
+    function getInventories();
 
-	function getTransactionCount();
+    function getTransactions();
 
-	function addTransaction(Transaction $transaction);
+    function getTransactionCount();
 
-	function execute();
+    function addTransaction(Transaction $transaction);
+
+    function execute();
+
 
 }

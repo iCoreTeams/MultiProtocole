@@ -59,8 +59,8 @@ class CraftingManager{
 
 	/** @var string|null */
 	private $pw10CraftingDataCache;
-	/** @var string[] */
-	private $bedrockCraftingDataCache = [];
+	/** @var string|null */
+	private $bedrockCraftingDataCache;
 
 	public function __construct(){
 		// load recipes from src/pocketmine/resources/recipes.json
@@ -128,7 +128,7 @@ class CraftingManager{
 		Timings::$craftingDataCacheRebuildTimer->stopTiming();
 	}
 
-	protected function buildBedrockCache(int $protocol) : void{
+	protected function buildBedrockCache() : void{
 		Timings::$craftingDataCacheRebuildTimer->startTiming();
 		$pk = new BedrockCraftingData();
 		$pk->cleanRecipes = false;
@@ -148,7 +148,7 @@ class CraftingManager{
 		$stream = new BedrockPacketBatch();
 		$stream->putPacket($pk);
 
-		$this->bedrockCraftingDataCache[$protocol] = ProtocolInfo::MCPE_RAKNET_PACKET_ID . BedrockNetworkCompression::compress($stream->buffer);
+		$this->bedrockCraftingDataCache = ProtocolInfo::MCPE_RAKNET_PACKET_ID . BedrockNetworkCompression::compress($stream->buffer);
 		Timings::$craftingDataCacheRebuildTimer->stopTiming();
 	}
 
@@ -165,10 +165,10 @@ class CraftingManager{
 			}
 			return $this->pw10CraftingDataCache;
 		}else{
-			if(!array_key_exists($protocol, $this->bedrockCraftingDataCache)){
-				$this->buildBedrockCache($protocol);
+			if($this->bedrockCraftingDataCache === null){
+				$this->buildBedrockCache();
 			}
-			return $this->bedrockCraftingDataCache[$protocol];
+			return $this->bedrockCraftingDataCache;
 		}
 	}
 
@@ -254,7 +254,7 @@ class CraftingManager{
 		$this->recipeLookup[$result->getId() . ":" . $result->getDamage()][$hash] = $recipe;
 
 		$this->pw10CraftingDataCache = null;
-		$this->bedrockCraftingDataCache = [];
+		$this->bedrockCraftingDataCache = null;
 	}
 
 	/**
@@ -272,7 +272,7 @@ class CraftingManager{
 		$this->recipeLookup[$result->getId() . ":" . $result->getDamage()][$hash] = $recipe;
 
 		$this->pw10CraftingDataCache = null;
-		$this->bedrockCraftingDataCache = [];
+		$this->bedrockCraftingDataCache = null;
 	}
 
 	/**
@@ -283,7 +283,7 @@ class CraftingManager{
 		$this->furnaceRecipes[$input->getId() . ":" . ($input->hasAnyDamageValue() ? "?" : $input->getDamage())] = $recipe;
 
 		$this->pw10CraftingDataCache = null;
-		$this->bedrockCraftingDataCache = [];
+		$this->bedrockCraftingDataCache = null;
 	}
 
 	/**

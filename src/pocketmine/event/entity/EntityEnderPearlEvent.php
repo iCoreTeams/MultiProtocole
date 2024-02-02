@@ -24,8 +24,8 @@ declare(strict_types=1);
 
 namespace pocketmine\event\entity;
 
-use pocketmine\entity\EnderPearl;
 use pocketmine\entity\Entity;
+use pocketmine\entity\projectile\EnderPearl;
 use pocketmine\event\Cancellable;
 use pocketmine\math\Vector3;
 

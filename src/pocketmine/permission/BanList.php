@@ -154,7 +154,7 @@ class BanList{
 			}
 			fclose($fp);
 		}else{
-			MainLogger::getLogger()->error("Could not load ban list");
+            \GlobalLogger::get()->error("Could not load ban list");
 		}
 	}
 
@@ -175,7 +175,7 @@ class BanList{
 			}
 			fclose($fp);
 		}else{
-			MainLogger::getLogger()->error("Could not save ban list");
+            \GlobalLogger::get()->error("Could not save ban list");
 		}
 	}
 

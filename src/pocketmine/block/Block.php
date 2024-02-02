@@ -73,7 +73,7 @@ class Block extends Position implements BlockIds, Metadatable{
 	 *
 	 * @param bool $force
 	 */
-	public static function init(bool $force = false){
+	public static function init(bool $force = false): void{
 		if(self::$list === null or $force){
 			self::$list = new \SplFixedArray(256);
 			self::$fullList = new \SplFixedArray(4096);
@@ -137,9 +137,12 @@ class Block extends Position implements BlockIds, Metadatable{
 			self::registerBlock(new Obsidian());
 			self::registerBlock(new Torch());
 			self::registerBlock(new Fire());
+            self::registerBlock(new Hopper());
 			self::registerBlock(new MonsterSpawner());
 			self::registerBlock(new WoodenStairs(Block::OAK_STAIRS, 0, "Oak Stairs"));
 			self::registerBlock(new Chest());
+
+            self::registerBlock(new Beacon());
 
 			self::registerBlock(new DiamondOre());
 			self::registerBlock(new Diamond());
@@ -255,7 +258,9 @@ class Block extends Position implements BlockIds, Metadatable{
 			self::registerBlock(new Coal());
 			self::registerBlock(new PackedIce());
 			self::registerBlock(new DoublePlant());
-
+            self::registerBlock(new Magma());
+            self::registerBlock(new RedNetherBrick());
+            self::registerBlock(new Bone());
 			self::registerBlock(new RedSandstone());
 			self::registerBlock(new RedSandstoneStairs());
 			self::registerBlock(new DoubleStoneSlab2());
@@ -277,6 +282,7 @@ class Block extends Position implements BlockIds, Metadatable{
 			self::registerBlock(new PurpurStairs());
 			self::registerBlock(new EndStoneBricks());
 			self::registerBlock(new EndRod());
+            self::registerBlock(new NetherWart());
 
 			self::registerBlock(new GlazedTerracotta(Block::PURPLE_GLAZED_TERRACOTTA, 0, "Purple Glazed Terracotta"));
 			self::registerBlock(new GlazedTerracotta(Block::WHITE_GLAZED_TERRACOTTA, 0, "White Glazed Terracotta"));
@@ -289,12 +295,13 @@ class Block extends Position implements BlockIds, Metadatable{
 			self::registerBlock(new GlazedTerracotta(Block::GRAY_GLAZED_TERRACOTTA, 0, "Grey Glazed Terracotta"));
 			self::registerBlock(new GlazedTerracotta(Block::SILVER_GLAZED_TERRACOTTA, 0, "Light Grey Glazed Terracotta"));
 			self::registerBlock(new GlazedTerracotta(Block::CYAN_GLAZED_TERRACOTTA, 0, "Cyan Glazed Terracotta"));
-
 			self::registerBlock(new GlazedTerracotta(Block::BLUE_GLAZED_TERRACOTTA, 0, "Blue Glazed Terracotta"));
 			self::registerBlock(new GlazedTerracotta(Block::BROWN_GLAZED_TERRACOTTA, 0, "Brown Glazed Terracotta"));
 			self::registerBlock(new GlazedTerracotta(Block::GREEN_GLAZED_TERRACOTTA, 0, "Green Glazed Terracotta"));
 			self::registerBlock(new GlazedTerracotta(Block::RED_GLAZED_TERRACOTTA, 0, "Red Glazed Terracotta"));
 			self::registerBlock(new GlazedTerracotta(Block::BLACK_GLAZED_TERRACOTTA, 0, "Black Glazed Terracotta"));
+
+            self::registerBlock(new Concrete());
 
 			self::registerBlock(new StainedGlass());
 
@@ -312,6 +319,10 @@ class Block extends Position implements BlockIds, Metadatable{
 			}
 		}
 	}
+
+    public static function isInit() : bool{
+        return self::$fullList !== null;
+    }
 
 	/**
 	 * Registers a block type into the index. Plugins may use this method to register new block types or override
@@ -673,9 +684,9 @@ class Block extends Position implements BlockIds, Metadatable{
 	}
 
 
-	public function addVelocityToEntity(Entity $entity, Vector3 $vector){
-
-	}
+    public function addVelocityToEntity(Entity $entity) : ?Vector3{
+        return null;
+    }
 
 	/**
 	 * Sets the block position to a new Position object
@@ -823,11 +834,8 @@ class Block extends Position implements BlockIds, Metadatable{
 		return false;
  	}
 
-	/**
-	 * @param Entity $entity
-	 */
-	public function onEntityCollide(Entity $entity){
-
+	public function onEntityCollide(Entity $entity):bool{
+        return true;
 	}
 
 	public function onLanded(Entity $entity) : void{

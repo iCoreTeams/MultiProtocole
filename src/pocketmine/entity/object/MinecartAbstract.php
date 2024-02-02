@@ -51,13 +51,13 @@ abstract class MinecartAbstract extends Entity
     private int $displayOffset = 0;
     private int $hasDisplay = 0;
 
-    public $width = 0.98;
-    public $height = 0.7;
+    public float $width = 0.98;
+    public float $height = 0.7;
 
-    protected $baseOffset = 0.35;
+    protected float $baseOffset = 0.35;
 
-    public $gravity = 0.5;
-    public $drag = 0.1;
+    public float $gravity = 0.5;
+    public float $drag = 0.1;
 
     abstract protected function isRideable(): bool;
 
@@ -107,7 +107,7 @@ abstract class MinecartAbstract extends Entity
         } else {
             $this->setFalling();
         }
-        //$this->checkBlockCollision();
+        $this->checkBlockCollision();
 
         // Minecart head
         $this->pitch = 0;
