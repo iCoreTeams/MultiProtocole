@@ -253,11 +253,11 @@ class Server{
 
 	private ConsoleCommandSender $consoleSender;
 
-	private int $maxPlayers;
+	private int $maxPlayers = 1;
 
-	private bool $autoSave;
+	private bool $autoSave = true;
 
-	private RCON $rcon;
+	private ?RCON $rcon = null;
 
 	private EntityMetadataStore $entityMetadata;
 	private PlayerMetadataStore $playerMetadata;

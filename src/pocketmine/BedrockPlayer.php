@@ -50,6 +50,7 @@ use pocketmine\event\TextContainer;
 use pocketmine\event\Timings;
 use pocketmine\event\TranslationContainer;
 use pocketmine\form\Form;
+use pocketmine\form\FormValidationException;
 use pocketmine\inventory\BaseTransaction;
 use pocketmine\inventory\DropItemTransaction;
 use pocketmine\inventory\PlayerInventory;

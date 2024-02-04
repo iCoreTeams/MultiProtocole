@@ -269,7 +269,7 @@ abstract class Entity extends Location implements Metadatable, EntityIds{
 	 */
 	protected array $hasSpawned = [];
 
-	protected int $id;
+	protected int $id = -1;
 
 	protected array $dataProperties = [
 		self::DATA_FLAGS => [self::DATA_TYPE_LONG, 0],
