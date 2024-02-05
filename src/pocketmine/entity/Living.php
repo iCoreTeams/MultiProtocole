@@ -397,7 +397,7 @@ abstract class Living extends Entity implements Damageable{
 					$deltaZ = $this->z - $e->z;
 				}
 
-				$source->applyPostAttack($damage, $deltaX, $deltaY, $deltaZ);
+				$source->applyPostAttack($deltaX, $deltaY, $deltaZ);
 			}
 		}
 

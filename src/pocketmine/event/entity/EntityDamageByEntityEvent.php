@@ -68,7 +68,7 @@ class EntityDamageByEntityEvent extends EntityDamageEvent{
 		}
 	}
 
-	public function applyPostAttack(float $damage, float $deltaX, float $deltaY, float $deltaZ) : void{
+	public function applyPostAttack(float $deltaX, float $deltaY, float $deltaZ) : void{
 		$flag = true;
 		if($this->getCause() === self::CAUSE_ENTITY_ATTACK and $this->damager instanceof Human){
 			$inventory = $this->damager->getInventory();
