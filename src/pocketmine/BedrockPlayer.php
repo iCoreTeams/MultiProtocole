@@ -751,8 +751,8 @@ class BedrockPlayer extends Player{
 		$pk->worldTemplateId = new UUID();
         $this->sendDataPacket($pk);
 
-		$this->queueEncoded(StaticPacketCache::getAvailableActorIdentifiers($this->getProtocolVersion()));
-		$this->queueEncoded(StaticPacketCache::getBiomeDefs($this->getProtocolVersion()));
+		$this->queueEncoded(StaticPacketCache::getAvailableActorIdentifiers());
+		$this->queueEncoded(StaticPacketCache::getBiomeDefs());
 
 		$ev = new PlayerLoginEvent($this, "Plugin reason");
 		$ev->call();
