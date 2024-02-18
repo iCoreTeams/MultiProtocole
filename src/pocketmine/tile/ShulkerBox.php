@@ -31,6 +31,11 @@ class ShulkerBox extends Spawnable implements InventoryHolder, Container, Nameab
         $this->initItems($nbt);
 	}
 
+    public function getDefaultName(): string
+    {
+        return "Shulker Box";
+    }
+
     /**
      * @return int
      */

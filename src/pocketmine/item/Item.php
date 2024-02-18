@@ -247,6 +247,7 @@ class Item implements ItemIds, \JsonSerializable{
 			self::$list[self::TOTEM] = Totem::class;
 
 			self::$list[self::ENCHANTED_GOLDEN_APPLE] = GoldenAppleEnchanted::class;
+            self::$list[self::ENCHANTED_BOOK] = EnchantedBook::class;
 		}
 
 		self::initCreativeItems();

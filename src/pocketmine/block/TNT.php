@@ -26,6 +26,7 @@ namespace pocketmine\block;
 
 use pocketmine\entity\Entity;
 use pocketmine\entity\EntityDataHelper;
+use pocketmine\entity\projectile\Arrow;
 use pocketmine\item\Durable;
 use pocketmine\item\enchantment\Enchantment;
 use pocketmine\item\FlintSteel;
@@ -45,13 +46,32 @@ class TNT extends Solid{
 		$this->meta = $meta;
 	}
 
-	public function getName(){
-		return "TNT";
-	}
+    /**
+     * @return string
+     */
+    public function getName() : string{
+        return "TNT";
+    }
 
-	public function getHardness(){
-		return 0;
-	}
+    /**
+     * @return int
+     */
+    public function getHardness(){
+        return 0;
+    }
+
+    public function hasEntityCollision(){
+        return true;
+    }
+
+    public function onEntityCollide(Entity $entity) : bool{
+        if($entity instanceof Arrow and $entity->isOnFire()){
+            $this->ignite();
+            $this->getLevel()->setBlock($this, Block::get(Block::AIR), true);
+            return false;
+        }
+        return true;
+    }
 
 	public function onActivate(Item $item, Player $player = null){
 		if($item instanceof FlintSteel or $item->hasEnchantment(Enchantment::FIRE_ASPECT)){

@@ -60,6 +60,11 @@ class Chest extends Spawnable implements InventoryHolder, Container, Nameable{
         }
 	}
 
+    public function getDefaultName(): string
+    {
+        return "Chest";
+    }
+
 	public function close(){
 		if($this->closed === false){
 			foreach($this->getInventory()->getViewers() as $player){

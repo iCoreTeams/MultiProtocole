@@ -318,10 +318,8 @@ abstract class MinecartAbstract extends Entity
         $facing1 = $motion - $playerYawNeg;
         $facing2 = $wallOfFame - $playerYawPos;
         if ($facing1 == 0) {
-            $this->x = (float)$dx + 0.5;
             $expectedSpeed = $this->z - (float)$dz;
         } else if ($facing2 == 0) {
-            $this->z = (float)$dz + 0.5;
             $expectedSpeed = $this->x - (float)$dx;
         } else {
             $motX = $this->x - $playerYawNeg;
@@ -413,15 +411,10 @@ abstract class MinecartAbstract extends Entity
 
     public static function isRailBlock(int $blockId): bool
     {
-        switch ($blockId) {
-            case Block::RAIL:
-            case Block::POWERED_RAIL:
-            case Block::ACTIVATOR_RAIL:
-            case Block::DETECTOR_RAIL:
-                return true;
-            default:
-                return false;
-        }
+        return match ($blockId) {
+            Block::RAIL, Block::POWERED_RAIL, Block::ACTIVATOR_RAIL, Block::DETECTOR_RAIL => true,
+            default => false,
+        };
     }
 
     private function getNextRail(float $dx, float $dy, float $dz): ?Vector3

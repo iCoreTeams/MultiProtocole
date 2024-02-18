@@ -22,16 +22,28 @@
 
 declare(strict_types=1);
 
-namespace pocketmine\tile;
+namespace pocketmine\event\block;
 
-use pocketmine\nbt\tag\CompoundTag;
-use pocketmine\nbt\tag\StringTag;
+use pocketmine\block\Block;
+use pocketmine\event\Cancellable;
+use pocketmine\math\Vector3;
 
-class EnchantTable extends Spawnable implements Nameable{
-    use NameableTrait;
+class BlockDragonEggTeleportEvent extends BlockEvent implements Cancellable{
+    public static $handlerList = null;
 
-    public function getDefaultName(): string
-    {
-        return "Enchant Table";
+    private Vector3 $to;
+
+    public function __construct(Block $block, Vector3 $to){
+        $this->block = $block;
+        $this->to = $to;
     }
+
+    public function getTo(): Vector3{
+        return $this->to;
+    }
+
+    public function setTo(Vector3 $to): void{
+        $this->to = $to;
+    }
+
 }

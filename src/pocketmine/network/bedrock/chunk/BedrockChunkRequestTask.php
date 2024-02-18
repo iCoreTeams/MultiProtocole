@@ -34,11 +34,14 @@ use pocketmine\network\bedrock\protocol\LevelChunkPacket;
 use pocketmine\network\bedrock\protocol\ProtocolInfo;
 use pocketmine\scheduler\AsyncTask;
 use pocketmine\Server;
+use function assert;
 
 class BedrockChunkRequestTask extends AsyncTask{
 
 	/** @var int */
 	protected $levelId;
+    /** @var int */
+    protected $dimensionId;
 
 	/** @var int */
 	protected $chunkX;
@@ -57,6 +60,7 @@ class BedrockChunkRequestTask extends AsyncTask{
 
 	public function __construct(Level $level, Chunk $chunk, int $protocolVersion){
 		$this->levelId = $level->getId();
+        $this->dimensionId = $level->getDimension();
 		$this->compressionLevel = NetworkCompression::$LEVEL;
 
 		$this->chunkX = $chunk->getX();
@@ -76,6 +80,7 @@ class BedrockChunkRequestTask extends AsyncTask{
 		$pk = new LevelChunkPacket();
 		$pk->chunkX = $this->chunkX;
 		$pk->chunkZ = $this->chunkZ;
+        $pk->dimensionId = $this->dimensionId;
 		$pk->subChunkCount = $chunk->getSubChunkSendCount();
         $pk->subChunkCount += BedrockChunkSerializer::LOWER_PADDING_SIZE;
 

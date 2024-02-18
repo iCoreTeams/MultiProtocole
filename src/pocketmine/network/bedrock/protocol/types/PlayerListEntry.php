@@ -47,6 +47,8 @@ class PlayerListEntry{
 	public $isTeacher = false;
 	/** @var bool */
 	public $isHost = false;
+    /** @var bool */
+    public $isSubClient = false;
 
 	public static function createRemovalEntry(UUID $uuid) : PlayerListEntry{
 		$entry = new PlayerListEntry();
@@ -55,7 +57,7 @@ class PlayerListEntry{
 		return $entry;
 	}
 
-	public static function createAdditionEntry(UUID $uuid, int $actorUniqueId, string $username, Skin $skin, string $xboxUserId = "", string $platformChatId = "", int $buildPlatform = OS::UNKNOWN, bool $isTeacher = false, bool $isHost = false) : PlayerListEntry{
+	public static function createAdditionEntry(UUID $uuid, int $actorUniqueId, string $username, Skin $skin, string $xboxUserId = "", string $platformChatId = "", int $buildPlatform = OS::UNKNOWN, bool $isTeacher = false, bool $isHost = false, bool $isSubClient = false) : PlayerListEntry{
 		$entry = new PlayerListEntry();
 		$entry->uuid = $uuid;
 		$entry->actorUniqueId = $actorUniqueId;
@@ -66,6 +68,7 @@ class PlayerListEntry{
 		$entry->skin = $skin;
 		$entry->isTeacher = $isTeacher;
 		$entry->isHost = $isHost;
+        $entry->isSubClient = $isSubClient;
 
 		return $entry;
 	}

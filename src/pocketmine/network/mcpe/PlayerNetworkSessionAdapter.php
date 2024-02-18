@@ -25,7 +25,6 @@ declare(strict_types=1);
 namespace pocketmine\network\mcpe;
 
 
-use pocketmine\entity\feature\Interactive;
 use pocketmine\entity\object\MinecartAbstract;
 use pocketmine\entity\Rideable;
 use pocketmine\event\server\DataPacketReceiveEvent;
@@ -53,7 +52,6 @@ use pocketmine\network\mcpe\protocol\MapInfoRequestPacket;
 use pocketmine\network\mcpe\protocol\MobArmorEquipmentPacket;
 use pocketmine\network\mcpe\protocol\MobEquipmentPacket;
 use pocketmine\network\mcpe\protocol\MovePlayerPacket;
-use pocketmine\network\mcpe\protocol\PacketPool;
 use pocketmine\network\mcpe\protocol\PlayerActionPacket;
 use pocketmine\network\mcpe\protocol\PlayerInputPacket;
 use pocketmine\network\mcpe\protocol\RemoveBlockPacket;
@@ -328,12 +326,12 @@ class PlayerNetworkSessionAdapter extends MCPENetworkSession{
 		return $this->player->handleCraftingEvent($packet);
 	}
 
-    public function handleAdventureSettings(AdventureSettingsPacket $packet) : bool{
-        $this->player->toggleFlight($packet->isFlying);
-        $this->player->toggleNoClip($packet->noClip);
+	public function handleAdventureSettings(AdventureSettingsPacket $packet) : bool{
+		$this->player->toggleFlight($packet->isFlying);
+		$this->player->toggleNoClip($packet->noClip);
 
-        return true;
-    }
+		return true;
+	}
 
 	public function handleBlockEntityData(BlockEntityDataPacket $packet) : bool{
 		return $this->player->handleBlockEntityData($packet);

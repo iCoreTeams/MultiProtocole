@@ -552,7 +552,7 @@ abstract class PacketTranslator{
 				$pk = new BedrockAnimatePacket();
 				$pk->action = $packet->action;
 				$pk->actorRuntimeId = $packet->entityRuntimeId;
-				$pk->float = $packet->float;
+				$pk->rowingTime = $packet->rowingTime;
 				break;
 			case MCPEProtocolInfo::UPDATE_BLOCK_PACKET:
 				/** @var MCPEUpdateBlockPacket $packet */
@@ -702,6 +702,7 @@ abstract class PacketTranslator{
 			Entity::DATA_AIR => ActorMetadataProperties::AIR,
 			Entity::DATA_POTION_COLOR => ActorMetadataProperties::POTION_COLOR,
 			Entity::DATA_POTION_AMBIENT => ActorMetadataProperties::POTION_AMBIENT,
+            Entity::DATA_JUMP_DURATION => ActorMetadataProperties::JUMP_DURATION,
 			Entity::DATA_HURT_TIME => ActorMetadataProperties::HURT_TIME,
 			Entity::DATA_HURT_DIRECTION => ActorMetadataProperties::HURT_DIRECTION,
 			Entity::DATA_PADDLE_TIME_LEFT => ActorMetadataProperties::PADDLE_TIME_LEFT,
@@ -710,6 +711,10 @@ abstract class PacketTranslator{
 			Entity::DATA_MINECART_DISPLAY_BLOCK => ActorMetadataProperties::MINECART_DISPLAY_BLOCK,
 			Entity::DATA_MINECART_DISPLAY_OFFSET => ActorMetadataProperties::MINECART_DISPLAY_OFFSET,
 			Entity::DATA_MINECART_HAS_DISPLAY => ActorMetadataProperties::MINECART_HAS_DISPLAY,
+            Entity::DATA_HORSE_TYPE, Entity::DATA_CREEPER_SWELL => ActorMetadataProperties::HORSE_TYPE,
+            Entity::DATA_CREEPER_SWELL_PREVIOUS => ActorMetadataProperties::CREEPER_SWELL_PREVIOUS,
+            Entity::DATA_CREEPER_SWELL_DIRECTION => ActorMetadataProperties::CREEPER_SWELL_DIRECTION,
+            Entity::DATA_CHARGE_AMOUNT => ActorMetadataProperties::CHARGE_AMOUNT,
 			Entity::DATA_ENDERMAN_HELD_ITEM_ID => ActorMetadataProperties::ENDERMAN_HELD_ITEM_ID,
 			Entity::DATA_ENTITY_AGE => ActorMetadataProperties::ENTITY_AGE,
 			Human::DATA_PLAYER_FLAGS => ActorMetadataProperties::PLAYER_FLAGS,
@@ -809,6 +814,9 @@ abstract class PacketTranslator{
 				Entity::DATA_FLAG_IDLING => ActorMetadataFlags::IDLING,
 				Entity::DATA_FLAG_EVOKER_SPELL => ActorMetadataFlags::EVOKER_SPELL,
 				Entity::DATA_FLAG_CHARGE_ATTACK => ActorMetadataFlags::CHARGE_ATTACK,
+                42 => ActorMetadataFlags::WASD_CONTROLLED, //под вопросом
+                Entity::DATA_FLAG_WASD_CONTROLLED => ActorMetadataFlags::WASD_CONTROLLED,
+                Entity::DATA_FLAG_CAN_POWER_JUMP => ActorMetadataFlags::CAN_POWER_JUMP,
 				Entity::DATA_FLAG_LINGER => ActorMetadataFlags::LINGER,
                 Entity::DATA_FLAG_HAS_COLLISION => ActorMetadataFlags::HAS_COLLISION,
                 Entity::DATA_FLAG_AFFECTED_BY_GRAVITY => ActorMetadataFlags::AFFECTED_BY_GRAVITY

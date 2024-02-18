@@ -31,6 +31,8 @@ use function strtoupper;
 
 class Enchantment{
 
+    public const TYPE_INVALID = -1;
+
 	public const PROTECTION = 0;
 	public const FIRE_PROTECTION = 1;
 	public const FEATHER_FALLING = 2;
@@ -88,6 +90,7 @@ class Enchantment{
 	public const SLOT_FISHING_ROD = 0b100000000000;
 	public const SLOT_CARROT_STICK = 0b1000000000000;
 
+
 	/** @var Enchantment[] */
 	protected static $enchantments;
 
@@ -128,12 +131,12 @@ class Enchantment{
 	 *
 	 * @return Enchantment|null
 	 */
-	public static function getEnchantment(int $id){
-		if(isset(self::$enchantments[$id])){
-			return clone self::$enchantments[$id];
-		}
-		return null;
-	}
+    public static function getEnchantment($id){
+        if(isset(self::$enchantments[$id])){
+            return clone self::$enchantments[(int) $id];
+        }
+        return new Enchantment(self::TYPE_INVALID, "unknown", 0, 0, 0);
+    }
 
 	/**
 	 * @param string $name
@@ -144,7 +147,7 @@ class Enchantment{
 		if(defined(Enchantment::class . "::" . strtoupper($name))){
 			return self::getEnchantment(constant(Enchantment::class . "::" . strtoupper($name)));
 		}
-		return null;
+        return new Enchantment(self::TYPE_INVALID, "unknown", 0, 0, 0);
 	}
 
 	private $id;
@@ -239,4 +242,16 @@ class Enchantment{
 		return $this;
 	}
 
+
+    /**
+     * @param Enchantment $ent
+     *
+     * @return bool
+     */
+    public function equals(Enchantment $ent){
+        if($ent->getId() == $this->getId() and $ent->getLevel() == $this->getLevel() and $ent->getActivationType() == $this->getActivationType() and $ent->getRarity() == $this->getRarity()){
+            return true;
+        }
+        return false;
+    }
 }

@@ -40,7 +40,7 @@ interface ActorMetadataProperties{
 	public const AIR = 7; //short
 	public const POTION_COLOR = 8; //int (ARGB!)
 	public const POTION_AMBIENT = 9; //byte
-	/* 10 (byte) */
+    public const JUMP_DURATION = 10; //byte
 	public const HURT_TIME = 11; //int (minecart/boat)
 	public const HURT_DIRECTION = 12; //int (minecart/boat)
 	public const PADDLE_TIME_LEFT = 13; //float
@@ -52,10 +52,11 @@ interface ActorMetadataProperties{
 	public const MINECART_DISPLAY_OFFSET = 17; //int
 	public const SHOOTER_ID = 17; //long (used by arrows)
 	public const MINECART_HAS_DISPLAY = 18; //byte (must be 1 for minecart to show block inside)
-	public const HORSE_TYPE = 19; //byte
-	/* 20 (unknown)
-	 * 21 (unknown) */
-	public const CHARGE_AMOUNT = 22; //int8, used for ghasts and also crossbow charging
+    public const HORSE_TYPE = 19; //byte
+    public const CREEPER_SWELL = 19; //int
+    public const CREEPER_SWELL_PREVIOUS = 20; //int
+    public const CREEPER_SWELL_DIRECTION = 21; //byte
+    public const CHARGE_AMOUNT = 22; //int8, used for ghasts and also crossbow charging
 	public const ENDERMAN_HELD_ITEM_ID = 23; //short
 	public const ENTITY_AGE = 24; //short
 	/* 25 (int) used by horse, (byte) used by witch */

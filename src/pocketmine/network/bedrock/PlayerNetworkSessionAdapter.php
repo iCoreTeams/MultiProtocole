@@ -43,6 +43,7 @@ use pocketmine\network\bedrock\protocol\InventoryTransactionPacket;
 use pocketmine\network\bedrock\protocol\ItemFrameDropItemPacket;
 use pocketmine\network\bedrock\protocol\LevelSoundEventPacket;
 use pocketmine\network\bedrock\protocol\LoginPacket;
+use pocketmine\network\bedrock\protocol\MapInfoRequestPacket;
 use pocketmine\network\bedrock\protocol\MobEquipmentPacket;
 use pocketmine\network\bedrock\protocol\MovePlayerPacket;
 use pocketmine\network\bedrock\protocol\PacketViolationWarningPacket;
@@ -141,7 +142,6 @@ class PlayerNetworkSessionAdapter extends BedrockNetworkSession{
 			return $this->player->onFormSubmit($packet->formId, $responseData);
 		}else{
 			$this->server->getLogger()->logException(throw new \RuntimeException("Expected either formData or cancelReason to be set in ModalFormResponsePacket"));
-			return false;
 		}
 	}
 
@@ -438,4 +438,9 @@ class PlayerNetworkSessionAdapter extends BedrockNetworkSession{
 	public function handleRequestNetworkSettings(RequestNetworkSettingsPacket $packet) : bool{
 		return $this->player->handleRequestNetworkSettings($packet);
 	}
+
+    public function handleMapInfoRequest(MapInfoRequestPacket $packet) : bool{
+        return $this->player->handleBedrockMapInfoRequest($packet);
+    }
+
 }

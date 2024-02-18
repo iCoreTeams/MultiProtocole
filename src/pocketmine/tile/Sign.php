@@ -29,11 +29,29 @@ use pocketmine\BedrockPlayer;
 use pocketmine\event\block\SignChangeEvent;
 use pocketmine\level\Level;
 use pocketmine\nbt\tag\CompoundTag;
+use pocketmine\nbt\tag\StringTag;
 use pocketmine\network\bedrock\utils\BedrockUtils;
 use pocketmine\Player;
+use pocketmine\utils\Binary;
 use pocketmine\utils\TextFormat;
 
 class Sign extends Spawnable{
+
+    public const TAG_TEXT_BLOB = "Text";
+    public const TAG_TEXT_LINE = "Text%d"; //sprintf()able
+    public const TAG_TEXT_COLOR = "SignTextColor";
+    public const TAG_GLOWING_TEXT = "IgnoreLighting";
+    public const TAG_PERSIST_FORMATTING = "PersistFormatting"; //TAG_Byte
+    /**
+     * This tag is set to indicate that MCPE-117835 has been addressed in whatever version this sign was created.
+     * @see https://bugs.mojang.com/browse/MCPE-117835
+     */
+    public const TAG_LEGACY_BUG_RESOLVE = "TextIgnoreLegacyBugResolved";
+
+    public const TAG_FRONT_TEXT = "FrontText"; //TAG_Compound
+    public const TAG_BACK_TEXT = "BackText"; //TAG_Compound
+    public const TAG_WAXED = "IsWaxed"; //TAG_Byte
+    public const TAG_LOCKED_FOR_EDITING_BY = "LockedForEditingBy"; //TAG_Long
 
 	public function __construct(Level $level, CompoundTag $nbt){
 		for($i = 1; $i <= 4; ++$i){
@@ -83,17 +101,62 @@ class Sign extends Spawnable{
 	}
 
 	public function getText(){
-		return [
-			$this->namedtag->getString("Text1"),
-			$this->namedtag->getString("Text2"),
-			$this->namedtag->getString("Text3"),
-			$this->namedtag->getString("Text4")
-		];
+        $text = [];
+        if($this->namedtag->getString("Text4") !== ""){
+            return [
+                $this->namedtag->getString("Text1"),
+                $this->namedtag->getString("Text2"),
+                $this->namedtag->getString("Text3"),
+                $this->namedtag->getString("Text4")
+            ];
+        }
+
+        if($this->namedtag->getString("Text3") !== ""){
+            return [
+                $this->namedtag->getString("Text1"),
+                $this->namedtag->getString("Text2"),
+                $this->namedtag->getString("Text3")
+            ];
+        }
+
+        if($this->namedtag->getString("Text2") !== ""){
+            return [
+                $this->namedtag->getString("Text1"),
+                $this->namedtag->getString("Text2")
+            ];
+        }
+
+        if($this->namedtag->getString("Text1") !== ""){
+            return [
+                $this->namedtag->getString("Text1"),
+            ];
+        }
+
+		return $text;
 	}
 
 	public function addAdditionalSpawnData(CompoundTag $nbt, bool $isBedrock){
 		if($isBedrock){
 			$nbt->setString("Text", BedrockUtils::convertSignLinesToText($this->getText()));
+
+            /*
+             * new bedrock sign :(
+             */
+            $nbt->setTag(self::TAG_FRONT_TEXT, CompoundTag::create()
+                ->setString(self::TAG_TEXT_BLOB, BedrockUtils::convertSignLinesToText($this->getText()))
+                ->setInt(self::TAG_TEXT_COLOR, Binary::signInt(0xff_00_00_00))
+                ->setByte(self::TAG_GLOWING_TEXT, 0)
+                ->setByte(self::TAG_PERSIST_FORMATTING, 1) //TODO: not sure what this is used for
+            );
+            //TODO: this is not yet used by the server, but needed to rollback any client-side changes to the back text
+            $nbt->setTag(self::TAG_BACK_TEXT, CompoundTag::create()
+                ->setString(self::TAG_TEXT_BLOB, "")
+                ->setInt(self::TAG_TEXT_COLOR, Binary::signInt(0xff_00_00_00))
+                ->setByte(self::TAG_GLOWING_TEXT, 0)
+                ->setByte(self::TAG_PERSIST_FORMATTING, 1)
+            );
+            $nbt->setByte(self::TAG_WAXED, 0);
+            $nbt->setLong(self::TAG_LOCKED_FOR_EDITING_BY, $this->editorEntityRuntimeId ?? -1);
 		}else{
 			for($i = 1; $i <= 4; $i++){
 				$textKey = "Text$i";
@@ -110,7 +173,13 @@ class Sign extends Spawnable{
 
 		$removeFormat = $player->getRemoveFormat();
 		if($player instanceof BedrockPlayer){
-			$lines = BedrockUtils::convertSignTextToLines(TextFormat::clean($nbt->getString("Text"), $removeFormat));
+            if($nbt->hasTag("Text", StringTag::class)) {
+                $lines = BedrockUtils::convertSignTextToLines(TextFormat::clean($nbt->getString("Text"), $removeFormat));
+            }else{
+                $frontTextTag = $nbt->getTag(Sign::TAG_FRONT_TEXT);
+                $textBlobTag = $frontTextTag->getTag(Sign::TAG_TEXT_BLOB);
+                $lines = BedrockUtils::convertSignTextToLines($textBlobTag->getValue());
+            }
 		}else{
 			$lines = [
 				TextFormat::clean($nbt->getString("Text1"), $removeFormat),

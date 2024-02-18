@@ -39,6 +39,9 @@ use pocketmine\command\defaults\SaveOnCommand;
 use pocketmine\command\defaults\SayCommand;
 use pocketmine\command\defaults\SetWorldSpawnCommand;
 use pocketmine\command\defaults\StopCommand;
+use pocketmine\command\defaults\TeleportCommand;
+use pocketmine\command\defaults\TimeCommand;
+use pocketmine\command\defaults\TimingsCommand;
 use pocketmine\command\defaults\VanillaCommand;
 use pocketmine\command\defaults\WeatherCommand;
 use pocketmine\command\defaults\WhitelistCommand;
@@ -115,6 +118,9 @@ class SimpleCommandMap implements CommandMap{
         $this->register("pocketmine", new ListCommand("list"));
         $this->register("pocketmine", new OpCommand("op"));
         $this->register("pocketmine", new SayCommand("say"));
+        $this->register("pocketmine", new TimeCommand("time"));
+        $this->register("pocketmine", new TeleportCommand("tp"));
+        $this->register("pocketmine", new TimingsCommand("timings"));
         $this->register("pocketmine", new WeatherCommand("weather"));
 
 		if($this->server->getProperty("debug.commands", false)){

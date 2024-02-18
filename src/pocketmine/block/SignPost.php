@@ -33,6 +33,7 @@ use pocketmine\nbt\tag\CompoundTag;
 use pocketmine\network\bedrock\protocol\OpenSignPacket;
 use pocketmine\Player;
 use pocketmine\tile\Tile;
+use pocketmine\tile\Sign as TileSign;
 use function floor;
 
 class SignPost extends Transparent{
@@ -104,6 +105,34 @@ class SignPost extends Transparent{
 
 		return false;
 	}
+
+    public function onActivate(Item $item, Player $player = null)
+    {
+        $tile = $this->level->getTileAt($this->x, $this->y, $this->z);
+        if (!($tile instanceof TileSign)) {
+            $nbt = CompoundTag::create()
+                ->setString("id", Tile::SIGN)
+                ->setInt("x", $this->x)
+                ->setInt("y", $this->y)
+                ->setInt("z", $this->z)
+                ->setString("Text1", "")
+                ->setString("Text2", "")
+                ->setString("Text3", "")
+                ->setString("Text4", "");
+            Tile::createTile(Tile::SIGN, $this->getLevel(), $nbt);
+        }
+        if ($player instanceof BedrockPlayer) {
+            $pk = new OpenSignPacket();
+            [$pk->x, $pk->y, $pk->z] = [$this->x, $this->y, $this->z];
+            $pk->front = true;
+            $player->sendDataPacket($pk);
+        }
+        return true;
+    }
+
+    public function canBeActivated() : bool{
+        return true;
+    }
 
 	public function onUpdate($type){
 		if($type === Level::BLOCK_UPDATE_NORMAL){

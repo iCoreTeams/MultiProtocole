@@ -48,7 +48,6 @@ class AvailableCommandsPacket extends DataPacket{
 	}
 
 	public function encodePayload(){
-		//var_dump($this->commandData["stop"]);
 		$this->putJson($this->commandData);
 		$this->putString($this->unknown);
 	}

@@ -57,10 +57,6 @@ class MapInfoRequestPacket extends DataPacket{
 		}
 	}
 
-	public function mustBeDecoded() : bool{
-		return false;
-	}
-
 	public function handle(NetworkSession $session) : bool{
 		return $session->handleMapInfoRequest($this);
 	}

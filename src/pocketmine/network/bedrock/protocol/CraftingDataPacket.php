@@ -28,6 +28,7 @@ namespace pocketmine\network\bedrock\protocol;
 
 
 use LogicException;
+use pocketmine\inventory\BrewingRecipe;
 use pocketmine\inventory\FurnaceRecipe;
 use pocketmine\inventory\ShapedRecipe;
 use pocketmine\inventory\ShapelessRecipe;
@@ -260,7 +261,15 @@ class CraftingDataPacket extends DataPacket{
 		$this->entries[] = $recipe;
 	}
 
-	public function encodePayload(){
+    public function addBrewingStand(BrewingRecipe $recipe):void{
+        $input = $recipe->getPotion();
+        $ingredient = $recipe->getInput();
+        $output = $recipe->getResult();
+        $potionTypeRecipes = new PotionTypeRecipe($input->getId(), $input->getDamage(), $ingredient->getId(), $ingredient->getDamage(), $output->getId(), $output->getDamage());
+        $this->potionTypeRecipes[] = $potionTypeRecipes;
+    }
+
+    public function encodePayload(){
 		$this->putUnsignedVarInt(count($this->entries));
 
 		$networkId = 1;
@@ -269,21 +278,16 @@ class CraftingDataPacket extends DataPacket{
 		}
 
 		$this->putUnsignedVarInt(count($this->potionTypeRecipes));
-		foreach($this->potionTypeRecipes as $entry){
-			$this->putVarInt($entry->getInputPotionId());
-			$this->putVarInt($entry->getInputPotionMeta());
-			$this->putVarInt($entry->getIngredientItemId());
-			$this->putVarInt($entry->getIngredientItemMeta());
-			$this->putVarInt($entry->getOutputPotionId());
-			$this->putVarInt($entry->getOutputPotionMeta());
-		}
+        foreach($this->potionTypeRecipes as $entry){
+            $this->writePotionTypes($entry);
+        }
 
-		$this->putUnsignedVarInt(count($this->potionContainerRecipes));
-		foreach($this->potionContainerRecipes as $entry){
-			$this->putVarInt($entry->getInputItemId());
-			$this->putVarInt($entry->getIngredientItemId());
-			$this->putVarInt($entry->getOutputItemId());
-		}
+        $this->putUnsignedVarInt(count($this->potionContainerRecipes));
+        foreach($this->potionContainerRecipes as $entry){
+            $this->putVarInt($entry->getInputItemId());
+            $this->putVarInt($entry->getIngredientItemId());
+            $this->putVarInt($entry->getOutputItemId());
+        }
 
         $this->putUnsignedVarInt(count($this->materialReducerRecipes));
         foreach($this->materialReducerRecipes as $recipe){

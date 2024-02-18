@@ -55,6 +55,8 @@ class Network{
 	/** @var int|float */
 	private $download = 0;
 
+    private string $name = '';
+
 	public function __construct(Server $server){
 		PacketPool::init();
 		BedrockPacketPool::init();
@@ -67,6 +69,28 @@ class Network{
 
 		$this->server = $server;
 	}
+
+    /**
+     * Sets the server name shown on each interface Query
+     *
+     * @param string $name
+     */
+    public function setName(string $name): void{
+        $this->name = (string) $name;
+        foreach($this->interfaces as $interface){
+            $interface->setName($this->name);
+        }
+    }
+
+    public function getName(): string{
+        return $this->name;
+    }
+
+    public function updateName(): void{
+        foreach($this->interfaces as $interface){
+            $interface->setName($this->name);
+        }
+    }
 
 	public function addStatistics($upload, $download){
 		$this->upload += $upload;

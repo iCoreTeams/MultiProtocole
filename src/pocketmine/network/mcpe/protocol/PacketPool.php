@@ -88,8 +88,8 @@ class PacketPool{
 		static::registerPacket(new ContainerSetContentPacket());
 		static::registerPacket(new CraftingDataPacket());
 		static::registerPacket(new CraftingEventPacket());
+		static::registerPacket(new AdventureSettingsPacket());
 		static::registerPacket(new BlockEntityDataPacket());
-        static::registerPacket(new AdventureSettingsPacket());
 		static::registerPacket(new PlayerInputPacket());
 		static::registerPacket(new FullChunkDataPacket());
 		static::registerPacket(new SetCommandsEnabledPacket());

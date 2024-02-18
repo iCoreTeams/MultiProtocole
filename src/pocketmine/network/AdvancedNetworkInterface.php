@@ -47,4 +47,5 @@ interface AdvancedNetworkInterface extends NetworkInterface{
 	 */
 	public function sendRawPacket(string $address, int $port, string $payload);
 
+
 }

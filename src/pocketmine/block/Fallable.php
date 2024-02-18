@@ -31,7 +31,7 @@ use pocketmine\math\Vector3;
 
 abstract class Fallable extends Solid{
 
-	public function onUpdate($type){
+	public function onUpdate($type):bool{
 		if($type === Level::BLOCK_UPDATE_NORMAL){
 			$down = $this->getSide(Vector3::SIDE_DOWN);
 			if($down->getId() === self::AIR or ($down instanceof Liquid)){
@@ -46,5 +46,6 @@ abstract class Fallable extends Solid{
 				$fall->spawnToAll();
 			}
 		}
+        return true;
 	}
 }

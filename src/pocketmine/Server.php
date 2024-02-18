@@ -44,13 +44,11 @@ use pocketmine\event\level\LevelLoadEvent;
 use pocketmine\event\player\PlayerDataSaveEvent;
 use pocketmine\event\server\QueryRegenerateEvent;
 use pocketmine\event\server\ServerCommandEvent;
-use pocketmine\event\TextContainer;
 use pocketmine\event\Timings;
 use pocketmine\event\TimingsHandler;
 use pocketmine\event\TranslationContainer;
 use pocketmine\inventory\CraftingManager;
 use pocketmine\inventory\InventoryType;
-use pocketmine\inventory\Recipe;
 use pocketmine\item\enchantment\Enchantment;
 use pocketmine\item\Item;
 use pocketmine\lang\BaseLang;
@@ -78,6 +76,7 @@ use pocketmine\nbt\tag\DoubleTag;
 use pocketmine\nbt\tag\FloatTag;
 use pocketmine\nbt\tag\ListTag;
 use pocketmine\nbt\TreeRoot;
+use pocketmine\network\AdvancedNetworkInterface;
 use pocketmine\network\bedrock\CompressBatchTask as BedrockCompressBatchedTask;
 use pocketmine\network\bedrock\NetworkCompression as BedrockNetworkCompression;
 use pocketmine\network\bedrock\PacketTranslator;
@@ -93,7 +92,6 @@ use pocketmine\network\mcpe\protocol\ProtocolInfo;
 use pocketmine\network\mcpe\RakLibInterface;
 use pocketmine\network\Network;
 use pocketmine\network\query\QueryHandler;
-use pocketmine\network\rcon\RCON;
 use pocketmine\network\upnp\UPnP;
 use pocketmine\permission\BanList;
 use pocketmine\permission\DefaultPermissions;
@@ -257,8 +255,6 @@ class Server{
 
 	private bool $autoSave = true;
 
-	private ?RCON $rcon = null;
-
 	private EntityMetadataStore $entityMetadata;
 	private PlayerMetadataStore $playerMetadata;
 	private LevelMetadataStore $levelMetadata;
@@ -286,7 +282,7 @@ class Server{
 	private string $dataPath;
 	private string $pluginPath;
 
-	private QueryHandler $queryHandler;
+	private ?QueryHandler $queryHandler = null;
 	private ?QueryRegenerateEvent $queryRegenerateTask = null;
 
 	private Config $properties;
@@ -297,6 +293,7 @@ class Server{
 
 	private int $port;
 
+    /** @var Player[]  */
 	private array $players = [];
 	private array $playerList = [];
 	private array $identifiers = [];
@@ -516,6 +513,9 @@ class Server{
 		return $this->commandMap;
 	}
 
+    /**
+     * @return Player[]
+     */
 	public function getOnlinePlayers() : array{
 		return $this->playerList;
 	}
@@ -1073,12 +1073,12 @@ class Server{
 			}
 			$this->config = new Config($this->dataPath . "pocketmine.yml", Config::YAML, []);
 
-			$this->logger->info("Loading iCore.yml...");
-			if(!file_exists($this->dataPath . "iCore.yml")){
-				$content = file_get_contents($this->filePath . "src/pocketmine/resources/iCore.yml");
-				@file_put_contents($this->dataPath . "iCore.yml", $content);
+			$this->logger->info("Loading icore.yml...");
+			if(!file_exists($this->dataPath . "icore.yml")){
+				$content = file_get_contents($this->filePath . "src/pocketmine/resources/icore.yml");
+				@file_put_contents($this->dataPath . "icore.yml", $content);
 			}
-			$this->advancedConfig = new Config($this->dataPath . "iCore.yml", Config::YAML, []);
+			$this->advancedConfig = new Config($this->dataPath . "icore.yml", Config::YAML, []);
 			
 			$this->logger->setLogToFile(!$this->getAdvancedProperty("server.disable-logging", false));
 
@@ -1101,8 +1101,6 @@ class Server{
 				"level-seed" => "",
 				"level-type" => "DEFAULT",
 				"enable-query" => true,
-				"enable-rcon" => false,
-				"rcon.password" => substr(base64_encode(random_bytes(20)), 3, 10),
 				"auto-save" => true,
 				"online-mode" => false,
 				"view-distance" => 8
@@ -1169,19 +1167,6 @@ class Server{
 
 			$this->scheduler = new ServerScheduler();
 
-			if($this->getConfigBoolean("enable-rcon", false) === true){
-				try{
-					$this->rcon = new RCON(
-						$this,
-						$this->getConfigString("rcon.password", ""),
-						new InternetAddress(($ip = $this->getIp()) != "" ? $ip : "0.0.0.0", $this->getConfigInt("rcon.port", $this->getPort()), 4),
-						$this->getConfigInt("rcon.max-clients", 50)
-					);
-				}catch(\Throwable $e){
-					$this->getLogger()->critical("RCON can't be started: " . $e->getMessage());
-				}
-			}
-
 			$this->entityMetadata = new EntityMetadataStore();
 			$this->playerMetadata = new PlayerMetadataStore();
 			$this->levelMetadata = new LevelMetadataStore();
@@ -1236,6 +1221,7 @@ class Server{
 			$this->getLogger()->debug("Machine unique id: " . Utils::getMachineUniqueId());
 
 			$this->network = new Network($this);
+            $this->network->setName($this->getMotd());
 
 			$this->logger->info($this->getLanguage()->translateString("pocketmine.server.info", [
 				$this->getName(),
@@ -1283,7 +1269,7 @@ class Server{
 
 			register_shutdown_function([$this, "crashDump"]);
 
-			$this->queryRegenerateTask = new QueryRegenerateEvent($this, 5);
+			$this->queryRegenerateTask = new QueryRegenerateEvent($this);
 			$this->network->registerInterface(new RakLibInterface($this));
 			
 			include($filePath . "src/pocketmine/API.php");
@@ -1657,9 +1643,6 @@ class Server{
 			$this->hasStopped = true;
 
 			$this->shutdown();
-			if($this->rcon instanceof RCON){
-				$this->rcon->stop();
-			}
 
 			if($this->getProperty("network.upnp-forwarding", false) === true){
 				$this->logger->info("[UPnP] Removing port forward...");
@@ -2049,11 +2032,21 @@ class Server{
 		Timings::$titleTickTimer->stopTiming();
 	}
 
-	public function handlePacket(string $address, int $port, string $payload){
-		if(!$this->queryHandler->handle($address, $port, $payload)){
-			$this->logger->debug("Unhandled raw packet from $address $port: " . bin2hex($payload));
-		}
-	}
+    public function handlePacket(AdvancedNetworkInterface $interface, string $address, int $port, string $payload){
+        try{
+            if(strlen($payload) > 2 and substr($payload, 0, 2) === "\xfe\xfd" and $this->queryHandler instanceof QueryHandler){
+                $this->queryHandler->handle($interface, $address, $port, $payload);
+            }else{
+                $this->logger->debug("Unhandled raw packet from $address $port: " . base64_encode($payload));
+            }
+        }catch(\Throwable $e){
+            if($this->logger instanceof MainLogger){
+                $this->logger->logException($e);
+            }
+
+            $this->getNetwork()->blockAddress($address, 600);
+        }
+    }
 
 	private function tick() : bool{
 		$tickTime = microtime(true);
@@ -2089,15 +2082,10 @@ class Server{
 			$this->currentTPS = 20;
 			$this->currentUse = 0;
 
-			try{
-				$this->queryRegenerateTask = new QueryRegenerateEvent($this, 5);
-				$this->queryRegenerateTask->call();
-				if($this->queryHandler !== null){
-					$this->queryHandler->regenerateInfo();
-				}
-			}catch(\Throwable $e){
-				$this->logger->logException($e);
-			}
+            $this->queryRegenerateTask = new QueryRegenerateEvent($this);
+            $this->queryRegenerateTask->call();
+
+            $this->network->updateName();
 		}
 
 		if($this->autoSave and ++$this->autoSaveTicker >= $this->autoSaveTicks){

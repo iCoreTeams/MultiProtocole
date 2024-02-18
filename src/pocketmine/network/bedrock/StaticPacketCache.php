@@ -30,23 +30,23 @@ use pocketmine\network\bedrock\protocol\BiomeDefinitionListPacket;
 use function file_get_contents;
 
 final class StaticPacketCache{
-	/** @var string */
-	private static $biomeDefs;
-	/** @var string */
-	private static $availableActorIdentifiers;
-	/** @var BiomeDefinitionListPacket */
-	private static BiomeDefinitionListPacket $biomeDefsPkt;
-	/** @var AvailableActorIdentifiersPacket */
-	private static AvailableActorIdentifiersPacket $actorIdentifiersPkt;
+    /** @var string */
+    private static $biomeDefs;
+    /** @var string */
+    private static $availableActorIdentifiers;
+    /** @var BiomeDefinitionListPacket */
+    private static BiomeDefinitionListPacket $biomeDefsPkt;
+    /** @var AvailableActorIdentifiersPacket */
+    private static AvailableActorIdentifiersPacket $actorIdentifiersPkt;
 
-	public static function init() : void{
-		$biomeDefs = new BiomeDefinitionListPacket();
-		$biomeDefs->namedtag = file_get_contents(\pocketmine\PATH . "src/pocketmine/resources/bedrock/biome_definitions.nbt");
-		self::$biomeDefsPkt = clone $biomeDefs;
+    public static function init() : void{
+        $biomeDefs = new BiomeDefinitionListPacket();
+        $biomeDefs->namedtag = file_get_contents(\pocketmine\PATH . "src/pocketmine/resources/bedrock/biome_definitions.nbt");
+        self::$biomeDefsPkt = clone $biomeDefs;
 
-		$actorIdentifiers = new AvailableActorIdentifiersPacket();
-		$actorIdentifiers->namedtag = ActorMapping::getEncodedActorIdentifiers();
-		self::$actorIdentifiersPkt = clone $actorIdentifiers;
+        $actorIdentifiers = new AvailableActorIdentifiersPacket();
+        $actorIdentifiers->namedtag = ActorMapping::getEncodedActorIdentifiers();
+        self::$actorIdentifiersPkt = clone $actorIdentifiers;
 
         $stream = new BedrockPacketBatch();
         $stream->putPacket(self::$biomeDefsPkt);
@@ -57,23 +57,23 @@ final class StaticPacketCache{
         $stream->putPacket(self::$actorIdentifiersPkt);
 
         self::$availableActorIdentifiers = NetworkCompression::compress($stream->buffer);
-	}
+    }
 
-	/**
-	 * @param int $protocol
-	 *
-	 * @return string
-	 */
-	public static function getBiomeDefs() : string{
-		return self::$biomeDefs;
-	}
+    /**
+     * @param int $protocol
+     *
+     * @return string
+     */
+    public static function getBiomeDefs() : string{
+        return self::$biomeDefs;
+    }
 
-	/**
-	 * @param int $protocol
-	 *
-	 * @return string
-	 */
-	public static function getAvailableActorIdentifiers() : string{
-		return self::$availableActorIdentifiers;
-	}
+    /**
+     * @param int $protocol
+     *
+     * @return string
+     */
+    public static function getAvailableActorIdentifiers() : string{
+        return self::$availableActorIdentifiers;
+    }
 }

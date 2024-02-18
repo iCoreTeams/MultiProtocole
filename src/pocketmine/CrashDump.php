@@ -223,6 +223,8 @@ class CrashDump{
 			}
 		}
 
+        $error["message"] = mb_scrub($error["message"], 'UTF-8');
+
 		if(isset($lastError)){
 			$this->data["lastError"] = $lastError;
 		}

@@ -64,6 +64,11 @@ class Hopper extends Spawnable implements InventoryHolder, Container, Nameable{
 		$this->scheduleUpdate();
 	}
 
+    public function getDefaultName(): string
+    {
+        return "Hopper";
+    }
+
 	public function close(){
 		if($this->closed === false){
             foreach($this->getInventory()->getViewers() as $player){

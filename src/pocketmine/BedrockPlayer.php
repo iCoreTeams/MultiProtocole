@@ -46,6 +46,7 @@ use pocketmine\event\player\PlayerToggleSneakEvent;
 use pocketmine\event\player\PlayerToggleSprintEvent;
 use pocketmine\event\player\PlayerTransferEvent;
 use pocketmine\event\server\DataPacketSendEvent;
+use pocketmine\event\server\RawPacketSendEvent;
 use pocketmine\event\TextContainer;
 use pocketmine\event\Timings;
 use pocketmine\event\TranslationContainer;
@@ -92,6 +93,7 @@ use pocketmine\network\bedrock\protocol\LevelSoundEventPacket;
 use pocketmine\network\bedrock\protocol\LoginPacket;
 use pocketmine\network\bedrock\protocol\MobEquipmentPacket;
 use pocketmine\network\bedrock\protocol\ModalFormRequestPacket;
+use pocketmine\network\bedrock\protocol\MapInfoRequestPacket;
 use pocketmine\network\bedrock\protocol\NetworkChunkPublisherUpdatePacket;
 use pocketmine\network\bedrock\protocol\NetworkSettingsPacket;
 use pocketmine\network\bedrock\protocol\PlayerActionPacket;
@@ -197,7 +199,7 @@ class BedrockPlayer extends Player{
 	protected $clientClosingWindowId = -1;
 
 	/** @var bool */
-	protected $enableCompression = true;
+	protected $enableCompression = false;
 
 	/** @var string|null */
 	protected $lastRequestedFullSkinId = null;
@@ -295,7 +297,7 @@ class BedrockPlayer extends Player{
 		}
 	}
 
-	protected function checkProtocol(string $buffer, int $protocol) : bool{
+	protected function checkProtocol(int $protocol) : bool{
 		$currentProtocol = ProtocolInfo::CURRENT_PROTOCOL;
 		if($protocol !== $currentProtocol){
 			if($protocol < $currentProtocol){
@@ -313,12 +315,17 @@ class BedrockPlayer extends Player{
 		return true;
 	}
 
+    public function handleBedrockMapInfoRequest(MapInfoRequestPacket $packet) : bool
+    {
+        return false;
+    }
+
 	public function handleRequestNetworkSettings(RequestNetworkSettingsPacket $packet) : bool{
 		if($this->enableCompression){
 			return false;
 		}
 
-		if(!$this->checkProtocol($packet->buffer, $packet->protocolVersion)){
+		if(!$this->checkProtocol($packet->protocolVersion)){
 			return true;
 		}
 
@@ -327,11 +334,10 @@ class BedrockPlayer extends Player{
 		$pk->compressionAlgorithm = CompressionAlgorithm::ZLIB;
 		$pk->enableClientThrottling = false;
 		$pk->clientThrottleThreshold = 0;
-		$pk->clientThrottleScalar = 0.0;
+		$pk->clientThrottleScalar = 0;
 		$this->sendDataPacket($pk, false, true);
 
-		$this->enableCompression = true;
-
+        $this->enableCompression = true;
 		return true;
 	}
 
@@ -340,11 +346,14 @@ class BedrockPlayer extends Player{
 			return false;
 		}
 
-		if(!$this->checkProtocol($packet->buffer, $packet->protocol)){
+		if(!$this->checkProtocol($packet->protocol)){
 			return true;
 		}
 
-		$this->username = TextFormat::clean($packet->username);
+        $this->username = TextFormat::clean($packet->username);
+        if($this->server->getAdvancedProperty("player.replace-gap-nickname", true)){
+            $this->username = str_replace(" ", "_", $packet->username);
+        }
 		$this->displayName = $this->username;
 		$this->iusername = strtolower($this->username);
 		$this->setDataProperty(self::DATA_NAMETAG, self::DATA_TYPE_STRING, $this->username, false);
@@ -516,21 +525,16 @@ class BedrockPlayer extends Player{
 			return;
 		}
 
-		foreach($this->server->getOnlinePlayers() as $p){
-			if($p !== $this and $p->iusername === $this->iusername){
-				if($p->kick("disconnectionScreen.loggedinOtherLocation") === false){
-					$this->close($this->getLeaveMessage(), "disconnectionScreen.serverIdConflict");
+        foreach($this->server->getOnlinePlayers() as $p){
+            if($p !== $this and ($p->iusername === $this->iusername or $this->getUniqueId()->equals($p->getUniqueId()))){
+                $this->close($this->getLeaveMessage(), "disconnectionScreen.loggedinOtherLocation");
+                return;
+            }
+        }
 
-					return;
-				}
-			}elseif($p->loggedIn and $this->getUniqueId()->equals($p->getUniqueId())){
-				if($p->kick("disconnectionScreen.loggedinOtherLocation") === false){
-					$this->close($this->getLeaveMessage(), "disconnectionScreen.serverIdConflict");
-
-					return;
-				}
-			}
-		}
+        if($this->loggedIn){
+            return; //спасает от одновременного входа игроков с одним ником
+        }
 
 		$this->namedtag = $this->server->getOfflinePlayerData($this->username);
 
@@ -747,8 +751,8 @@ class BedrockPlayer extends Player{
 		$pk->worldTemplateId = new UUID();
         $this->sendDataPacket($pk);
 
-		$this->queueEncoded(StaticPacketCache::getAvailableActorIdentifiers());
-		$this->queueEncoded(StaticPacketCache::getBiomeDefs());
+		$this->queueEncoded(StaticPacketCache::getAvailableActorIdentifiers($this->getProtocolVersion()));
+		$this->queueEncoded(StaticPacketCache::getBiomeDefs($this->getProtocolVersion()));
 
 		$ev = new PlayerLoginEvent($this, "Plugin reason");
 		$ev->call();
@@ -1311,9 +1315,16 @@ class BedrockPlayer extends Player{
 			return true;
 		}
 
+        if ($packet->action < 1 or $packet->action > 129){
+            return true;
+        }elseif($packet->rowingTime > 999){
+            return true;
+        }
+
 		$pk = new MCPEAnimatePacket();
 		$pk->entityRuntimeId = $this->getId();
 		$pk->action = $ev->getAnimationType();
+        $pk->rowingTime = $packet->rowingTime;
 		$this->server->broadcastPacket($this->getViewers(), $pk);
 
 		return true;
@@ -1525,7 +1536,6 @@ class BedrockPlayer extends Player{
 								return false; //unknown windowID and/or not matching any open windows
 							}
 							$inv = $this->windowIndex[$action->windowId];
-
 							$transaction = new BaseTransaction($inv, $action->inventorySlot, $action->newItem->stack);
 							break;
 					}
@@ -1803,6 +1813,7 @@ class BedrockPlayer extends Player{
 				BedrockChunkCache::getInstance($level, $this->getChunkProtocol())->unregister($this, $x, $z);
 			}
 
+            unset($this->activeChunkGenerationRequests[$index]);
 			unset($this->usedChunks[$index]);
 		}
 		$level->unregisterChunkLoader($this, $x, $z);
@@ -2080,9 +2091,9 @@ class BedrockPlayer extends Player{
 			return true;
 		}
 
-		if(!$packet instanceof BedrockPacket){
-			$packet = PacketTranslator::translate($packet); //try to translate this packet to client, otherwise ignore
-		}
+		if(!$packet instanceof BedrockPacket) {
+            $packet = PacketTranslator::translate($packet); //try to translate this packet to client, otherwise ignore
+        }
 
         if($packet === null){
             return true;
@@ -2165,6 +2176,27 @@ class BedrockPlayer extends Player{
 		$timings->stopTiming();
 		return true;
 	}
+
+    public function sendEncoded(string $payload, bool $needACK = false, bool $immediate = false, int $compression = CompressionAlgorithm::ZLIB){
+        if(!$this->connected){
+            return false;
+        }
+        $ev = new RawPacketSendEvent($this, $payload);
+        $ev->call();
+        if($ev->isCancelled()){
+            return false;
+        }
+
+        $rawBuffer = substr($payload, 1);
+        $payload = ProtocolInfo::MCPE_RAKNET_PACKET_ID . chr($compression) . $rawBuffer;
+
+        $identifier = $this->interface->putBuffer($this, $payload, $needACK, $immediate);
+        if($needACK and $identifier !== null){
+            $this->needACK[$identifier] = false;
+            return $identifier;
+        }
+        return true;
+    }
 
 	public function queueEncoded(string $data) : bool{
 		if(!$this->connected){
@@ -2277,5 +2309,4 @@ class BedrockPlayer extends Player{
 	public function getProtocolVersion() : int{
 		return ProtocolInfo::CURRENT_PROTOCOL;
 	}
-
 }

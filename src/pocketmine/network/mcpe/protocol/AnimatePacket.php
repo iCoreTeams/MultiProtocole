@@ -39,13 +39,13 @@ class AnimatePacket extends DataPacket{
 
 	public $action;
 	public $entityRuntimeId;
-	public $float = 0.0; //TODO (Boat rowing time?)
+	public $rowingTime = 0.0; //TODO (Boat rowing time?)
 
 	public function decodePayload(){
 		$this->action = $this->getVarInt();
 		$this->entityRuntimeId = $this->getEntityRuntimeId();
 		if($this->action & 0x80){
-			$this->float = $this->getLFloat();
+			$this->rowingTime = $this->getLFloat();
 		}
 	}
 
@@ -53,7 +53,7 @@ class AnimatePacket extends DataPacket{
 		$this->putVarInt($this->action);
 		$this->putEntityRuntimeId($this->entityRuntimeId);
 		if($this->action & 0x80){
-			$this->putLFloat($this->float);
+			$this->putLFloat($this->rowingTime);
 		}
 	}
 

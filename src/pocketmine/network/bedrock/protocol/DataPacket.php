@@ -49,6 +49,7 @@ use pocketmine\network\bedrock\protocol\types\inventory\ItemInstance;
 use pocketmine\network\bedrock\protocol\types\inventory\LegacySetItemSlot;
 use pocketmine\network\bedrock\protocol\types\ItemDescriptorType;
 use pocketmine\network\bedrock\protocol\types\itemStack\StackRequestSlotInfo;
+use pocketmine\network\bedrock\protocol\types\PotionTypeRecipe;
 use pocketmine\network\bedrock\protocol\types\skin\PersonaPiece;
 use pocketmine\network\bedrock\protocol\types\skin\PieceTintColor;
 use pocketmine\network\bedrock\protocol\types\skin\SerializedSkinImage;
@@ -336,6 +337,19 @@ abstract class DataPacket extends MCPEDataPacket{
 		$cnt = $this->getVarInt();
 		return Item::get($id, $meta, $cnt);
 	}
+
+    public function writePotionTypes(PotionTypeRecipe $entry):void{
+        [$netIdInput, $netDataInput] = ItemPalette::getRuntimeFromLegacyId($entry->getInputPotionId(), $entry->getInputPotionMeta());
+        [$netIdIngredient, $netDataIngredient] = ItemPalette::getRuntimeFromLegacyId($entry->getIngredientItemId(), $entry->getIngredientItemMeta());
+        [$netIdOutput, $netDataOutput] = ItemPalette::getRuntimeFromLegacyId($entry->getOutputPotionId(), $entry->getOutputPotionMeta());
+
+        $this->putVarInt($netIdInput);
+        $this->putVarInt($netDataInput);
+        $this->putVarInt($netIdIngredient);
+        $this->putVarInt($netDataIngredient);
+        $this->putVarInt($netIdOutput);
+        $this->putVarInt($netDataOutput);
+    }
 
 	/**
 	 * @return array, members are in the structure [name => [type, value, isPlayerModifiable]]

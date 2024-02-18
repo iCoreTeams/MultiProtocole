@@ -42,7 +42,7 @@ if(function_exists("libdeflate_deflate_compress")){
 		}
 
 		public static function decompress(string $payload, int $maxLen = 0) : string{
-			$data = zlib_decode($payload, $maxLen); //Max 2 MB
+			$data = @zlib_decode($payload, $maxLen); //Max 2 MB
 			if($data == false) {
 				return "";
 			}
@@ -76,7 +76,7 @@ if(function_exists("libdeflate_deflate_compress")){
 		}
 
 		public static function decompress(string $payload, int $maxLen = 0) : string{
-			$data = zlib_decode($payload, $maxLen);
+			$data = @zlib_decode($payload, $maxLen);
 			if($data == false) {
 				return "";
 			}

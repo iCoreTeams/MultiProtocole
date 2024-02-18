@@ -11,11 +11,12 @@ use pocketmine\nbt\tag\StringTag;
  * This trait implements most methods in the {@link Nameable} interface. It should only be used by Tiles.
  */
 trait NameableTrait{
+
     /**
      * @return string
      */
     public function getName() : string{
-        return $this->namedtag->getString(Nameable::TAG_CUSTOM_NAME, "Chest");
+        return $this->namedtag->getString(Nameable::TAG_CUSTOM_NAME, $this->getDefaultName());
     }
 
     /**

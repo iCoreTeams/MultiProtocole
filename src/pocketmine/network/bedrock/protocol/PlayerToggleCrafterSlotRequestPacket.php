@@ -13,9 +13,9 @@ class PlayerToggleCrafterSlotRequestPacket extends DataPacket{
     private int $y;
     private int $z;
     private int $slot;
-	private bool $disabled;
+	private int $disabled;
 
-    public static function create(int $x, int $y, int $z, int $slot, bool $disabled) : self{
+    public static function create(int $x, int $y, int $z, int $slot, int $disabled) : self{
 		$result = new self;
 		$result->x = $x;
         $result->y = $y;

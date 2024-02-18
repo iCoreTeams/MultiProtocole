@@ -28,6 +28,8 @@ interface Nameable{
 
     public const TAG_CUSTOM_NAME = "CustomName";
 
+    public function getDefaultName() : string;
+
     public function getName() : string;
 
     public function setName(string $str): void;

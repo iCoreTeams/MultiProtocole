@@ -107,6 +107,10 @@ class PlayerAuthInputPacket extends DataPacket{
 	public const INPUT_MISSED_SWING = 39;
 	public const INPUT_START_CRAWLING = 40;
 	public const INPUT_STOP_CRAWLING = 41;
+    public const START_FLYING = 42;
+    public const STOP_FLYING = 43;
+    public const ACK_ACTOR_DATA = 44;
+    public const IN_CLIENT_PREDICTED_VEHICLE = 45;
 
 	public const INTERACTION_TOUCH = 0;
 	public const INTERACTION_CROSSHAIR = 1;
@@ -143,6 +147,7 @@ class PlayerAuthInputPacket extends DataPacket{
 	/** @var ItemInteractionData|null */
 	public $itemInteractionData = null;
 	public $blockActions = null;
+    private ?int $clientPredictedVehicleActorUniqueId = null;
 
 	public function decodePayload(){
 		$this->yaw = $this->getLFloat();
@@ -165,8 +170,12 @@ class PlayerAuthInputPacket extends DataPacket{
 		}
 
 		if($this->getInputFlag(PlayerAuthInputPacket::INPUT_PERFORM_ITEM_STACK_REQUEST)){
-			$this->itemStackRequest = (new ItemStackRequest())->read($this);
+			(new ItemStackRequest())->read($this);
 		}
+
+        if($this->getInputFlag(PlayerAuthInputPacket::IN_CLIENT_PREDICTED_VEHICLE)){
+            $this->clientPredictedVehicleActorUniqueId = $this->getActorUniqueId();
+        }
 
 		if ($this->getInputFlag(PlayerAuthInputPacket::INPUT_PERFORM_BLOCK_ACTIONS)) {
 			$this->blockActions = [];

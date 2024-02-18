@@ -28,10 +28,10 @@ use pocketmine\BedrockPlayer;
 use pocketmine\event\player\PlayerCreationEvent;
 use pocketmine\network\AdvancedNetworkInterface;
 use pocketmine\network\bedrock\BedrockPacketBatch;
-use pocketmine\network\bedrock\BedrockPong;
 use pocketmine\network\bedrock\NetworkCompression as BedrockNetworkCompression;
 use pocketmine\network\bedrock\protocol\PacketPool as BedrockPacketPool;
 use pocketmine\network\bedrock\protocol\ProtocolInfo as BedrockProtocolInfo;
+use pocketmine\network\bedrock\protocol\types\CompressionAlgorithm;
 use pocketmine\network\mcpe\encryption\DecryptionException;
 use pocketmine\network\mcpe\protocol\BatchPacket;
 use pocketmine\network\mcpe\protocol\DataPacket;
@@ -49,11 +49,9 @@ use raklib\server\ServerHandler;
 use raklib\server\ServerInstance;
 use raklib\utils\InternetAddress;
 use pmmp\thread\Thread as NativeThread;
-use Throwable;
 use function bin2hex;
 use function get_class;
 use function igbinary_unserialize;
-use function microtime;
 use function ord;
 use function spl_object_id;
 use function substr;
@@ -69,8 +67,6 @@ class RakLibInterface implements ServerInstance, AdvancedNetworkInterface{
 
 	private const MCPE_RAKNET_PACKET_ID = "\xfe";
 
-	private const PONG_DATA_UPDATE_RATE = 1.0;
-
 	/** @var Server */
 	private $server;
 
@@ -82,9 +78,6 @@ class RakLibInterface implements ServerInstance, AdvancedNetworkInterface{
 
 	/** @var int */
 	private $port;
-
-	/** @var McpePong */
-	private $pongData;
 
 	/** @var Player[] */
 	private $players = [];
@@ -104,9 +97,6 @@ class RakLibInterface implements ServerInstance, AdvancedNetworkInterface{
 	/** @var SleeperNotifier */
 	private $sleeper;
 
-	/** @var float */
-	private $lastPongDataUpdate = 0.0;
-
 	public function __construct(Server $server, ?int $port = null){
 		$this->server = $server;
 		$this->port = $port ?? $server->getPort();
@@ -119,8 +109,6 @@ class RakLibInterface implements ServerInstance, AdvancedNetworkInterface{
 		];
 		$this->rakLib = new RakLibServer($server->getLogger(), $server->getLoader(), new InternetAddress($server->getIp() === "" ? "0.0.0.0" : $server->getIp(), $this->port, 4), (int) $server->getProperty("network.max-mtu-size", 1492), array_keys($rakNetProtocols), $this->sleeper);
 		$this->interface = new ServerHandler($this->rakLib, $this);
-
-		$this->setPongData(new McpePong());
 	}
 
 	public function start() : void{
@@ -144,10 +132,6 @@ class RakLibInterface implements ServerInstance, AdvancedNetworkInterface{
 		if($this->interface->handlePacket()){
 			$work = true;
 			while($this->interface->handlePacket()){}
-		}
-
-		if(microtime(true) - $this->lastPongDataUpdate > self::PONG_DATA_UPDATE_RATE){
-			$this->updatePongData();
 		}
 
 		if($this->rakLib->isTerminated()){
@@ -205,9 +189,6 @@ class RakLibInterface implements ServerInstance, AdvancedNetworkInterface{
 		$class = $ev->getPlayerClass();
 
 		$player = new $class($this, $ev->getClientId(), $ev->getAddress(), $ev->getPort(), $isValid);
-		if($player instanceof BedrockPlayer){
-			$player->setEnableCompression(false); // TODO
-		}
 		$this->players[$sessionId] = $player;
 		$this->identifiersACK[$sessionId] = 0;
 		$this->identifiers[spl_object_id($player)] = $sessionId;
@@ -242,11 +223,19 @@ class RakLibInterface implements ServerInstance, AdvancedNetworkInterface{
 					if($player instanceof BedrockPlayer){
 						if($packet->buffer[0] === BedrockProtocolInfo::MCPE_RAKNET_PACKET_ID){
 
-							if($player->hasNetworkCompression()){
-								$decompressed = BedrockNetworkCompression::decompress($buffer);
-							}else{
-								$decompressed = $buffer;
-							}
+                            if ($player->hasNetworkCompression()) {
+                                $compressionType = ord($buffer[0]);
+                                $compressed = substr($buffer, 1);
+                                if($compressionType === CompressionAlgorithm::NONE){
+                                    $decompressed = $compressed;
+                                }elseif($compressionType === CompressionAlgorithm::ZLIB){
+                                    $decompressed = BedrockNetworkCompression::decompress($compressed);
+                                }else{
+                                    throw new \Exception("Packet compressed with unexpected compression type $compressionType");
+                                }
+                            }else {
+                                $decompressed = $buffer;
+                            }
 
 							$stream = new BedrockPacketBatch($decompressed);
 							$count = 0;
@@ -284,7 +273,7 @@ class RakLibInterface implements ServerInstance, AdvancedNetworkInterface{
 	}
 
 	public function handleRaw(string $address, int $port, string $payload) : void{
-		$this->server->handlePacket($address, $port, $payload);
+		$this->server->handlePacket($this, $address, $port, $payload);
 	}
 
 	public function sendRawPacket(string $address, int $port, string $payload) : void{
@@ -299,57 +288,23 @@ class RakLibInterface implements ServerInstance, AdvancedNetworkInterface{
 
 	}
 
-	public function updatePongData() : void{
-		$info = $this->server->getQueryInformation();
+    public function setName(string $name): void{
+        $info = $this->server->getQueryInformation();
 
-		$this->pongData->setPlayerCount($info->getPlayerCount());
-		$this->pongData->setMaxPlayerCount($info->getMaxPlayerCount());
-		$this->pongData->setMotd($info->getMotd());
-		$this->pongData->setSubMotd($info->getSubMotd());
-		$this->pongData->setGameType(Server::getGamemodeName($this->server->getGamemode()));
-
-		$this->interface->sendOption("name", $this->pongData->toServerName());
-
-		$this->lastPongDataUpdate = microtime(true);
-	}
-
-	/**
-	 * @return McpePong
-	 */
-	public function getPongData() : McpePong{
-		return $this->pongData;
-	}
-
-	/**
-	 * @param McpePong $pongData
-	 */
-	public function setPongData(McpePong $pongData) : void{
-		$this->pongData = $pongData;
-
-		if($pongData->getEdition() === ""){
-			$pongData->setEdition("MCPE");
-		}
-		if($pongData->getServerId() === -1){
-			$pongData->setProtocolVersion(BedrockProtocolInfo::CURRENT_PROTOCOL);
-		}
-		if($pongData->getMinecraftVersion() === ""){
-			$pongData->setMinecraftVersion(BedrockProtocolInfo::MINECRAFT_VERSION_NETWORK);
-		}
-		if($pongData->getServerId() === -1){
-			$pongData->setServerId($this->rakLib->getServerId());
-		}
-
-		if($pongData instanceof BedrockPong){
-			if($pongData->getIpv4Port() === -1){
-				$pongData->setIpv4Port($this->port);
-			}
-			if($pongData->getIpv6Port() === -1){
-				$pongData->setIpv6Port($this->port);
-			}
-		}
-
-		$this->updatePongData();
-	}
+        $this->interface->sendOption("name", implode(";",
+                [
+                    "MCPE",
+                    rtrim(addcslashes($name, ";"), '\\'),
+                    BedrockProtocolInfo::CURRENT_PROTOCOL,
+                    BedrockProtocolInfo::MINECRAFT_VERSION_NETWORK,
+                    $info->getPlayerCount(),
+                    $info->getMaxPlayerCount(),
+                    $this->rakLib->getServerId(),
+                    $this->server->getName(),
+                    Server::getGamemodeName($this->server->getGamemode())
+                ]) . ";"
+        );
+    }
 
 	public function setPortChecking(bool $value) : void{
 		$this->interface->sendOption("portChecking", $value);

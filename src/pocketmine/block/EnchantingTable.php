@@ -30,6 +30,7 @@ use pocketmine\item\TieredTool;
 use pocketmine\item\Tool;
 use pocketmine\nbt\tag\CompoundTag;
 use pocketmine\Player;
+use pocketmine\tile\EnchantTable;
 use pocketmine\tile\Tile;
 
 class EnchantingTable extends Transparent{
@@ -85,8 +86,28 @@ class EnchantingTable extends Transparent{
 
 	public function onActivate(Item $item, Player $player = null){
 		if($player instanceof Player){
-			//TODO lock
-			$player->addWindow(new EnchantInventory($this));
+            $tile = $this->getLevel()->getTile($this);
+            if(!($tile instanceof EnchantTable)){
+                $this->getLevel()->setBlock($this, $this, true, true);
+                $nbt = CompoundTag::create()
+                    ->setString("id", Tile::ENCHANT_TABLE)
+                    ->setInt("x", $this->x)
+                    ->setInt("y", $this->y)
+                    ->setInt("z", $this->z);
+
+                if($item->hasCustomName()){
+                    $nbt->setString("CustomName", $item->getCustomName());
+                }
+
+                if($item->hasCustomBlockData()){
+                    foreach($item->getCustomBlockData() as $key => $v){
+                        $nbt->setTag($key, $v);
+                    }
+                }
+
+                $tile = Tile::createTile(Tile::ENCHANT_TABLE, $this->getLevel(), $nbt);
+            }
+			$player->addWindow(new EnchantInventory($tile));
 			$player->craftingType = Player::CRAFTING_ENCHANT;
 		}
 

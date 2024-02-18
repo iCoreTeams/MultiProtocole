@@ -149,9 +149,9 @@ class FallingBlock extends Entity{
 		$pk->yaw = $this->yaw;
 		$pk->pitch = $this->pitch;
 		$pk->metadata = $this->dataProperties;
-		if($player instanceof BedrockPlayer and isset($pk->metadata[self::DATA_VARIANT])){
+		if($player instanceof BedrockPlayer and isset($pk->metadata[self::DATA_VARIANT])) {
             $pk->metadata[self::DATA_VARIANT][1] = BlockPalette::getRuntimeFromLegacyId($this->blockId, $this->damage);
-		}
+        }
 
 		$player->sendDataPacket($pk);
 	}
@@ -183,12 +183,12 @@ class FallingBlock extends Entity{
 		$bk->actorRuntimeId = $this->getId();
 		$bk->metadata = PacketTranslator::translateMetadata($pk->metadata);
 
-		foreach($bedrockPackets as $protocol => &$bbk){
-			$bbk = clone $bk;
-			if(isset($bk->metadata[self::DATA_VARIANT])){
+		foreach($bedrockPackets as $protocol => &$bbk) {
+            $bbk = clone $bk;
+            if (isset($bk->metadata[self::DATA_VARIANT])) {
                 $bbk->metadata[self::DATA_VARIANT][1] = BlockPalette::getRuntimeFromLegacyId($this->blockId, $this->damage);
-			}
-		}
+            }
+        }
 
 		foreach($player as $p){
 			if($p === $this){

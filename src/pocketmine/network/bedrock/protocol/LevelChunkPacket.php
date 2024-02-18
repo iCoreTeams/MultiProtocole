@@ -35,17 +35,19 @@ class LevelChunkPacket extends DataPacket{
 	/**
 	 * Client will request all subchunks as needed up to the top of the world
 	 */
-	private const CLIENT_REQUEST_FULL_COLUMN_FAKE_COUNT = 0xffffffff;
+	protected const CLIENT_REQUEST_FULL_COLUMN_FAKE_COUNT = 0xffffffff;
 	/**
 	 * Client will request subchunks as needed up to the height written in the packet, and assume that anything above
 	 * that height is air (wtf mojang ...)
 	 */
-	private const CLIENT_REQUEST_TRUNCATED_COLUMN_FAKE_COUNT = 0xffffffff -1;
+	protected const CLIENT_REQUEST_TRUNCATED_COLUMN_FAKE_COUNT = 0xffffffff -1;
 
 	/** @var int */
 	public $chunkX;
 	/** @var int */
 	public $chunkZ;
+    /** @var int */
+    public $dimensionId;
 	/** @var int */
 	public $subChunkCount;
 	/** @var bool */
@@ -60,6 +62,7 @@ class LevelChunkPacket extends DataPacket{
 	public function decodePayload(){
 		$this->chunkX = $this->getVarInt();
 		$this->chunkZ = $this->getVarInt();
+        $this->dimensionId = $this->getVarInt();
 
 		$subChunkCountButNotReally = $this->getUnsignedVarInt();
 		if($subChunkCountButNotReally === self::CLIENT_REQUEST_FULL_COLUMN_FAKE_COUNT){
@@ -86,6 +89,7 @@ class LevelChunkPacket extends DataPacket{
 	public function encodePayload(){
 		$this->putVarInt($this->chunkX);
 		$this->putVarInt($this->chunkZ);
+        $this->putVarInt($this->dimensionId);
 
 		if($this->clientSubChunkRequestsEnabled){
 			if($this->subChunkCount === PHP_INT_MAX){

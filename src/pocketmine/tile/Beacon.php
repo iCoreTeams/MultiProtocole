@@ -28,6 +28,11 @@ class Beacon extends Spawnable implements Nameable, InventoryHolder{
 		$this->scheduleUpdate();
 	}
 
+    public function getDefaultName(): string
+    {
+        return "Beacon";
+    }
+
 	/**
 	 * @return BeaconInventory
 	 */

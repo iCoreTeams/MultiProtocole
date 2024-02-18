@@ -1,4 +1,8 @@
 # Advanced configuration file for AquaMine
+player:
+  chat:
+    clean-color: true
+  replace-gap-nickname: false
 
 inventory:
   allow-cheats: false
@@ -12,12 +16,6 @@ network:
   packet-limit: 300
   port-checking: true
   raknet-validator: true
-
-query:
-  visible-plugins: false
-  visible-players: false
-  visible-players-nicknames: false
-  visible-map: false
 
 server:
   disable-logging: false

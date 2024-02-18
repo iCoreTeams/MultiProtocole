@@ -121,7 +121,7 @@ abstract class Entity extends Location implements Metadatable, EntityIds{
 	public const DATA_AIR = 7; //short
 	public const DATA_POTION_COLOR = 8; //int (ARGB!)
 	public const DATA_POTION_AMBIENT = 9; //byte
-	/* 10 (byte) */
+    public const DATA_JUMP_DURATION = 10; //byte
 	public const DATA_HURT_TIME = 11; //int (minecart/boat)
 	public const DATA_HURT_DIRECTION = 12; //int (minecart/boat)
 	public const DATA_PADDLE_TIME_LEFT = 13; //float
@@ -130,9 +130,11 @@ abstract class Entity extends Location implements Metadatable, EntityIds{
 	public const DATA_MINECART_DISPLAY_BLOCK = 16; //int (id | (data << 16))
 	public const DATA_MINECART_DISPLAY_OFFSET = 17; //int
 	public const DATA_MINECART_HAS_DISPLAY = 18; //byte (must be 1 for minecart to show block inside)
-
-	//TODO: add more properties
-
+    public const DATA_HORSE_TYPE = 19; //byte
+    public const DATA_CREEPER_SWELL = 19; //int
+    public const DATA_CREEPER_SWELL_PREVIOUS = 20; //int
+    public const DATA_CREEPER_SWELL_DIRECTION = 21; //byte
+    public const DATA_CHARGE_AMOUNT = 22; //int8, used for ghasts and also crossbow charging
 	public const DATA_ENDERMAN_HELD_ITEM_ID = 23; //short
 	public const DATA_ENDERMAN_HELD_ITEM_DAMAGE = 24; //short
 	public const DATA_ENTITY_AGE = 25; //short
@@ -232,8 +234,10 @@ abstract class Entity extends Location implements Metadatable, EntityIds{
 	public const DATA_FLAG_VIBRATING = 38;
 	public const DATA_FLAG_IDLING = 39;
 	public const DATA_FLAG_EVOKER_SPELL = 40;
-	public const DATA_FLAG_CHARGE_ATTACK = 41;
-	public const DATA_FLAG_WASD_CONTROLLED = 42;
+    public const DATA_FLAG_CHARGE_ATTACK = 41;
+
+    public const DATA_FLAG_WASD_CONTROLLED = 43; //OR 42 ????
+    public const DATA_FLAG_CAN_POWER_JUMP = 44;
 
 	public const DATA_FLAG_LINGER = 45;
     public const DATA_FLAG_HAS_COLLISION = 46;
@@ -1044,7 +1048,7 @@ abstract class Entity extends Location implements Metadatable, EntityIds{
 		}elseif($amount <= $this->getMaxHealth() or $amount < $this->health){
 			$this->health = (int) $amount;
 		}else{
-			$this->health = $this->getMaxHealth();
+			$this->health = (int) $this->getMaxHealth();
 		}
 	}
 
@@ -1264,33 +1268,38 @@ abstract class Entity extends Location implements Metadatable, EntityIds{
 		$this->attack($ev);
 	}
 
-	protected function updateMovement(){
+	protected function updateMovement(bool $teleport = false){
 		//TODO: hack for client-side AI interference: prevent client sided movement when motion is 0
 		$this->setImmobile($this->motionX == 0 and $this->motionY == 0 and $this->motionZ == 0);
 
-		$diffPosition = ($this->x - $this->lastX) ** 2 + ($this->y - $this->lastY) ** 2 + ($this->z - $this->lastZ) ** 2;
-		$diffRotation = ($this->yaw - $this->lastYaw) ** 2 + ($this->pitch - $this->lastPitch) ** 2;
+        $diffPosition = ($this->x - $this->lastX) ** 2 + ($this->y - $this->lastY) ** 2 + ($this->z - $this->lastZ) ** 2;
+        $diffRotation = ($this->yaw - $this->lastYaw) ** 2 + ($this->pitch - $this->lastPitch) ** 2;
 
-		$diffMotion = ($this->motionX - $this->lastMotionX) ** 2 + ($this->motionY - $this->lastMotionY) ** 2 + ($this->motionZ - $this->lastMotionZ) ** 2;
+        $lastMotion = new Vector3($this->lastMotionX, $this->lastMotionY, $this->lastMotionZ);
 
-		if($diffPosition > 0.0001 or $diffRotation > 1.0){
-			$this->lastX = $this->x;
-			$this->lastY = $this->y;
-			$this->lastZ = $this->z;
+        $diffMotion = $this->getMotion()->subtract($lastMotion)->lengthSquared();
 
-			$this->lastYaw = $this->yaw;
-			$this->lastPitch = $this->pitch;
+        $still = $this->getMotion()->lengthSquared() == 0.0;
+        $wasStill = $lastMotion->lengthSquared() == 0.0;
 
-			$this->broadcastMovement();
-		}
+        if($teleport or $diffPosition > 0.0001 or $diffRotation > 1.0 or (!$wasStill and $still)){
+            $this->lastX = $this->x;
+            $this->lastY = $this->y;
+            $this->lastZ = $this->z;
 
-		if($diffMotion > 0.0025 or ($diffMotion > 0.0001 and $this->getMotion()->lengthSquared() <= 0.0001)){ //0.05 ** 2
-			$this->lastMotionX = $this->motionX;
-			$this->lastMotionY = $this->motionY;
-			$this->lastMotionZ = $this->motionZ;
+            $this->lastYaw = $this->yaw;
+            $this->lastPitch = $this->pitch;
+
+            $this->broadcastMovement($teleport);
+        }
+
+        if($diffMotion > 0.0025 or $wasStill !== $still){ //0.05 ** 2
+            $this->lastMotionX = $this->motionX;
+            $this->lastMotionY = $this->motionY;
+            $this->lastMotionZ = $this->motionZ;
 
             $this->broadcastMotion();
-		}
+        }
 	}
 
 	public function onUpdate($currentTick){
@@ -1815,7 +1824,7 @@ abstract class Entity extends Location implements Metadatable, EntityIds{
 		$this->scheduleUpdate();
 	}
 
-	public function broadcastMovement() : void{
+	public function broadcastMovement(bool $teleport = false) : void{
 		$pk = new MoveEntityPacket();
 		$pk->entityRuntimeId = $this->id;
 		[$pk->x, $pk->y, $pk->z] = [$this->x, $this->y + $this->baseOffset, $this->z];
@@ -1823,6 +1832,7 @@ abstract class Entity extends Location implements Metadatable, EntityIds{
 		$pk->pitch = $this->pitch;
 		$pk->headYaw = $this->yaw; // TODO
 		$pk->onGround = $this->onGround;
+        $pk->teleported = $teleport;
 		$this->server->broadcastPacket($this->hasSpawned, $pk);
 
 		if($this instanceof Player){
@@ -1843,9 +1853,7 @@ abstract class Entity extends Location implements Metadatable, EntityIds{
 
 	protected function checkChunks(){
 		if($this->chunk === null or ($this->chunk->getX() !== (((int)$this->x) >> 4) or $this->chunk->getZ() !== (((int)$this->z) >> 4))){
-			if($this->chunk !== null){
-				$this->chunk->removeEntity($this);
-			}
+            $this->chunk?->removeEntity($this);
 			$this->chunk = $this->level?->getChunk(((int)$this->x) >> 4, ((int)$this->z) >> 4, true);
 
 			if(!$this->justCreated){

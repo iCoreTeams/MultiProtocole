@@ -166,7 +166,7 @@ interface ItemIds extends BlockIds{
 	public const POTATO = 392;
 	public const BAKED_POTATO = 393;
 	public const POISONOUS_POTATO = 394;
-	public const EMPTYMAP = 395, EMPTY_MAP = 395, MAP = 395;
+	public const EMPTY_MAP = 395;
 	public const GOLDEN_CARROT = 396;
 	public const MOB_HEAD = 397, SKULL = 397;
 	public const CARROTONASTICK = 398, CARROT_ON_A_STICK = 398;

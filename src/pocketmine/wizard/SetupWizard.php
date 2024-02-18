@@ -208,16 +208,6 @@ LICENSE;
 			$config->set("enable-query", true);
 		}
 
-		$this->message($this->lang->get("rcon_info"));
-		if(strtolower($this->getInput($this->lang->get("rcon_enable"), "n", "y/N")) === "y"){
-			$config->set("enable-rcon", true);
-			$password = substr(base64_encode(random_bytes(20)), 3, 10);
-			$config->set("rcon.password", $password);
-			$this->message($this->lang->get("rcon_password") . ": " . $password);
-		}else{
-			$config->set("enable-rcon", false);
-		}
-
 		$config->save();
 
 

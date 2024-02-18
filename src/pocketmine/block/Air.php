@@ -43,10 +43,6 @@ class Air extends Transparent{
 		return "Air";
 	}
 
-	public function canPassThrough(){
-		return true;
-	}
-
 	public function isBreakable(Item $item){
 		return false;
 	}
@@ -74,6 +70,10 @@ class Air extends Transparent{
 	public function getCollisionBoxes() : array{
 		return [];
 	}
+
+    protected function recalculateCollisionBoxes() : array{
+        return [];
+    }
 
 	public function getHardness(){
 		return -1;

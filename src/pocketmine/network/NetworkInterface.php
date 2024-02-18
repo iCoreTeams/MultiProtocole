@@ -67,6 +67,11 @@ interface NetworkInterface{
 	 */
 	public function close(Player $player, string $reason = "unknown reason");
 
+    /**
+     * @param string $name
+     */
+    public function setName(string $name): void;
+
 	/**
 	 * @return bool
 	 */

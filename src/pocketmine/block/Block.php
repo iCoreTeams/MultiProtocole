@@ -28,7 +28,6 @@ declare(strict_types=1);
 namespace pocketmine\block;
 
 use pocketmine\entity\Entity;
-use pocketmine\item\enchantment\Enchantment;
 use pocketmine\item\Item;
 use pocketmine\item\Tool;
 use pocketmine\level\Level;
@@ -302,15 +301,15 @@ class Block extends Position implements BlockIds, Metadatable{
 			self::registerBlock(new GlazedTerracotta(Block::BLACK_GLAZED_TERRACOTTA, 0, "Black Glazed Terracotta"));
 
             self::registerBlock(new Concrete());
-
 			self::registerBlock(new StainedGlass());
-
+            self::registerBlock(new DragonEgg());
 			self::registerBlock(new Podzol());
 			self::registerBlock(new Beetroot());
 			self::registerBlock(new Stonecutter());
 			self::registerBlock(new GlowingObsidian());
 			self::registerBlock(new Slime());
             self::registerBlock(new ShulkerBox());
+            self::registerBlock(new Portal());
 
 			foreach(self::$list as $id => $block){
 				if($block === null){
